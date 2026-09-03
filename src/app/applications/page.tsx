@@ -17,7 +17,7 @@ const MONTHS = ['ינו', 'פבר', 'מרץ', 'אפר', 'מאי', 'יונ', 'י�
 export default async function Applications() {
   const { data } = await serverClient()
     .from('applications')
-    .select('id, company, role, recipient, cv_id, sent_at, status')
+    .select('id, company, role, recipient, cv_id, channel, sent_at, status')
     .order('sent_at', { ascending: false });
 
   const rows = (data ?? []) as any[];
@@ -57,8 +57,33 @@ export default async function Applications() {
   }
   const peak = Math.max(...buckets.map((b) => b.total), 1);
 
-  const seenTotal = rows.filter((a) =>
-    ['acknowledged', 'replied', 'conversation', 'interview'].includes(a.status)).length;
+  const ENGAGED = ['acknowledged', 'replied', 'conversation', 'interview'];
+  const seenTotal = rows.filter((a) => ENGAGED.includes(a.status)).length;
+
+  // Same cut three ways. The share column is the point: volume without a
+  // response rate beside it is the number that produced 145 applications and
+  // no conversation.
+  function breakdown(key: (a: any) => string) {
+    const m = new Map<string, { total: number; seen: number }>();
+    for (const a of rows) {
+      const k = key(a) || '—';
+      const cur = m.get(k) ?? { total: 0, seen: 0 };
+      cur.total += 1;
+      if (ENGAGED.includes(a.status)) cur.seen += 1;
+      m.set(k, cur);
+    }
+    return [...m.entries()].sort((x, y) => y[1].total - x[1].total);
+  }
+
+  const CV_LABEL: Record<string, string> = {
+    qa: 'QA', program: 'ניהול פרויקטים', delivery: 'גרסאות ו‑Delivery',
+  };
+  const CH_LABEL: Record<string, string> = {
+    linkedin: 'לינקדאין', form: 'טופס באתר', email: 'מייל ישיר',
+  };
+  const byCv = breakdown((a) => CV_LABEL[a.cv_id] ?? a.cv_id);
+  const byChannel = breakdown((a) => CH_LABEL[a.channel] ?? a.channel);
+  const byStatus = breakdown((a) => (LABEL[a.status] ?? [a.status])[0]);
 
   return (
     <>
@@ -90,6 +115,28 @@ export default async function Applications() {
       <p className="screen-note">
         הכהה בתוך כל עמודה הוא החלק שמגייס פתח.
       </p>
+
+      <h2>פילוח</h2>
+      <div className="splits">
+        {[['לפי תפקיד', byCv], ['לפי ערוץ', byChannel], ['לפי סטטוס', byStatus]].map(
+          ([title, data]) => (
+            <div className="split" key={title as string}>
+              <div className="split-h">{title as string}</div>
+              {(data as [string, { total: number; seen: number }][]).map(([k, v]) => (
+                <div className="split-row" key={k}>
+                  <span className="split-l">{k}</span>
+                  <span className="split-t">
+                    <span className="split-b" style={{ width: `${(v.total / rows.length) * 100}%` }} />
+                  </span>
+                  <span className="split-n">{v.total}</span>
+                  <span className="split-p">{v.total ? Math.round((v.seen / v.total) * 100) : 0}%</span>
+                </div>
+              ))}
+            </div>
+          )
+        )}
+      </div>
+      <p className="screen-note">העמודה האחרונה היא שיעור הצפייה — כמה מהן מגייס פתח.</p>
 
       <h2>אחרונות</h2>
       <div className="rows">

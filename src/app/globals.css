@@ -223,3 +223,24 @@ a:focus-visible,button:focus-visible,input:focus-visible{outline:2px solid var(-
   font-family:ui-monospace,Menlo,monospace;font-size:.74rem;
   font-variant-numeric:tabular-nums;opacity:.65;
 }
+
+.splits{display:grid;gap:10px;grid-template-columns:1fr}
+@media (min-width:760px){ .splits{grid-template-columns:repeat(3,1fr)} }
+.split{background:var(--surface);border:1px solid var(--line);border-radius:7px;padding:13px 14px}
+.split-h{
+  font-size:.7rem;letter-spacing:.09em;text-transform:uppercase;
+  color:var(--muted);font-weight:700;margin-bottom:9px;
+}
+.split-row{display:flex;align-items:center;gap:7px;font-size:.82rem;margin-bottom:6px}
+.split-row:last-child{margin-bottom:0}
+.split-l{flex:0 0 34%;color:var(--ink);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.split-t{flex:1;height:6px;background:var(--hair);border-radius:99px;overflow:hidden}
+.split-b{display:block;height:100%;background:var(--accent);border-radius:99px}
+.split-n{
+  flex:none;width:30px;text-align:start;font-family:ui-monospace,Menlo,monospace;
+  font-size:.78rem;font-variant-numeric:tabular-nums;color:var(--ink);
+}
+.split-p{
+  flex:none;width:34px;text-align:start;font-family:ui-monospace,Menlo,monospace;
+  font-size:.74rem;font-variant-numeric:tabular-nums;color:var(--good);
+}
