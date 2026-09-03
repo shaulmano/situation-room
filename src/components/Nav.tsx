@@ -16,6 +16,9 @@ export default function Nav() {
   const on = (h: string) => (h === '/' ? path === '/' : path.startsWith(h));
   return (
     <>
+      <header className="top">
+        <h1 className="brand">חדר <span>המצב</span></h1>
+      </header>
       <nav className="dnav">
         {ITEMS.map((i) => (
           <Link key={i.href} href={i.href} className={on(i.href) ? 'on' : ''}>{i.label}</Link>
