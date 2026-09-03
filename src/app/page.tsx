@@ -51,12 +51,10 @@ export default async function Dashboard() {
     return [...best.values()].sort((a, b) => b.score - a.score);
   }
 
-  let rows = await freshJobs(1);
-  let window: 'today' | 'week' = 'today';
-  if (rows.length === 0) {
-    rows = await freshJobs(7);
-    window = 'week';
-  }
+  // Today only, with no fallback to the week. A quiet day should read as a
+  // quiet day; padding it with older rows is how this page turned into a
+  // second jobs list in the first place.
+  const rows = await freshJobs(1);
   const shown = rows.slice(0, 8);
 
   const last = lastSent.data?.[0]?.sent_at;
@@ -93,19 +91,19 @@ export default async function Dashboard() {
       )}
 
       <div className="screen-head">
-        <h2>{window === 'today' ? 'חדשות היום' : 'חדשות השבוע'}</h2>
+        <h2>חדשות היום</h2>
         <Link className="more" href="/jobs">כל המשרות ←</Link>
       </div>
       <p className="screen-note">
-        {window === 'today'
+        {rows.length > 0
           ? `${rows.length} נסרקו היום ולא הגשת אליהן.`
-          : 'היום לא נמצאה אף משרה חדשה, אז אלה של השבוע.'}
+          : 'הסריקה של היום לא החזירה משרות חדשות על המטרה.'}
       </p>
 
       {shown.length === 0 ? (
         <div className="empty">
-          <b>אין חדש השבוע</b>
-          בדוק במסך המקורות אם מקור הפסיק להחזיר.
+          <b>אין חדש היום</b>
+          <Link href="/jobs?days=7">הצג את השבוע</Link> · או בדוק במסך המקורות אם מקור הפסיק להחזיר.
         </div>
       ) : (
         <div className="rows">

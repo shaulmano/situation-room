@@ -15,7 +15,9 @@ export default async function Jobs({
   const role = searchParams.role ?? '';
   // Keep the family selection when the time window changes, and vice versa.
   const roleQ = role ? `&role=${role}` : '';
-  const days = Number(searchParams.days ?? 7);
+  // Today by default: the feed is for acting on, and a week's backlog on open
+  // is a reading list. The week is one tap away.
+  const days = Number(searchParams.days ?? 1);
   const since = new Date(Date.now() - days * 864e5).toISOString();
 
   // Anything already applied to is history, not a lead. It belongs on the
