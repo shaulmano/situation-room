@@ -18,7 +18,13 @@ type Run = {
 // run newer than the one we started with.
 const WAIT_MS = 180_000;
 
-export default function ScanNow({ initial }: { initial: Run | null }) {
+export default function ScanNow({
+  initial,
+  failed = [],
+}: {
+  initial: Run | null;
+  failed?: string[];
+}) {
   const router = useRouter();
   const [run, setRun] = useState<Run | null>(initial);
   const [waiting, setWaiting] = useState(false);
@@ -63,13 +69,17 @@ export default function ScanNow({ initial }: { initial: Run | null }) {
     return () => { if (timer.current) clearTimeout(timer.current); };
   }, [active, run?.done, poll]);
 
-  async function startScan() {
+  async function startScan(sources: string[] = []) {
     setErr('');
     setWaiting(true);
     startedAt.current = Date.now();
     baseline.current = run?.id ?? null;
 
-    const res = await fetch('/api/scan', { method: 'POST' }).catch(() => null);
+    const res = await fetch('/api/scan', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ sources }),
+    }).catch(() => null);
     const body = await res?.json().catch(() => null);
     if (!res?.ok) {
       setErr(body?.error ?? 'ההפעלה נכשלה');
@@ -88,9 +98,19 @@ export default function ScanNow({ initial }: { initial: Run | null }) {
 
   return (
     <div className="scanbar">
-      <button type="button" className="scanbtn" onClick={startScan} disabled={active}>
-        {running ? 'סורק…' : waiting ? 'ממתין ל-GitHub…' : 'סרוק עכשיו'}
+      <button type="button" className="scanbtn" onClick={() => startScan()} disabled={active}>
+        {running ? 'סורק…' : waiting ? 'ממתין ל-GitHub…' : 'סרוק הכל'}
       </button>
+
+      {failed.length > 0 && (
+        <button
+          type="button" className="scanbtn retry"
+          onClick={() => startScan(failed)} disabled={active}
+          title={'סורק רק: ' + failed.join(', ')}
+        >
+          סרוק כשלים ({failed.length})
+        </button>
+      )}
 
       {active && (
         <div className="prog">

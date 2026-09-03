@@ -1,11 +1,19 @@
-import { NextResponse } from 'next/server';
+import { NextResponse, type NextRequest } from 'next/server';
 import { serverClient } from '@/lib/server';
 
 const REPO = 'shaulmano/situation-room';
 const WORKFLOW = 'scan.yml';
 
 // POST — ask GitHub to run the scan workflow.
-export async function POST() {
+export async function POST(req: NextRequest) {
+  // Optional subset: rescanning twelve sources to retry one is fifteen minutes
+  // of work for thirty seconds of need.
+  const body = await req.json().catch(() => ({}));
+  const raw: unknown = (body as { sources?: unknown }).sources;
+  const sources = Array.isArray(raw)
+    ? raw.filter((x): x is string => typeof x === 'string' && /^[a-z0-9]+$/.test(x))
+    : [];
+
   const token = process.env.GITHUB_DISPATCH_TOKEN;
   if (!token) {
     return NextResponse.json(
@@ -38,7 +46,7 @@ export async function POST() {
         'X-GitHub-Api-Version': '2022-11-28',
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify({ ref: 'main', inputs: { sources: '' } }),
+      body: JSON.stringify({ ref: 'main', inputs: { sources: sources.join(' ') } }),
     }
   );
 

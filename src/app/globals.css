@@ -335,3 +335,8 @@ a.kpi:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
 @media (prefers-reduced-motion:reduce){
   .prog-b.indeterminate{animation:none;width:100%;opacity:.4}
 }
+
+.scanbtn.retry{
+  background:transparent;color:var(--crit);border:1px solid var(--crit);
+}
+.scanbtn.retry:hover:not(:disabled){background:var(--crit-soft)}

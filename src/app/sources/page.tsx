@@ -85,6 +85,11 @@ export default async function Sources({
   const scanCount = Math.max(0, ...rows.map((r) => r.a?.runs ?? 0));
   const newest = rows.map((r) => r.a?.last).filter(Boolean).sort().reverse()[0];
   const rangeLabel = (RANGES.find((r) => r[0] === key) ?? RANGES[0])[1];
+  // Anything that failed or came back empty in its most recent run — the set
+  // worth retrying without paying for the ten that worked.
+  const failed = rows
+    .filter(({ a }) => a && (a.failed || a.on === 0))
+    .map(({ id }) => id);
 
   return (
     <>
@@ -99,7 +104,7 @@ export default async function Sources({
         </div>
       </div>
 
-      <ScanNow initial={(runs?.[0] as any) ?? null} />
+      <ScanNow initial={(runs?.[0] as any) ?? null} failed={failed} />
 
       <p className="screen-note">
         {newest
