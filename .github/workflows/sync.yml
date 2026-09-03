@@ -1,0 +1,46 @@
+name: Sync from the bot
+
+# The bot scrapes every 90 minutes and commits jobs.jsonl to its public repo.
+# This pulls that file in rather than scraping everything a second time: half a
+# minute and no browser, against fifteen minutes and a Chromium install — and
+# it keeps the Supabase token out of the public repo, which is the other reason
+# not to do this from the bot's own workflow.
+#
+# Offset by 20 minutes from the bot's schedule so it reads a finished commit
+# rather than racing the run that is writing it.
+on:
+  schedule:
+    - cron: '20 0,3,6,9,12,15,18,21 * * *'
+    - cron: '50 1,4,7,10,13,16,19,22 * * *'
+  workflow_dispatch:
+
+concurrency:
+  group: situation-room-sync
+  cancel-in-progress: false
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Pull the bot's job records into Supabase
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+          SUPABASE_PROJECT_REF: ${{ secrets.SUPABASE_PROJECT_REF }}
+        run: |
+          python sync/jobs_sync.py \
+            https://raw.githubusercontent.com/shaulmano/shaul-job-search/main/jobs.jsonl
+
+      # Scoring is cheap and deterministic, and a job with no match row never
+      # reaches the feed — so it has to run on whatever just arrived.
+      - name: Score the new jobs
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+          SUPABASE_PROJECT_REF: ${{ secrets.SUPABASE_PROJECT_REF }}
+        run: python sync/score.py

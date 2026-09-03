@@ -1,6 +1,12 @@
 """
 Push the job-search bot's findings into the situation room.
 
+Accepts a path or an https url. The url form is how the scheduled sync works:
+the bot already scrapes every 90 minutes and commits jobs.jsonl to its public
+repo, so this fetches that file instead of scraping everything a second time -
+half a minute and no browser, against fifteen minutes and a Chromium install.
+It also means the Supabase token stays out of the public repo.
+
 The bot writes every reported job to jobs.jsonl in the (public) job-search repo.
 That file is market data - what exists out there - so it is safe to mirror here.
 What is NOT mirrored: recruiter names and urls. Those name real people who never
@@ -25,10 +31,20 @@ ON_TARGET = (
 )
 
 
+def read_lines(src):
+    if src.startswith("http"):
+        import urllib.request
+        req = urllib.request.Request(src, headers={"User-Agent": "situation-room-sync"})
+        with urllib.request.urlopen(req, timeout=120) as r:
+            return r.read().decode("utf-8").splitlines()
+    with open(src, encoding="utf-8") as fh:
+        return fh.readlines()
+
+
 def rows(path):
     seen = set()
-    with open(path, encoding="utf-8") as fh:
-        for line in fh:
+    if True:
+        for line in read_lines(path):
             line = line.strip()
             if not line:
                 continue
@@ -59,11 +75,11 @@ def rows(path):
 
 def main():
     path = sys.argv[1] if len(sys.argv) > 1 else DEFAULT
-    if not os.path.exists(path):
+    if not path.startswith("http") and not os.path.exists(path):
         print("no such file: %s" % path)
         return
     all_rows = list(rows(path))
-    print("parsed %d unique jobs from %s" % (len(all_rows), os.path.basename(path)))
+    print("parsed %d unique jobs from %s" % (len(all_rows), path.rsplit("/", 1)[-1]))
 
     total = 0
     for i in range(0, len(all_rows), BATCH):
