@@ -1,6 +1,7 @@
 'use client';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
+import RefreshOnFocus from './RefreshOnFocus';
 
 const ITEMS = [
   { href: '/',             label: 'חדר המצב', icon: '◉' },
@@ -17,6 +18,7 @@ export default function Nav() {
   const on = (h: string) => (h === '/' ? path === '/' : path.startsWith(h));
   return (
     <>
+      <RefreshOnFocus />
       <header className="top">
         <h1 className="brand">חדר <span>המצב</span></h1>
       </header>
