@@ -261,9 +261,13 @@ a:focus-visible,button:focus-visible,input:focus-visible{outline:2px solid var(-
   .col-l{font-size:.58rem;letter-spacing:-.02em}
   .col-n{font-size:.62rem}
 
-  /* Four tiles across is unreadable on a phone; two rows of two is not. */
-  .kpis{grid-template-columns:1fr 1fr}
+  /* The hero owns row one; the other three share row two. Two columns left the
+     third tile alone in a row with a hole beside it. */
+  .kpis{grid-template-columns:repeat(3,1fr);gap:7px}
   .kpi.hero{grid-column:1/-1}
+  .kpi{padding:10px 9px}
+  .kpi-l{font-size:.64rem;line-height:1.25}
+  .kpi-v{font-size:1.45rem}
 
   /* Title first, controls on their own line — they were competing for width
      and the title lost, wrapping to three lines. */
