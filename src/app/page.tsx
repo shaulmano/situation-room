@@ -5,6 +5,10 @@ export const dynamic = 'force-dynamic';
 
 const ago = (days: number) => new Date(Date.now() - days * 864e5).toISOString();
 
+// A posting the bot stopped seeing has been taken down. jobs.jsonl keeps every
+// job it ever reported, so without this the feed fills with closed roles.
+const ACTIVE_DAYS = 3;
+
 export default async function Dashboard() {
   const sb = serverClient();
 
@@ -18,8 +22,9 @@ export default async function Dashboard() {
     sb.from('applications').select('sent_at').order('sent_at', { ascending: false }).limit(1),
     sb.from('applications').select('job_id'),
     sb.from('matches')
-      .select('score, cv_id, reasons, jobs!inner(id, title, company, source, location, url, on_target)')
+      .select('score, cv_id, reasons, jobs!inner(id, title, company, source, location, url, on_target, last_seen)')
       .eq('jobs.on_target', true)
+      .gte('jobs.last_seen', ago(ACTIVE_DAYS))
       .order('score', { ascending: false })
       .limit(120),
   ]);
@@ -75,7 +80,7 @@ export default async function Dashboard() {
       {rows.length === 0 ? (
         <div className="empty">
           <b>אין משרות פתוחות על המטרה</b>
-          כל מה שנסרק או שאינו רלוונטי, או שכבר הגשת אליו.
+          משרה שהבוט הפסיק לראות בסריקות נחשבת סגורה ויורדת מכאן.
         </div>
       ) : (
         <div className="rows">
@@ -87,10 +92,11 @@ export default async function Dashboard() {
                 <span className="grow">
                   {j.title}
                   <span className="sub">
-                    {[j.company, j.source, j.location].filter(Boolean).join(' · ')}
+                    {[j.company, j.location].filter(Boolean).join(' · ')}
                   </span>
-                  {why.length > 0 && (
+                  {(
                     <span className="why">
+                      <span className="chip src">{j.source}</span>
                       {why.map((r) => <span className="chip ok" key={r}>{r}</span>)}
                       <span className="chip mute">{m.cv_id}</span>
                     </span>

@@ -52,6 +52,7 @@ def rows(path):
                 "location": (j.get("location") or "")[:120] or None,
                 "posted": j.get("posted") or None,
                 "first_seen": j.get("first_seen") or None,
+                "last_seen": j.get("last_seen") or None,
                 "on_target": any(k in title.lower() for k in ON_TARGET),
             }
 
@@ -68,17 +69,19 @@ def main():
     for i in range(0, len(all_rows), BATCH):
         chunk = all_rows[i:i + BATCH]
         vals = ",".join(
-            "(%s,%s,%s,%s,%s,%s,%s,%s,%s)"
+            "(%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)"
             % (q(r["id"]), q(r["title"]), q(r["company"]), q(r["source"]), q(r["url"]),
-               q(r["location"]), q(r["posted"]), q(r["first_seen"]),
+               q(r["location"]), q(r["posted"]), q(r["first_seen"]), q(r["last_seen"]),
                "true" if r["on_target"] else "false")
             for r in chunk
         )
         sql(
-            "insert into jobs (id,title,company,source,url,location,posted,first_seen,on_target) "
+            "insert into jobs "
+            "(id,title,company,source,url,location,posted,first_seen,last_seen,on_target) "
             "values %s on conflict (id) do update set title=excluded.title, "
             "company=excluded.company, url=excluded.url, location=excluded.location, "
-            "posted=excluded.posted, on_target=excluded.on_target;" % vals
+            "posted=excluded.posted, last_seen=excluded.last_seen, "
+            "on_target=excluded.on_target;" % vals
         )
         total += len(chunk)
         print("  upserted %d/%d" % (total, len(all_rows)))
