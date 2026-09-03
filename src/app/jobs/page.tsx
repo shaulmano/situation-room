@@ -37,7 +37,7 @@ export default async function Jobs({
     // reasons, but it does not order the feed: with no job descriptions every
     // score lands in the low forties, so ordering by it is ordering by noise.
     .order('first_seen', { ascending: false, referencedTable: 'jobs' })
-    .limit(400);
+    .limit(1200);
 
   if (!showAll) {
     query = query
@@ -64,7 +64,8 @@ export default async function Jobs({
   // cv_id already classifies the posting — the CV that scored it highest is the
   // job family it belongs to, so no second taxonomy is needed.
   if (role) picked = picked.filter((m) => m.cv_id === role);
-  const rows = picked.slice(0, 60);
+  // No cut. A day is a day; truncating it just hides the tail.
+  const rows = picked;
 
   const counts = [...best.values()].reduce<Record<string, number>>((acc, m) => {
     acc[m.cv_id] = (acc[m.cv_id] ?? 0) + 1;

@@ -40,7 +40,7 @@ export default async function Dashboard() {
       .is('jobs.dismissed_at', null)
       .gte('jobs.first_seen', ago(days))
       .order('first_seen', { ascending: false, referencedTable: 'jobs' })
-      .limit(150);
+      .limit(900);
 
     const best = new Map<string, any>();
     for (const m of (data ?? []) as any[]) {
@@ -56,8 +56,9 @@ export default async function Dashboard() {
   // Today only, with no fallback to the week. A quiet day should read as a
   // quiet day; padding it with older rows is how this page turned into a
   // second jobs list in the first place.
+  // All of today, not a preview of it. Eight was an arbitrary cut that hid 39
+  // of the 47 jobs found this morning.
   const rows = await freshJobs(1);
-  const shown = rows.slice(0, 8);
 
   const last = lastSent.data?.[0]?.sent_at;
   const daysQuiet = last ? Math.floor((Date.now() - new Date(last).getTime()) / 864e5) : null;
@@ -104,14 +105,14 @@ export default async function Dashboard() {
           : 'הסריקה של היום לא החזירה משרות חדשות על המטרה.'}
       </p>
 
-      {shown.length === 0 ? (
+      {rows.length === 0 ? (
         <div className="empty">
           <b>אין חדש היום</b>
           <Link href="/jobs?days=7">הצג את השבוע</Link> · או בדוק במסך המקורות אם מקור הפסיק להחזיר.
         </div>
       ) : (
         <div className="rows">
-          {shown.map((m) => {
+          {rows.map((m) => {
             const j = m.jobs;
             const why: string[] = (m.reasons ?? []).slice(0, 2);
             const t = applyTarget(j);
@@ -145,11 +146,6 @@ export default async function Dashboard() {
         </div>
       )}
 
-      {rows.length > shown.length && (
-        <p className="screen-note">
-          מוצגות {shown.length} מתוך {rows.length}. <Link href="/jobs">השאר במסך משרות</Link>.
-        </p>
-      )}
     </>
   );
 }
