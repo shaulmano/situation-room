@@ -73,7 +73,7 @@ export default async function Sources() {
                     : 'אין נתוני סריקה'}
                 </span>
               </span>
-              {on > 0 && <span className="score hi">{on}</span>}
+              {on > 0 && <span className="count">{on}</span>}
               <span className={'chip ' + state[1]}>{state[0]}</span>
             </div>
           );

@@ -31,7 +31,10 @@ export default async function Jobs({
       'score, cv_id, reasons, red_flags, ' +
       'jobs!inner(id, title, company, source, location, url, first_seen, on_target, dismissed_at)'
     )
-    .order('score', { ascending: false })
+    // Newest first. The score still picks which CV fits and produces the match
+    // reasons, but it does not order the feed: with no job descriptions every
+    // score lands in the low forties, so ordering by it is ordering by noise.
+    .order('first_seen', { ascending: false, referencedTable: 'jobs' })
     .limit(400);
 
   if (!showAll) {
@@ -48,9 +51,12 @@ export default async function Jobs({
   for (const m of (data ?? []) as any[]) {
     const id = m.jobs?.id;
     if (!id || appliedIds.has(id)) continue;
+    // Still the best-scoring CV per job — that is what the chip names.
     if (!best.has(id) || best.get(id).score < m.score) best.set(id, m);
   }
-  let picked = [...best.values()].sort((a, b) => b.score - a.score);
+  let picked = [...best.values()].sort(
+    (a, b) => new Date(b.jobs.first_seen).getTime() - new Date(a.jobs.first_seen).getTime()
+  );
   // cv_id already classifies the posting — the CV that scored it highest is the
   // job family it belongs to, so no second taxonomy is needed.
   if (role) picked = picked.filter((m) => m.cv_id === role);

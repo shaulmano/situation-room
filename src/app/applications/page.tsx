@@ -1,3 +1,4 @@
+import Link from 'next/link';
 import { serverClient } from '@/lib/server';
 
 export const dynamic = 'force-dynamic';
@@ -14,14 +15,42 @@ const LABEL: Record<string, [string, string]> = {
 
 const MONTHS = ['ינו', 'פבר', 'מרץ', 'אפר', 'מאי', 'יונ', 'יול', 'אוג', 'ספט', 'אוק', 'נוב', 'דצמ'];
 
-export default async function Applications() {
+export default async function Applications({
+  searchParams,
+}: {
+  searchParams: { status?: string; range?: string };
+}) {
+  const status = searchParams.status ?? '';
+  const range = searchParams.range ?? '';
+
   const { data } = await serverClient()
     .from('applications')
     .select('id, company, role, recipient, cv_id, channel, sent_at, status')
     .order('sent_at', { ascending: false });
 
-  const rows = (data ?? []) as any[];
-  if (rows.length === 0) {
+  const all = (data ?? []) as any[];
+
+  // The dashboard tiles link here with the cut they counted, so arriving from a
+  // tile lands on those rows rather than on all 161.
+  const CONVERSATION = ['conversation', 'interview', 'offer'];
+  const weekAgo = Date.now() - 7 * 864e5;
+  const rows = all.filter((a) => {
+    if (status === 'conversation') return CONVERSATION.includes(a.status);
+    if (status && a.status !== status) return false;
+    if (range === 'week') return new Date(a.sent_at).getTime() >= weekAgo;
+    return true;
+  });
+  const filtered = Boolean(status || range);
+  const FILTER_LABEL: Record<string, string> = {
+    conversation: 'שיחות שהתקיימו',
+    silent: 'ללא מענה',
+    acknowledged: 'נצפו על ידי מגייס',
+    replied: 'נענו',
+  };
+  const filterName = status ? FILTER_LABEL[status] ?? status : 'הגשות השבוע';
+  // `all`, not `rows`: an empty filter result is not an empty database, and
+  // saying the sync never ran would be a lie in that case.
+  if (all.length === 0) {
     return (
       <>
         <h2>הגשות</h2>
@@ -32,7 +61,7 @@ export default async function Applications() {
 
   // Every month between the first application and now, so a gap reads as a gap
   // rather than quietly closing up between two bars.
-  const first = new Date(rows[rows.length - 1].sent_at);
+  const first = new Date(all[all.length - 1].sent_at);
   const buckets: { key: string; label: string; total: number; seen: number }[] = [];
   const index = new Map<string, number>();
   const cur = new Date(first.getFullYear(), first.getMonth(), 1);
@@ -48,7 +77,7 @@ export default async function Applications() {
     });
     cur.setMonth(cur.getMonth() + 1);
   }
-  for (const a of rows) {
+  for (const a of all) {
     const d = new Date(a.sent_at);
     const i = index.get(`${d.getFullYear()}-${d.getMonth()}`);
     if (i === undefined) continue;
@@ -87,7 +116,23 @@ export default async function Applications() {
 
   return (
     <>
-      <h2>הגשות</h2>
+      <div className="screen-head">
+        <h2>הגשות</h2>
+        {filtered && <Link className="more" href="/applications">הצג הכל ←</Link>}
+      </div>
+
+      {filtered && (
+        <p className="screen-note">
+          מסונן: <b>{filterName}</b> · {rows.length} מתוך {all.length}
+        </p>
+      )}
+
+      {rows.length === 0 && filtered && (
+        <div className="empty">
+          <b>אין הגשות בחתך הזה</b>
+          <Link href="/applications">הצג את כל ההגשות</Link>
+        </div>
+      )}
 
       <div className="kpis">
         <div className="kpi"><div className="kpi-l">סה״כ</div><div className="kpi-v">{rows.length}</div></div>

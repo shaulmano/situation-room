@@ -306,3 +306,18 @@ a:focus-visible,button:focus-visible,input:focus-visible{outline:2px solid var(-
   font-family:ui-monospace,Menlo,monospace;font-size:.78rem;
   font-variant-numeric:tabular-nums;color:var(--muted);flex:none;
 }
+
+/* On the sources screen this is a count of on-target jobs, not a score — it
+   should not borrow the score badge's styling and read as one. */
+.count{
+  font-family:ui-monospace,Menlo,monospace;font-weight:600;
+  font-variant-numeric:tabular-nums;font-size:.9rem;flex:none;
+  padding:.18em .55em;border-radius:5px;
+  background:var(--good-soft);color:var(--good);
+}
+
+/* Tiles are links now — they need to look pressable and take focus. */
+a.kpi{text-decoration:none;color:inherit;display:block;transition:border-color .12s,transform .12s}
+a.kpi:hover{border-color:var(--accent)}
+a.kpi:active{transform:scale(.985)}
+a.kpi:focus-visible{outline:2px solid var(--accent);outline-offset:2px}

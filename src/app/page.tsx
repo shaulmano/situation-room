@@ -39,7 +39,7 @@ export default async function Dashboard() {
       .eq('jobs.on_target', true)
       .is('jobs.dismissed_at', null)
       .gte('jobs.first_seen', ago(days))
-      .order('score', { ascending: false })
+      .order('first_seen', { ascending: false, referencedTable: 'jobs' })
       .limit(150);
 
     const best = new Map<string, any>();
@@ -48,7 +48,9 @@ export default async function Dashboard() {
       if (!id || appliedIds.has(id)) continue;
       if (!best.has(id) || best.get(id).score < m.score) best.set(id, m);
     }
-    return [...best.values()].sort((a, b) => b.score - a.score);
+    return [...best.values()].sort(
+      (a, b) => new Date(b.jobs.first_seen).getTime() - new Date(a.jobs.first_seen).getTime()
+    );
   }
 
   // Today only, with no fallback to the week. A quiet day should read as a
@@ -63,24 +65,26 @@ export default async function Dashboard() {
 
   return (
     <>
+      {/* Every tile leads to the rows it counted — a number you cannot open is
+          a number you have to take on faith. */}
       <div className="kpis">
-        <div className="kpi hero">
+        <Link className="kpi hero" href="/applications?status=conversation">
           <div className="kpi-l">שיחות שהתקיימו · יעד {CONVERSATION_TARGET} עד 15/10</div>
           <div className="kpi-v">{convos.count ?? 0}</div>
           <div className="kpi-foot">{daysLeft} ימים נותרו</div>
-        </div>
-        <div className="kpi">
+        </Link>
+        <Link className="kpi" href="/applications?range=week">
           <div className="kpi-l">הגשות השבוע</div>
           <div className="kpi-v">{weekApps.count ?? 0}</div>
-        </div>
-        <div className="kpi">
+        </Link>
+        <Link className="kpi" href="/replies">
           <div className="kpi-l">דורש מענה</div>
           <div className="kpi-v">{needsReply.count ?? 0}</div>
-        </div>
-        <div className="kpi">
+        </Link>
+        <Link className="kpi" href="/applications?status=silent">
           <div className="kpi-l">ללא מענה</div>
           <div className="kpi-v">{silent.count ?? 0}</div>
-        </div>
+        </Link>
       </div>
 
       {daysQuiet !== null && daysQuiet > 14 && (
