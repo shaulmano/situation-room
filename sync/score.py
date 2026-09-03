@@ -19,7 +19,7 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from gmail_sync import sql, q
 
 CAP_NO_DESC = 60
-BATCH = 150
+BATCH = 80   # smaller batches survive a flaky upstream better than one big one
 
 CVS = {
     "qa":       ["qa", "quality", "test", "testing", "automation", "בדיקות", "איכות"],

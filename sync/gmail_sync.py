@@ -10,7 +10,7 @@ Writes through the Supabase Management API rather than the CLI: the ref sits in
 the URL there, so it cannot be misresolved. `supabase db query --linked` silently
 targets the account-level linked project, which is a production database.
 """
-import email, imaplib, json, os, re, subprocess, sys, tempfile
+import email, imaplib, json, os, re, subprocess, sys, tempfile, time
 from email.header import decode_header, make_header
 from email.utils import parsedate_to_datetime
 
@@ -35,27 +35,48 @@ def sb_token():
     return open(os.path.expanduser("~/.situation-room/sb-token")).read().strip()
 
 
-def sql(query):
+# Supabase drops the occasional request under a long batch run - a scoring pass
+# is three thousand rows and one "connection termination" used to kill the whole
+# workflow after the sync step had already succeeded.
+_TRANSIENT = ("upstream connect error", "connection termination", "502", "503", "504",
+              "timeout", "EOF", "reset by peer")
+
+
+def sql(query, attempts=4):
     """POST via curl - urllib and requests are refused by Cloudflare (error 1010)."""
     fd, path = tempfile.mkstemp(suffix=".json")
     with os.fdopen(fd, "w", encoding="utf-8") as fh:
         json.dump({"query": query}, fh)
+
+    last = None
     try:
-        out = subprocess.run(
-            [
-                "curl", "-s", "-X", "POST",
-                "https://api.supabase.com/v1/projects/%s/database/query" % PROJECT_REF,
-                "-H", "Authorization: Bearer %s" % sb_token(),
-                "-H", "Content-Type: application/json",
-                "--data-binary", "@%s" % path,
-            ],
-            capture_output=True, text=True, encoding="utf-8", errors="replace", timeout=180,
-        ).stdout
+        for attempt in range(attempts):
+            out = subprocess.run(
+                [
+                    "curl", "-s", "--max-time", "180", "-X", "POST",
+                    "https://api.supabase.com/v1/projects/%s/database/query" % PROJECT_REF,
+                    "-H", "Authorization: Bearer %s" % sb_token(),
+                    "-H", "Content-Type: application/json",
+                    "--data-binary", "@%s" % path,
+                ],
+                capture_output=True, text=True, encoding="utf-8", errors="replace", timeout=200,
+            ).stdout or ""
+
+            if out.strip().startswith("{") and '"message"' in out:
+                last = out[:300]
+                if any(t in out for t in _TRANSIENT) and attempt < attempts - 1:
+                    time.sleep(2 ** attempt)   # 1s, 2s, 4s
+                    continue
+                raise RuntimeError(last)
+
+            if not out.strip() and attempt < attempts - 1:
+                # curl returning nothing at all is a dropped connection too.
+                time.sleep(2 ** attempt)
+                continue
+            return json.loads(out) if out.strip() else []
     finally:
         os.unlink(path)
-    if out.strip().startswith("{") and '"message"' in out:
-        raise RuntimeError(out[:300])
-    return json.loads(out) if out.strip() else []
+    raise RuntimeError(last or "no response from Supabase")
 
 
 def q(v):
