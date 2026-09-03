@@ -174,3 +174,15 @@ a:focus-visible,button:focus-visible,input:focus-visible{outline:2px solid var(-
 }
 .col-seen{width:100%;background:var(--accent);border-radius:2px 2px 0 0}
 .col-l{font-size:.68rem;color:var(--faint);white-space:nowrap}
+
+.alert{
+  background:var(--crit-soft);border:1px solid var(--crit);
+  color:var(--crit);border-radius:7px;padding:12px 14px;
+  margin:16px 0 0;font-size:.9rem;line-height:1.45;
+}
+.alert b{font-weight:700}
+.more{
+  margin-inline-start:auto;font-size:.84rem;font-weight:600;
+  color:var(--accent);text-decoration:none;
+}
+.more:hover{text-decoration:underline}

@@ -1,24 +1,43 @@
+import Link from 'next/link';
 import { serverClient } from '@/lib/server';
 
 export const dynamic = 'force-dynamic';
 
-function since(days: number) {
-  return new Date(Date.now() - days * 864e5).toISOString();
-}
+const ago = (days: number) => new Date(Date.now() - days * 864e5).toISOString();
 
 export default async function Dashboard() {
   const sb = serverClient();
-  const weekAgo = since(7);
 
-  const [apps, convos, replies, silent, top] = await Promise.all([
-    sb.from('applications').select('id', { count: 'exact', head: true }).gte('sent_at', weekAgo),
-    sb.from('applications').select('id', { count: 'exact', head: true }).in('status', ['conversation', 'interview', 'offer']),
-    sb.from('applications').select('id', { count: 'exact', head: true }).eq('status', 'replied'),
+  const [convos, weekApps, viewed, silent, lastSent, applied, top] = await Promise.all([
+    sb.from('applications').select('id', { count: 'exact', head: true })
+      .in('status', ['conversation', 'interview', 'offer']),
+    sb.from('applications').select('id', { count: 'exact', head: true }).gte('sent_at', ago(7)),
+    sb.from('applications').select('id', { count: 'exact', head: true })
+      .in('status', ['acknowledged', 'replied', 'conversation', 'interview']),
     sb.from('applications').select('id', { count: 'exact', head: true }).eq('status', 'silent'),
-    sb.from('matches').select('score, jobs(title, company, source, location)').order('score', { ascending: false }).limit(5),
+    sb.from('applications').select('sent_at').order('sent_at', { ascending: false }).limit(1),
+    sb.from('applications').select('job_id'),
+    sb.from('matches')
+      .select('score, cv_id, reasons, jobs!inner(id, title, company, source, location, url, on_target)')
+      .eq('jobs.on_target', true)
+      .order('score', { ascending: false })
+      .limit(120),
   ]);
 
-  const rows = (top.data ?? []) as any[];
+  const appliedIds = new Set((applied.data ?? []).map((a: any) => a.job_id).filter(Boolean));
+
+  // One row per job — the same posting scores once per CV, and three identical
+  // lines in a top-five list is not a top five.
+  const best = new Map<string, any>();
+  for (const m of (top.data ?? []) as any[]) {
+    const id = m.jobs?.id;
+    if (!id || appliedIds.has(id)) continue;
+    if (!best.has(id) || best.get(id).score < m.score) best.set(id, m);
+  }
+  const rows = [...best.values()].sort((a, b) => b.score - a.score).slice(0, 5);
+
+  const last = lastSent.data?.[0]?.sent_at;
+  const daysQuiet = last ? Math.floor((Date.now() - new Date(last).getTime()) / 864e5) : null;
 
   return (
     <>
@@ -27,28 +46,62 @@ export default async function Dashboard() {
           <div className="kpi-l">שיחות שהתקיימו</div>
           <div className="kpi-v">{convos.count ?? 0}</div>
         </div>
-        <div className="kpi"><div className="kpi-l">הגשות השבוע</div><div className="kpi-v">{apps.count ?? 0}</div></div>
-        <div className="kpi"><div className="kpi-l">נענו</div><div className="kpi-v">{replies.count ?? 0}</div></div>
-        <div className="kpi"><div className="kpi-l">שקט</div><div className="kpi-v">{silent.count ?? 0}</div></div>
+        <div className="kpi">
+          <div className="kpi-l">הגשות השבוע</div>
+          <div className="kpi-v">{weekApps.count ?? 0}</div>
+        </div>
+        <div className="kpi">
+          <div className="kpi-l">נצפו על ידי מגייס</div>
+          <div className="kpi-v">{viewed.count ?? 0}</div>
+        </div>
+        <div className="kpi">
+          <div className="kpi-l">ללא מענה</div>
+          <div className="kpi-v">{silent.count ?? 0}</div>
+        </div>
       </div>
 
-      <h2>המשרות הכי מתאימות</h2>
+      {daysQuiet !== null && daysQuiet > 14 && (
+        <div className="alert">
+          <b>{daysQuiet} ימים מאז ההגשה האחרונה.</b>{' '}
+          נקודת הבדיקה ב־15/10 מודדת שיחות, ואין ממה שיצמחו.
+        </div>
+      )}
+
+      <div className="screen-head">
+        <h2>הכי מתאימות עכשיו</h2>
+        <Link className="more" href="/jobs">כל המשרות ←</Link>
+      </div>
+
       {rows.length === 0 ? (
         <div className="empty">
-          <b>אין עדיין נתונים</b>
-          הסנכרון הראשון מהבוט ומג'ימייל עוד לא רץ.
+          <b>אין משרות פתוחות על המטרה</b>
+          כל מה שנסרק או שאינו רלוונטי, או שכבר הגשת אליו.
         </div>
       ) : (
         <div className="rows">
-          {rows.map((m, i) => (
-            <div className="row" key={i}>
-              <span className={'score ' + (m.score >= 85 ? 'hi' : m.score >= 60 ? 'mid' : 'lo')}>{m.score}</span>
-              <span className="grow">
-                {m.jobs?.title}
-                <span className="sub">{[m.jobs?.company, m.jobs?.source, m.jobs?.location].filter(Boolean).join(' · ')}</span>
-              </span>
-            </div>
-          ))}
+          {rows.map((m) => {
+            const j = m.jobs;
+            const why: string[] = (m.reasons ?? []).slice(0, 2);
+            return (
+              <div className="row job" key={j.id}>
+                <span className="grow">
+                  {j.title}
+                  <span className="sub">
+                    {[j.company, j.source, j.location].filter(Boolean).join(' · ')}
+                  </span>
+                  {why.length > 0 && (
+                    <span className="why">
+                      {why.map((r) => <span className="chip ok" key={r}>{r}</span>)}
+                      <span className="chip mute">{m.cv_id}</span>
+                    </span>
+                  )}
+                </span>
+                {j.url && (
+                  <a className="apply" href={j.url} target="_blank" rel="noreferrer">להגשה</a>
+                )}
+              </div>
+            );
+          })}
         </div>
       )}
     </>
