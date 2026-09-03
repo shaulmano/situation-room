@@ -275,3 +275,9 @@ a:focus-visible,button:focus-visible,input:focus-visible{outline:2px solid var(-
 
   .split-l{flex:0 0 42%}
 }
+
+/* A search link is not an apply link, and it should not dress like one. */
+.apply.indirect{
+  background:transparent;color:var(--accent);
+  border:1px solid var(--accent);
+}

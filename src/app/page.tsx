@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import { serverClient } from '@/lib/server';
+import { applyTarget } from '@/lib/apply';
 import Dismiss from '@/components/Dismiss';
 import MarkApplied from '@/components/MarkApplied';
 
@@ -107,9 +108,18 @@ export default async function Dashboard() {
                     </span>
                   )}
                 </span>
-                {j.url && (
-                  <a className="apply" href={j.url} target="_blank" rel="noreferrer">להגשה</a>
-                )}
+                {(() => {
+                  const t = applyTarget(j);
+                  return t ? (
+                    <a
+                      className={'apply' + (t.indirect ? ' indirect' : '')}
+                      href={t.href} target="_blank" rel="noreferrer"
+                      title={t.indirect ? 'המקור חסום מאחורי הרשמה — פותח חיפוש למשרה הזו' : undefined}
+                    >
+                      {t.label}
+                    </a>
+                  ) : null;
+                })()}
                 <MarkApplied id={j.id} cvId={m.cv_id} />
                 <Dismiss id={j.id} />
               </div>
