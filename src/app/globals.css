@@ -291,3 +291,18 @@ a:focus-visible,button:focus-visible,input:focus-visible{outline:2px solid var(-
 .kpi-foot{
   font-size:.66rem;color:var(--accent);opacity:.8;margin-top:5px;font-weight:600;
 }
+
+/* ── scan control ── */
+.scanbar{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin:4px 0 12px}
+.scanbtn{
+  width:auto;flex:none;padding:.5em 1.1em;font-size:.86rem;font-weight:700;
+  background:var(--accent);color:#fff;border:0;border-radius:7px;cursor:pointer;
+}
+.scanbtn:disabled{opacity:.6;cursor:default}
+.prog{display:flex;align-items:center;gap:8px;flex:1;min-width:150px}
+.prog-t{flex:1;height:8px;background:var(--hair);border-radius:99px;overflow:hidden}
+.prog-b{height:100%;background:var(--accent);border-radius:99px;transition:width .4s ease}
+.prog-n{
+  font-family:ui-monospace,Menlo,monospace;font-size:.78rem;
+  font-variant-numeric:tabular-nums;color:var(--muted);flex:none;
+}

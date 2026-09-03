@@ -1,0 +1,48 @@
+name: Scan sources
+
+# The scrapers are Python driving Chromium, which Vercel cannot run, so the
+# button in the app dispatches this instead. Each source writes its row the
+# moment it finishes, so the app's progress bar counts real work rather than
+# animating while it waits.
+on:
+  workflow_dispatch:
+    inputs:
+      sources:
+        description: 'Space-separated source ids, or empty for all'
+        required: false
+        default: ''
+
+concurrency:
+  group: situation-room-scan
+  cancel-in-progress: false
+
+jobs:
+  scan:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+
+      # The scrapers live in the job-search repo and are read here rather than
+      # copied, so a fix there reaches this scan without a second edit.
+      - uses: actions/checkout@v4
+        with:
+          repository: shaulmano/shaul-job-search
+          path: bot
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: pip install requests beautifulsoup4 lxml curl_cffi playwright tzdata
+
+      - name: Install Chromium
+        run: python -m playwright install --with-deps chromium
+
+      - name: Scan
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+          SUPABASE_PROJECT_REF: ${{ secrets.SUPABASE_PROJECT_REF }}
+          BOT_DIR: ${{ github.workspace }}/bot
+        run: python sync/scan_sources.py ${{ github.event.inputs.sources }}

@@ -1,4 +1,5 @@
 import { serverClient } from '@/lib/server';
+import ScanNow from '@/components/ScanNow';
 
 export const dynamic = 'force-dynamic';
 
@@ -17,7 +18,14 @@ const NAME: Record<string, string> = {
 };
 
 export default async function Sources() {
-  const { data } = await serverClient()
+  const sb = serverClient();
+  const { data: runs } = await sb
+    .from('scan_runs')
+    .select('id, started_at, finished_at, total, done, status, note')
+    .order('started_at', { ascending: false })
+    .limit(1);
+
+  const { data } = await sb
     .from('scans')
     .select('source, raw, on_target, fresh, failed, reason, ran_at')
     .order('ran_at', { ascending: false })
@@ -38,7 +46,10 @@ export default async function Sources() {
 
   return (
     <>
-      <h2>מקורות</h2>
+      <div className="screen-head">
+        <h2>מקורות</h2>
+      </div>
+      <ScanNow initial={(runs?.[0] as any) ?? null} />
       <p className="screen-note">
         {ran
           ? `סריקה אחרונה ${new Date(ran).toLocaleString('he-IL', { dateStyle: 'short', timeStyle: 'short' })} · ${totalOn} משרות על המטרה מ־${live} מקורות פעילים`
