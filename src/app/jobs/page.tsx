@@ -14,7 +14,7 @@ export default async function Jobs({
   const role = searchParams.role ?? '';
   // Keep the family selection when the time window changes, and vice versa.
   const roleQ = role ? `&role=${role}` : '';
-  const days = Number(searchParams.days ?? 30);
+  const days = Number(searchParams.days ?? 7);
   const since = new Date(Date.now() - days * 864e5).toISOString();
 
   // Anything already applied to is history, not a lead. It belongs on the
@@ -69,7 +69,6 @@ export default async function Jobs({
         <div className="range">
           <a href={`/jobs?days=1${roleQ}`} className={!showAll && days === 1 ? 'on' : ''}>היום</a>
           <a href={`/jobs?days=7${roleQ}`} className={!showAll && days === 7 ? 'on' : ''}>שבוע</a>
-          <a href={`/jobs?days=30${roleQ}`} className={!showAll && days === 30 ? 'on' : ''}>חודש</a>
           <a href={`/jobs?all=1${roleQ}`} className={showAll ? 'on' : ''}>הכל</a>
         </div>
       </div>

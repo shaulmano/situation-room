@@ -6,7 +6,9 @@
   --good:#2C7A5A; --good-soft:#DFEFE7;
   --warn:#9C6B12; --warn-soft:#F4E9D4;
   --crit:#A63A31; --crit-soft:#F6E1DF;
-  --nav-h:58px;
+  /* The bar measures 59px, so 58 clipped the last row by a pixel — and more on a
+     phone with a home indicator. 68 clears it with room to spare. */
+  --nav-h:68px;
 }
 @media (prefers-color-scheme: dark){
   :root:not([data-theme="light"]){
@@ -243,4 +245,33 @@ a:focus-visible,button:focus-visible,input:focus-visible{outline:2px solid var(-
 .split-p{
   flex:none;width:34px;text-align:start;font-family:ui-monospace,Menlo,monospace;
   font-size:.74rem;font-variant-numeric:tabular-nums;color:var(--good);
+}
+
+/* ── phone ─────────────────────────────────────────────────────────────────
+   Measured at 390px: the month chart ran 394px inside a 361px box, so the
+   earliest months sat off-screen behind a sideways scroll nobody looks for.
+   A whole year has to fit without scrolling — that is the entire point of the
+   chart, and a gap you cannot see is not a gap you notice. */
+@media (max-width:560px){
+  .chart{padding:12px 8px 8px;gap:2px}
+  .chart .col{min-width:0}
+  .col-track{height:92px}
+  .col-l{font-size:.58rem;letter-spacing:-.02em}
+  .col-n{font-size:.62rem}
+
+  /* Four tiles across is unreadable on a phone; two rows of two is not. */
+  .kpis{grid-template-columns:1fr 1fr}
+  .kpi.hero{grid-column:1/-1}
+
+  /* Title first, controls on their own line — they were competing for width
+     and the title lost, wrapping to three lines. */
+  .row.job{align-items:stretch}
+  .row.job .grow{flex:1 1 100%;min-width:0}
+  .row.job .apply,
+  .row.job .mark,
+  .row.job .dismiss{margin-top:2px}
+  .apply,.mark{padding:.5em 1em;font-size:.85rem}
+  .dismiss{width:34px;height:34px}
+
+  .split-l{flex:0 0 42%}
 }
