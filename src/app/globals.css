@@ -29,7 +29,9 @@ body{
   font-family:"Assistant","Segoe UI",system-ui,Arial,sans-serif;
   font-size:16px; line-height:1.55;
   -webkit-text-size-adjust:100%;
-  padding-bottom:calc(var(--nav-h) + env(safe-area-inset-bottom));
+  /* +8: the bar's own top border pushes it a pixel past --nav-h, and matching
+     exactly leaves the last row touching it. */
+  padding-bottom:calc(var(--nav-h) + 8px + env(safe-area-inset-bottom));
 }
 @media (min-width:820px){ body{padding-bottom:0} }
 
