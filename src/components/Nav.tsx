@@ -7,7 +7,8 @@ const ITEMS = [
   { href: '/jobs',         label: 'משרות',    icon: '▤' },
   { href: '/applications', label: 'הגשות',    icon: '↗' },
   { href: '/replies',      label: 'תשובות',   icon: '✉' },
-  { href: '/sources',      label: 'מקורות',   icon: '⚙' },
+  { href: '/sources',      label: 'מקורות',   icon: '▦' },
+  { href: '/settings',     label: 'הגדרות',   icon: '⚙' },
 ];
 
 export default function Nav() {

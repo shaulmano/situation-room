@@ -14,8 +14,9 @@ export default function Login() {
   const [sent, setSent] = useState(false);
   const [msg, setMsg] = useState('');
 
-  // First run has no account yet, so a failed sign-in falls through to sign-up.
-  // Only the owner's address survives the middleware, so this cannot open the app up.
+  // An account created by magic link carries no password until one is set in
+  // Settings, and that is the common first-run failure — so name it plainly
+  // rather than retrying as a sign-up, which only fails again as a duplicate.
   async function withPassword(e: React.FormEvent) {
     e.preventDefault();
     setBusy(true); setMsg('');
@@ -23,13 +24,11 @@ export default function Login() {
     const { error } = await sb.auth.signInWithPassword({ email, password });
     if (!error) { router.push('/'); router.refresh(); return; }
 
-    if (error.message.toLowerCase().includes('invalid login credentials')) {
-      const { error: signUpError } = await sb.auth.signUp({ email, password });
-      if (!signUpError) { router.push('/'); router.refresh(); return; }
-      setMsg(signUpError.message);
-    } else {
-      setMsg(error.message);
-    }
+    setMsg(
+      error.message.toLowerCase().includes('invalid login credentials')
+        ? 'אין סיסמה לחשבון הזה עדיין. היכנס בקישור למייל, ואז קבע סיסמה במסך ההגדרות.'
+        : error.message
+    );
     setBusy(false);
   }
 
@@ -58,7 +57,7 @@ export default function Login() {
       <h1>חדר המצב</h1>
       <p>
         {mode === 'password'
-          ? 'הכניסה נשמרת במכשיר. בפעם הראשונה הסיסמה שתקליד היא זו שנקבעת.'
+          ? 'הכניסה נשמרת במכשיר.'
           : 'קישור חד־פעמי למייל.'}
       </p>
 
