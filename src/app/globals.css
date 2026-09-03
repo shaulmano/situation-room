@@ -209,3 +209,17 @@ a:focus-visible,button:focus-visible,input:focus-visible{outline:2px solid var(-
 .mark:hover{background:var(--good-soft)}
 .mark:disabled{opacity:.6;cursor:default}
 .row.job{gap:7px}
+
+.filters{display:flex;flex-wrap:wrap;gap:6px;margin:2px 0 12px}
+.filter{
+  display:inline-flex;align-items:center;gap:6px;
+  font-size:.83rem;font-weight:600;text-decoration:none;
+  color:var(--muted);background:var(--surface);
+  border:1px solid var(--line);border-radius:99px;padding:.32em .8em;
+}
+.filter:hover{border-color:var(--accent);color:var(--ink)}
+.filter.on{background:var(--ink);color:var(--surface);border-color:var(--ink)}
+.filter .n{
+  font-family:ui-monospace,Menlo,monospace;font-size:.74rem;
+  font-variant-numeric:tabular-nums;opacity:.65;
+}

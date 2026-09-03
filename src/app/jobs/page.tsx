@@ -7,10 +7,11 @@ export const dynamic = 'force-dynamic';
 export default async function Jobs({
   searchParams,
 }: {
-  searchParams: { days?: string; all?: string };
+  searchParams: { days?: string; all?: string; role?: string };
 }) {
   const sb = serverClient();
   const showAll = searchParams.all === '1';
+  const role = searchParams.role ?? '';
   const days = Number(searchParams.days ?? 30);
   const since = new Date(Date.now() - days * 864e5).toISOString();
 
@@ -44,7 +45,20 @@ export default async function Jobs({
     if (!id || appliedIds.has(id)) continue;
     if (!best.has(id) || best.get(id).score < m.score) best.set(id, m);
   }
-  const rows = [...best.values()].sort((a, b) => b.score - a.score).slice(0, 60);
+  let picked = [...best.values()].sort((a, b) => b.score - a.score);
+  // cv_id already classifies the posting — the CV that scored it highest is the
+  // job family it belongs to, so no second taxonomy is needed.
+  if (role) picked = picked.filter((m) => m.cv_id === role);
+  const rows = picked.slice(0, 60);
+
+  const counts = [...best.values()].reduce<Record<string, number>>((acc, m) => {
+    acc[m.cv_id] = (acc[m.cv_id] ?? 0) + 1;
+    return acc;
+  }, {});
+  const base = showAll ? '/jobs?all=1' : `/jobs?days=${days}`;
+  const ROLES: [string, string][] = [
+    ['', 'הכל'], ['qa', 'QA'], ['program', 'ניהול פרויקטים'], ['delivery', 'גרסאות ו‑Delivery'],
+  ];
 
   return (
     <>
@@ -55,6 +69,19 @@ export default async function Jobs({
           <a href="/jobs?days=30" className={!showAll && days === 30 ? 'on' : ''}>חודש</a>
           <a href="/jobs?all=1" className={showAll ? 'on' : ''}>הכל</a>
         </div>
+      </div>
+
+      <div className="filters">
+        {ROLES.map(([id, label]) => (
+          <a
+            key={id}
+            href={id ? `${base}&role=${id}` : base}
+            className={'filter' + (role === id ? ' on' : '')}
+          >
+            {label}
+            <span className="n">{id ? (counts[id] ?? 0) : Object.values(counts).reduce((a, b) => a + b, 0)}</span>
+          </a>
+        ))}
       </div>
 
       <p className="screen-note">
