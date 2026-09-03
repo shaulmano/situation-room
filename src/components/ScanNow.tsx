@@ -27,8 +27,11 @@ export default function ScanNow({ initial }: { initial: Run | null }) {
   const baseline = useRef<string | null>(initial?.id ?? null);
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const isNew = run?.id && run.id !== baseline.current;
-  const running = isNew ? run!.status === 'running' : false;
+  // A run in progress is a run in progress, whoever started it. Treating the
+  // row already on screen as "old" meant a scan started on the laptop showed no
+  // sign of itself on the phone, and pressing the button during one waited for
+  // a second run that the server correctly refused to start.
+  const running = run?.status === 'running';
   const active = waiting || running;
 
   const poll = useCallback(async () => {
@@ -37,9 +40,12 @@ export default function ScanNow({ initial }: { initial: Run | null }) {
       const { run: next } = await res.json();
       if (next) {
         setRun(next);
-        if (next.id !== baseline.current) {
+        if (next.status === 'running') {
           setWaiting(false);
-          if (next.status !== 'running') { router.refresh(); return; }
+        } else if (next.id !== baseline.current) {
+          setWaiting(false);
+          router.refresh();
+          return;
         }
       }
     }
@@ -64,14 +70,21 @@ export default function ScanNow({ initial }: { initial: Run | null }) {
     baseline.current = run?.id ?? null;
 
     const res = await fetch('/api/scan', { method: 'POST' }).catch(() => null);
+    const body = await res?.json().catch(() => null);
     if (!res?.ok) {
-      const body = await res?.json().catch(() => null);
       setErr(body?.error ?? 'ההפעלה נכשלה');
+      setWaiting(false);
+      return;
+    }
+    // The server refuses a second run while one is going and hands back the one
+    // already running — adopt it instead of waiting for a new one.
+    if (body?.already && body.run) {
+      setRun((prev) => ({ ...(prev ?? ({} as Run)), ...body.run, status: 'running' }));
       setWaiting(false);
     }
   }
 
-  const pct = isNew && run!.total > 0 ? Math.round((run!.done / run!.total) * 100) : 0;
+  const pct = running && run!.total > 0 ? Math.round((run!.done / run!.total) * 100) : 0;
 
   return (
     <div className="scanbar">
@@ -93,7 +106,7 @@ export default function ScanNow({ initial }: { initial: Run | null }) {
         </div>
       )}
 
-      {!active && isNew && run?.status === 'failed' && (
+      {!active && run?.id !== baseline.current && run?.status === 'failed' && (
         <span className="chip crit">{run.note ?? 'הסריקה נכשלה'}</span>
       )}
       {err && <span className="chip crit">{err}</span>}
