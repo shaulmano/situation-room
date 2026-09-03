@@ -1,29 +1,99 @@
 import { serverClient } from '@/lib/server';
+
 export const dynamic = 'force-dynamic';
 
-export default async function Jobs() {
-  const { data } = await serverClient()
+export default async function Jobs({
+  searchParams,
+}: {
+  searchParams: { days?: string; all?: string };
+}) {
+  const sb = serverClient();
+  const showAll = searchParams.all === '1';
+  const days = Number(searchParams.days ?? 30);
+  const since = new Date(Date.now() - days * 864e5).toISOString();
+
+  // Anything already applied to is history, not a lead. It belongs on the
+  // applications screen and only gets in the way here.
+  const { data: applied } = await sb.from('applications').select('job_id');
+  const appliedIds = new Set((applied ?? []).map((a: any) => a.job_id).filter(Boolean));
+
+  let query = sb
     .from('matches')
-    .select('score, cv_id, jobs(title, company, source, location, url)')
+    .select(
+      'score, cv_id, reasons, red_flags, ' +
+      'jobs!inner(id, title, company, source, location, url, first_seen, on_target)'
+    )
     .order('score', { ascending: false })
-    .limit(80);
-  const rows = (data ?? []) as any[];
+    .limit(400);
+
+  if (!showAll) {
+    query = query.eq('jobs.on_target', true).gte('jobs.first_seen', since);
+  }
+
+  const { data } = await query;
+
+  // One row per job: keep only the CV that scored it highest.
+  const best = new Map<string, any>();
+  for (const m of (data ?? []) as any[]) {
+    const id = m.jobs?.id;
+    if (!id || appliedIds.has(id)) continue;
+    if (!best.has(id) || best.get(id).score < m.score) best.set(id, m);
+  }
+  const rows = [...best.values()].sort((a, b) => b.score - a.score).slice(0, 60);
+
   return (
     <>
-      <h2>משרות</h2>
+      <div className="screen-head">
+        <h2>משרות</h2>
+        <div className="range">
+          <a href="/jobs?days=7" className={!showAll && days === 7 ? 'on' : ''}>שבוע</a>
+          <a href="/jobs?days=30" className={!showAll && days === 30 ? 'on' : ''}>חודש</a>
+          <a href="/jobs?all=1" className={showAll ? 'on' : ''}>הכל</a>
+        </div>
+      </div>
+
+      <p className="screen-note">
+        {showAll
+          ? 'כל המשרות במאגר, כולל ישנות ולא רלוונטיות.'
+          : `נסרקו ב־${days} הימים האחרונים, עברו את שערי הסינון, ועדיין לא הגשת אליהן.`}
+      </p>
+
       {rows.length === 0 ? (
-        <div className="empty"><b>אין משרות מנוקדות</b>מנוע ההתאמה עוד לא רץ.</div>
+        <div className="empty">
+          <b>אין משרות חדשות בחלון הזה</b>
+          נסה חלון רחב יותר, או בדוק במסך המקורות איזה מקור הפסיק להחזיר.
+        </div>
       ) : (
         <div className="rows">
-          {rows.map((m, i) => (
-            <a className="row" key={i} href={m.jobs?.url ?? '#'} target="_blank" rel="noreferrer">
-              <span className={'score ' + (m.score >= 85 ? 'hi' : m.score >= 60 ? 'mid' : 'lo')}>{m.score}</span>
-              <span className="grow">{m.jobs?.title}
-                <span className="sub">{[m.jobs?.company, m.jobs?.source, m.jobs?.location].filter(Boolean).join(' · ')}</span>
-              </span>
-              <span className="chip mute">{m.cv_id}</span>
-            </a>
-          ))}
+          {rows.map((m) => {
+            const j = m.jobs;
+            const why: string[] = (m.reasons ?? []).slice(0, 2);
+            const flags: string[] = (m.red_flags ?? []).filter(
+              (f: string) => !f.includes('אין תיאור')
+            );
+            return (
+              <div className="row job" key={j.id}>
+                <span className="grow">
+                  {j.title}
+                  <span className="sub">
+                    {[j.company, j.source, j.location].filter(Boolean).join(' · ')}
+                  </span>
+                  {(why.length > 0 || flags.length > 0) && (
+                    <span className="why">
+                      {why.map((r) => <span className="chip ok" key={r}>{r}</span>)}
+                      {flags.slice(0, 1).map((f) => <span className="chip crit" key={f}>{f}</span>)}
+                      <span className="chip mute">{m.cv_id}</span>
+                    </span>
+                  )}
+                </span>
+                {j.url && (
+                  <a className="apply" href={j.url} target="_blank" rel="noreferrer">
+                    להגשה
+                  </a>
+                )}
+              </div>
+            );
+          })}
         </div>
       )}
     </>

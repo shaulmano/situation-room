@@ -138,3 +138,39 @@ a:focus-visible,button:focus-visible,input:focus-visible{outline:2px solid var(-
   text-underline-offset:3px;cursor:pointer;
 }
 .link-btn:hover{color:var(--accent)}
+
+/* ── screen header + note ── */
+.screen-head{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin:26px 0 4px}
+.screen-head h2{margin:0}
+.screen-head .range{margin-inline-start:auto}
+.screen-note{color:var(--muted);font-size:.84rem;margin:0 0 14px;line-height:1.45}
+
+/* ── job row ── */
+.row.job{align-items:flex-start}
+.row .why{display:flex;flex-wrap:wrap;gap:4px;margin-top:6px}
+.apply{
+  flex:none;align-self:center;text-decoration:none;font-weight:700;font-size:.82rem;
+  padding:.42em .9em;border-radius:6px;
+  background:var(--accent);color:#fff;white-space:nowrap;
+}
+.apply:hover{filter:brightness(1.08)}
+
+/* ── monthly chart ── */
+.chart{
+  display:flex;align-items:flex-end;gap:4px;
+  background:var(--surface);border:1px solid var(--line);border-radius:7px;
+  padding:14px 12px 10px;overflow-x:auto;min-height:170px;
+}
+.chart .col{flex:1;min-width:30px;display:flex;flex-direction:column;align-items:center;gap:5px}
+.col-n{
+  font-family:ui-monospace,Menlo,monospace;font-size:.72rem;color:var(--muted);
+  font-variant-numeric:tabular-nums;height:1em;line-height:1;
+}
+.col-track{width:100%;height:110px;display:flex;align-items:flex-end}
+.col-bar{
+  width:100%;background:var(--accent-soft);border:1px solid var(--accent);
+  border-radius:3px 3px 0 0;min-height:2px;
+  display:flex;align-items:flex-end;overflow:hidden;
+}
+.col-seen{width:100%;background:var(--accent);border-radius:2px 2px 0 0}
+.col-l{font-size:.68rem;color:var(--faint);white-space:nowrap}

@@ -1,37 +1,73 @@
 import { serverClient } from '@/lib/server';
+
 export const dynamic = 'force-dynamic';
+
+// The twelve the bot is configured to scan. Listing them here rather than only
+// what the scans table happens to hold means a source that stopped reporting
+// shows up as a gap instead of vanishing from the screen.
+const SCHEDULED = [
+  'linkedin', 'alljobs', 'drushim', 'comeet', 'gotfriends', 'experis',
+  'dialog', 'sqlink', 'nisha', 'malamteam', 'one1', 'secretjobs',
+];
+
+const NAME: Record<string, string> = {
+  linkedin: 'LinkedIn', alljobs: 'AllJobs', drushim: 'דרושים', comeet: 'Comeet',
+  gotfriends: 'GotFriends', experis: 'Experis', dialog: 'Dialog', sqlink: 'SQLink',
+  nisha: 'נישה', malamteam: 'מלם תים', one1: 'ONE / טלדור', secretjobs: 'SecretJobs',
+};
 
 export default async function Sources() {
   const { data } = await serverClient()
     .from('scans')
-    .select('source, raw, on_target, fresh, failed, ran_at')
+    .select('source, raw, on_target, fresh, failed, reason, ran_at')
     .order('ran_at', { ascending: false })
-    .limit(200);
-  const agg = new Map<string, { raw: number; on: number; fresh: number; failed: boolean }>();
+    .limit(400);
+
+  // Latest run per source — an average across runs hides a source that died today.
+  const latest = new Map<string, any>();
   for (const s of (data ?? []) as any[]) {
-    const cur = agg.get(s.source) ?? { raw: 0, on: 0, fresh: 0, failed: false };
-    cur.raw += s.raw ?? 0; cur.on += s.on_target ?? 0; cur.fresh += s.fresh ?? 0;
-    cur.failed = cur.failed || !!s.failed;
-    agg.set(s.source, cur);
+    if (!latest.has(s.source)) latest.set(s.source, s);
   }
-  const rows = [...agg.entries()].sort((a, b) => b[1].on - a[1].on);
+
+  const rows = SCHEDULED.map((id) => ({ id, scan: latest.get(id) ?? null }))
+    .sort((a, b) => (b.scan?.on_target ?? -1) - (a.scan?.on_target ?? -1));
+
+  const ran = [...latest.values()][0]?.ran_at;
+  const totalOn = rows.reduce((n, r) => n + (r.scan?.on_target ?? 0), 0);
+  const live = rows.filter((r) => (r.scan?.on_target ?? 0) > 0).length;
+
   return (
     <>
       <h2>מקורות</h2>
-      {rows.length === 0 ? (
-        <div className="empty"><b>אין סריקות</b>הבוט עוד לא דיווח לכאן.</div>
-      ) : (
-        <div className="rows">
-          {rows.map(([name, v]) => (
-            <div className="row" key={name}>
-              <span className="grow">{name}<span className="sub">{v.raw} גולמי · {v.on} על המטרה · {v.fresh} חדשות</span></span>
-              <span className={'chip ' + (v.failed ? 'crit' : v.on > 0 ? 'ok' : 'warn')}>
-                {v.failed ? 'כשל' : v.on > 0 ? 'תקין' : 'ריק'}
+      <p className="screen-note">
+        {ran
+          ? `סריקה אחרונה ${new Date(ran).toLocaleString('he-IL', { dateStyle: 'short', timeStyle: 'short' })} · ${totalOn} משרות על המטרה מ־${live} מקורות פעילים`
+          : 'עוד לא נרשמה סריקה.'}
+      </p>
+
+      <div className="rows">
+        {rows.map(({ id, scan }) => {
+          const on = scan?.on_target ?? 0;
+          const state = !scan ? ['לא נסרק', 'mute']
+            : scan.failed ? ['כשל', 'crit']
+            : on > 0 ? ['תקין', 'ok']
+            : ['אין על המטרה', 'warn'];
+          return (
+            <div className="row" key={id}>
+              <span className="grow">
+                {NAME[id] ?? id}
+                <span className="sub">
+                  {scan
+                    ? `${scan.raw} גולמי · ${scan.fresh} ייחודיות · ${on} על המטרה${scan.reason ? ' · ' + scan.reason : ''}`
+                    : 'אין נתוני סריקה'}
+                </span>
               </span>
+              {on > 0 && <span className="score hi">{on}</span>}
+              <span className={'chip ' + state[1]}>{state[0]}</span>
             </div>
-          ))}
-        </div>
-      )}
+          );
+        })}
+      </div>
     </>
   );
 }
