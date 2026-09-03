@@ -321,3 +321,17 @@ a.kpi{text-decoration:none;color:inherit;display:block;transition:border-color .
 a.kpi:hover{border-color:var(--accent)}
 a.kpi:active{transform:scale(.985)}
 a.kpi:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+
+/* Between the dispatch and GitHub writing the first row there is nothing to
+   measure, so the bar says "working" rather than pretending to know. */
+.prog-b.indeterminate{
+  width:35%;
+  animation:slide 1.2s ease-in-out infinite;
+}
+@keyframes slide{
+  0%{transform:translateX(-120%)}
+  100%{transform:translateX(320%)}
+}
+@media (prefers-reduced-motion:reduce){
+  .prog-b.indeterminate{animation:none;width:100%;opacity:.4}
+}

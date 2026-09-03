@@ -12,70 +12,90 @@ type Run = {
   note: string | null;
 };
 
+// GitHub takes 30-60s to pick up a dispatch and write the first row, and the
+// first version stopped polling the moment it saw the previous finished run —
+// so the bar never appeared and the button read as dead. Keep watching for a
+// run newer than the one we started with.
+const WAIT_MS = 180_000;
+
 export default function ScanNow({ initial }: { initial: Run | null }) {
   const router = useRouter();
   const [run, setRun] = useState<Run | null>(initial);
-  const [busy, setBusy] = useState(false);
+  const [waiting, setWaiting] = useState(false);
   const [err, setErr] = useState('');
+  const startedAt = useRef<number>(0);
+  const baseline = useRef<string | null>(initial?.id ?? null);
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const running = run?.status === 'running';
+  const isNew = run?.id && run.id !== baseline.current;
+  const running = isNew ? run!.status === 'running' : false;
+  const active = waiting || running;
 
   const poll = useCallback(async () => {
-    const res = await fetch('/api/scan').catch(() => null);
-    if (!res?.ok) return;
-    const { run: next } = await res.json();
-    setRun(next);
-    // Each source writes its row as it finishes, so the numbers move on their
-    // own; refresh the table under it when the run ends.
-    if (next?.status !== 'running') router.refresh();
-  }, [router]);
+    const res = await fetch('/api/scan', { cache: 'no-store' }).catch(() => null);
+    if (res?.ok) {
+      const { run: next } = await res.json();
+      if (next) {
+        setRun(next);
+        if (next.id !== baseline.current) {
+          setWaiting(false);
+          if (next.status !== 'running') { router.refresh(); return; }
+        }
+      }
+    }
+    if (Date.now() - startedAt.current > WAIT_MS && !running) {
+      setWaiting(false);
+      setErr('הסריקה לא התחילה. בדוק ב-GitHub Actions.');
+      return;
+    }
+    timer.current = setTimeout(poll, 5000);
+  }, [router, running]);
 
   useEffect(() => {
-    if (!running) return;
-    // The slowest sources take minutes, so this is a progress check, not a tick.
+    if (!active) return;
     timer.current = setTimeout(poll, 5000);
     return () => { if (timer.current) clearTimeout(timer.current); };
-  }, [running, run?.done, poll]);
+  }, [active, run?.done, poll]);
 
   async function startScan() {
-    setBusy(true); setErr('');
+    setErr('');
+    setWaiting(true);
+    startedAt.current = Date.now();
+    baseline.current = run?.id ?? null;
+
     const res = await fetch('/api/scan', { method: 'POST' }).catch(() => null);
     if (!res?.ok) {
       const body = await res?.json().catch(() => null);
       setErr(body?.error ?? 'ההפעלה נכשלה');
-      setBusy(false);
-      return;
+      setWaiting(false);
     }
-    // GitHub takes a few seconds to start the job and write the run row.
-    setTimeout(poll, 4000);
-    setBusy(false);
   }
 
-  const pct = run && run.total > 0 ? Math.round((run.done / run.total) * 100) : 0;
+  const pct = isNew && run!.total > 0 ? Math.round((run!.done / run!.total) * 100) : 0;
 
   return (
     <div className="scanbar">
-      <button
-        type="button" className="scanbtn" onClick={startScan}
-        disabled={busy || running}
-      >
-        {running ? 'סורק…' : busy ? 'מפעיל…' : 'סרוק עכשיו'}
+      <button type="button" className="scanbtn" onClick={startScan} disabled={active}>
+        {running ? 'סורק…' : waiting ? 'ממתין ל-GitHub…' : 'סרוק עכשיו'}
       </button>
 
-      {running && (
+      {active && (
         <div className="prog">
           <div className="prog-t">
-            <div className="prog-b" style={{ width: `${pct}%` }} />
+            <div
+              className={'prog-b' + (waiting ? ' indeterminate' : '')}
+              style={waiting ? undefined : { width: `${pct}%` }}
+            />
           </div>
-          <span className="prog-n">{run!.done} / {run!.total}</span>
+          <span className="prog-n">
+            {running ? `${run!.done} / ${run!.total}` : 'מתחיל'}
+          </span>
         </div>
       )}
 
-      {!running && run?.status === 'failed' && (
+      {!active && isNew && run?.status === 'failed' && (
         <span className="chip crit">{run.note ?? 'הסריקה נכשלה'}</span>
       )}
-
       {err && <span className="chip crit">{err}</span>}
     </div>
   );
