@@ -1,5 +1,6 @@
 import { serverClient } from '@/lib/server';
 import Dismiss from '@/components/Dismiss';
+import MarkApplied from '@/components/MarkApplied';
 
 export const dynamic = 'force-dynamic';
 
@@ -96,6 +97,7 @@ export default async function Jobs({
                     להגשה
                   </a>
                 )}
+                <MarkApplied id={j.id} cvId={m.cv_id} />
                 <Dismiss id={j.id} />
               </div>
             );

@@ -199,3 +199,13 @@ a:focus-visible,button:focus-visible,input:focus-visible{outline:2px solid var(-
 }
 .dismiss:hover{border-color:var(--crit);color:var(--crit)}
 .dismiss:disabled{opacity:.35;cursor:default}
+
+.mark{
+  flex:none;align-self:center;width:auto;white-space:nowrap;
+  padding:.42em .8em;font-size:.8rem;font-weight:700;border-radius:6px;
+  background:transparent;color:var(--good);border:1px solid var(--good);
+  cursor:pointer;
+}
+.mark:hover{background:var(--good-soft)}
+.mark:disabled{opacity:.6;cursor:default}
+.row.job{gap:7px}

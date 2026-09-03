@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import { serverClient } from '@/lib/server';
 import Dismiss from '@/components/Dismiss';
+import MarkApplied from '@/components/MarkApplied';
 
 export const dynamic = 'force-dynamic';
 
@@ -109,6 +110,7 @@ export default async function Dashboard() {
                 {j.url && (
                   <a className="apply" href={j.url} target="_blank" rel="noreferrer">להגשה</a>
                 )}
+                <MarkApplied id={j.id} cvId={m.cv_id} />
                 <Dismiss id={j.id} />
               </div>
             );
