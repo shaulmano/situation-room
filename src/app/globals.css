@@ -191,3 +191,11 @@ a:focus-visible,button:focus-visible,input:focus-visible{outline:2px solid var(-
   background:var(--ink);color:var(--surface);font-weight:700;
   letter-spacing:.01em;
 }
+
+.dismiss{
+  flex:none;align-self:center;width:30px;height:30px;padding:0;
+  background:transparent;color:var(--faint);border:1px solid var(--hair);
+  border-radius:6px;font-size:.9rem;line-height:1;cursor:pointer;
+}
+.dismiss:hover{border-color:var(--crit);color:var(--crit)}
+.dismiss:disabled{opacity:.35;cursor:default}

@@ -1,4 +1,5 @@
 import { serverClient } from '@/lib/server';
+import Dismiss from '@/components/Dismiss';
 
 export const dynamic = 'force-dynamic';
 
@@ -11,8 +12,6 @@ export default async function Jobs({
   const showAll = searchParams.all === '1';
   const days = Number(searchParams.days ?? 30);
   const since = new Date(Date.now() - days * 864e5).toISOString();
-  // A posting the bot stopped seeing has been taken down.
-  const stillOpen = new Date(Date.now() - 3 * 864e5).toISOString();
 
   // Anything already applied to is history, not a lead. It belongs on the
   // applications screen and only gets in the way here.
@@ -23,7 +22,7 @@ export default async function Jobs({
     .from('matches')
     .select(
       'score, cv_id, reasons, red_flags, ' +
-      'jobs!inner(id, title, company, source, location, url, first_seen, last_seen, on_target)'
+      'jobs!inner(id, title, company, source, location, url, first_seen, on_target, dismissed_at)'
     )
     .order('score', { ascending: false })
     .limit(400);
@@ -31,8 +30,8 @@ export default async function Jobs({
   if (!showAll) {
     query = query
       .eq('jobs.on_target', true)
-      .gte('jobs.last_seen', stillOpen)
-      .gte('jobs.first_seen', since);
+      .is('jobs.dismissed_at', null)
+            .gte('jobs.first_seen', since);
   }
 
   const { data } = await query;
@@ -97,6 +96,7 @@ export default async function Jobs({
                     להגשה
                   </a>
                 )}
+                <Dismiss id={j.id} />
               </div>
             );
           })}

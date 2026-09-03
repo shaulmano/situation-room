@@ -1,12 +1,15 @@
 import Link from 'next/link';
 import { serverClient } from '@/lib/server';
+import Dismiss from '@/components/Dismiss';
 
 export const dynamic = 'force-dynamic';
 
 const ago = (days: number) => new Date(Date.now() - days * 864e5).toISOString();
 
-// A posting the bot stopped seeing has been taken down. jobs.jsonl keeps every
-// job it ever reported, so without this the feed fills with closed roles.
+// last_seen looked like the freshness signal but the bot writes it once at
+// discovery and never bumps it, so it is a discovery date under another name.
+// Age is therefore only a proxy for "still open" — the reliable signal is the
+// dismiss button, and jobs Shaul hides never come back.
 const ACTIVE_DAYS = 3;
 
 export default async function Dashboard() {
@@ -22,9 +25,10 @@ export default async function Dashboard() {
     sb.from('applications').select('sent_at').order('sent_at', { ascending: false }).limit(1),
     sb.from('applications').select('job_id'),
     sb.from('matches')
-      .select('score, cv_id, reasons, jobs!inner(id, title, company, source, location, url, on_target, last_seen)')
+      .select('score, cv_id, reasons, jobs!inner(id, title, company, source, location, url, on_target, dismissed_at)')
       .eq('jobs.on_target', true)
-      .gte('jobs.last_seen', ago(ACTIVE_DAYS))
+      .is('jobs.dismissed_at', null)
+      .gte('jobs.first_seen', ago(ACTIVE_DAYS))
       .order('score', { ascending: false })
       .limit(120),
   ]);
@@ -105,6 +109,7 @@ export default async function Dashboard() {
                 {j.url && (
                   <a className="apply" href={j.url} target="_blank" rel="noreferrer">להגשה</a>
                 )}
+                <Dismiss id={j.id} />
               </div>
             );
           })}
