@@ -60,7 +60,7 @@ def record(run_id, src, raw, on_target, uniq, failed, reason, done):
 
 
 def job_id(url):
-    """Stable id from the url, so re-scanning the same posting updates one row."""
+    """Only used for rows this scan creates; the url is what identifies a job."""
     return "sc-" + hashlib.sha1(url.encode("utf-8")).hexdigest()[:14]
 
 
@@ -79,10 +79,12 @@ def save_jobs(jobs):
             for j in chunk
         )
         sql(
+            # on the url, not the id: the bot's file and this scan give the same
+            # posting two different ids, which is how 108 duplicates appeared.
             "insert into jobs "
             "(id,title,company,source,url,location,description,first_seen,last_seen,on_target) "
-            "values %s on conflict (id) do update set "
-            "title=excluded.title, company=excluded.company, url=excluded.url, "
+            "values %s on conflict (url) do update set "
+            "title=excluded.title, company=excluded.company, "
             "location=excluded.location, "
             "description=coalesce(excluded.description, jobs.description), "
             "last_seen=now(), on_target=true;" % vals

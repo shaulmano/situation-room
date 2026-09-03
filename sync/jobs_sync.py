@@ -92,10 +92,12 @@ def main():
             for r in chunk
         )
         sql(
+            # Conflict on the url, not the id. jobs.jsonl and the live scan give
+            # the same posting different ids, and the url is what identifies it.
             "insert into jobs "
             "(id,title,company,source,url,location,posted,first_seen,last_seen,on_target) "
-            "values %s on conflict (id) do update set title=excluded.title, "
-            "company=excluded.company, url=excluded.url, location=excluded.location, "
+            "values %s on conflict (url) do update set title=excluded.title, "
+            "company=excluded.company, location=excluded.location, "
             "posted=excluded.posted, last_seen=excluded.last_seen, "
             "on_target=excluded.on_target;" % vals
         )
