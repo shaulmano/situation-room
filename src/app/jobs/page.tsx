@@ -12,6 +12,8 @@ export default async function Jobs({
   const sb = serverClient();
   const showAll = searchParams.all === '1';
   const role = searchParams.role ?? '';
+  // Keep the family selection when the time window changes, and vice versa.
+  const roleQ = role ? `&role=${role}` : '';
   const days = Number(searchParams.days ?? 30);
   const since = new Date(Date.now() - days * 864e5).toISOString();
 
@@ -65,9 +67,10 @@ export default async function Jobs({
       <div className="screen-head">
         <h2>משרות</h2>
         <div className="range">
-          <a href="/jobs?days=7" className={!showAll && days === 7 ? 'on' : ''}>שבוע</a>
-          <a href="/jobs?days=30" className={!showAll && days === 30 ? 'on' : ''}>חודש</a>
-          <a href="/jobs?all=1" className={showAll ? 'on' : ''}>הכל</a>
+          <a href={`/jobs?days=1${roleQ}`} className={!showAll && days === 1 ? 'on' : ''}>היום</a>
+          <a href={`/jobs?days=7${roleQ}`} className={!showAll && days === 7 ? 'on' : ''}>שבוע</a>
+          <a href={`/jobs?days=30${roleQ}`} className={!showAll && days === 30 ? 'on' : ''}>חודש</a>
+          <a href={`/jobs?all=1${roleQ}`} className={showAll ? 'on' : ''}>הכל</a>
         </div>
       </div>
 
@@ -87,7 +90,7 @@ export default async function Jobs({
       <p className="screen-note">
         {showAll
           ? 'כל המשרות במאגר, כולל ישנות ולא רלוונטיות.'
-          : `פתוחות עכשיו — עדיין מופיעות בסריקה. נמצאו ב־${days} הימים האחרונים ולא הגשת אליהן.`}
+          : `נמצאו ${days === 1 ? 'היום' : `ב־${days} הימים האחרונים`} ולא הגשת אליהן. משרה שסגרת ב־✕ לא חוזרת.`}
       </p>
 
       {rows.length === 0 ? (
