@@ -49,7 +49,7 @@ def sql(query):
                 "-H", "Content-Type: application/json",
                 "--data-binary", "@%s" % path,
             ],
-            capture_output=True, text=True, timeout=180,
+            capture_output=True, text=True, encoding="utf-8", errors="replace", timeout=180,
         ).stdout
     finally:
         os.unlink(path)
