@@ -10,11 +10,16 @@ Each source is written the moment it finishes rather than all of them at the
 end, so the progress bar counts real work instead of animating. A run that dies
 halfway leaves the sources it did finish on the screen.
 
+It also saves the postings, not only the tally. Counting "50 on target at
+AllJobs" and then dropping the fifty is how the sources screen came to disagree
+with the jobs screen: the counts were real and the jobs behind them were never
+written anywhere.
+
 The point of the screen is to answer one question honestly: which source is
 earning its runtime. A source that returns thousands of rows and nothing on
 target is noise, and the row will say so.
 """
-import os, sys, time
+import hashlib, os, sys, time
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from gmail_sync import sql, q
@@ -54,13 +59,44 @@ def record(run_id, src, raw, on_target, uniq, failed, reason, done):
     sql("update scan_runs set done = %d where id = %s;" % (done, q(run_id)))
 
 
+def job_id(url):
+    """Stable id from the url, so re-scanning the same posting updates one row."""
+    return "sc-" + hashlib.sha1(url.encode("utf-8")).hexdigest()[:14]
+
+
+def save_jobs(jobs):
+    """Upsert the on-target postings themselves — counting them is not enough."""
+    if not jobs:
+        return
+    for i in range(0, len(jobs), 100):
+        chunk = jobs[i:i + 100]
+        vals = ",".join(
+            "(%s,%s,%s,%s,%s,%s,%s,now(),now(),true)"
+            % (q(job_id(j["url"])), q(j["title"][:200]), q(j.get("company") or None),
+               q(j.get("source") or "unknown"), q(j["url"]),
+               q((j.get("location") or "")[:120] or None),
+               q((j.get("description") or "")[:3000] or None))
+            for j in chunk
+        )
+        sql(
+            "insert into jobs "
+            "(id,title,company,source,url,location,description,first_seen,last_seen,on_target) "
+            "values %s on conflict (id) do update set "
+            "title=excluded.title, company=excluded.company, url=excluded.url, "
+            "location=excluded.location, "
+            "description=coalesce(excluded.description, jobs.description), "
+            "last_seen=now(), on_target=true;" % vals
+        )
+
+
 def scan_one(js, au, src):
-    """Returns (raw, on_target, unique, failed, reason)."""
+    """Returns (raw, on_target_jobs, unique, failed, reason)."""
     fn = js.SCRAPERS.get(src)
     if not fn:
-        return 0, 0, 0, True, "no scraper registered"
+        return 0, [], 0, True, "no scraper registered"
 
-    raw, seen_urls, on_target = 0, set(), set()
+    raw, seen_urls = 0, set()
+    on_target = {}
     failed, reason = False, None
 
     for role in js.SCHEDULED_ROLES:
@@ -85,13 +121,13 @@ def scan_one(js, au, src):
                 continue
             if any(k in low for k in au._NONTECH):
                 continue
-            on_target.add(url)
+            on_target[url] = j
 
     if raw == 0 and not failed:
         failed, reason = True, "returned nothing"
     elif not on_target and not failed:
         reason = "nothing on target"
-    return raw, len(on_target), len(seen_urls), failed, reason
+    return raw, list(on_target.values()), len(seen_urls), failed, reason
 
 
 def main():
@@ -106,11 +142,12 @@ def main():
     try:
         for src in only:
             t0 = time.time()
-            raw, ont, uniq, failed, reason = scan_one(js, au, src)
+            raw, found, uniq, failed, reason = scan_one(js, au, src)
+            save_jobs(found)
             done += 1
-            record(run_id, src, raw, ont, uniq, failed, reason, done)
+            record(run_id, src, raw, len(found), uniq, failed, reason, done)
             print("  %-12s raw=%-6d on_target=%-4d unique=%-5d %ds %s"
-                  % (src, raw, ont, uniq, round(time.time() - t0), reason or ""),
+                  % (src, raw, len(found), uniq, round(time.time() - t0), reason or ""),
                   flush=True)
     except Exception as e:
         finish_run(run_id, done, "failed", "%s: %s" % (type(e).__name__, str(e)[:160]))

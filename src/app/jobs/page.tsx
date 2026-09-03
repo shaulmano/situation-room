@@ -1,3 +1,4 @@
+import Link from 'next/link';
 import { serverClient } from '@/lib/server';
 import { applyTarget } from '@/lib/apply';
 import Dismiss from '@/components/Dismiss';
@@ -8,13 +9,14 @@ export const dynamic = 'force-dynamic';
 export default async function Jobs({
   searchParams,
 }: {
-  searchParams: { days?: string; all?: string; role?: string };
+  searchParams: { days?: string; all?: string; role?: string; source?: string };
 }) {
   const sb = serverClient();
   const showAll = searchParams.all === '1';
   const role = searchParams.role ?? '';
+  const source = searchParams.source ?? '';
   // Keep the family selection when the time window changes, and vice versa.
-  const roleQ = role ? `&role=${role}` : '';
+  const roleQ = (role ? `&role=${role}` : '') + (source ? `&source=${encodeURIComponent(source)}` : '');
   // Today by default: the feed is for acting on, and a week's backlog on open
   // is a reading list. The week is one tap away.
   const days = Number(searchParams.days ?? 1);
@@ -41,8 +43,10 @@ export default async function Jobs({
     query = query
       .eq('jobs.on_target', true)
       .is('jobs.dismissed_at', null)
-            .gte('jobs.first_seen', since);
+      .gte('jobs.first_seen', since);
   }
+  // Arriving from a source row on /מקורות: show only what that source brought.
+  if (source) query = query.eq('jobs.source', source);
 
   const { data } = await query;
 
@@ -66,7 +70,8 @@ export default async function Jobs({
     acc[m.cv_id] = (acc[m.cv_id] ?? 0) + 1;
     return acc;
   }, {});
-  const base = showAll ? '/jobs?all=1' : `/jobs?days=${days}`;
+  const base = (showAll ? '/jobs?all=1' : `/jobs?days=${days}`)
+    + (source ? `&source=${encodeURIComponent(source)}` : '');
   const ROLES: [string, string][] = [
     ['', 'הכל'], ['qa', 'QA'], ['program', 'ניהול פרויקטים'], ['delivery', 'גרסאות ו‑Delivery'],
   ];
@@ -74,7 +79,7 @@ export default async function Jobs({
   return (
     <>
       <div className="screen-head">
-        <h2>משרות</h2>
+        <h2>{source || 'משרות'}</h2>
         <div className="range">
           <a href={`/jobs?days=1${roleQ}`} className={!showAll && days === 1 ? 'on' : ''}>היום</a>
           <a href={`/jobs?days=7${roleQ}`} className={!showAll && days === 7 ? 'on' : ''}>שבוע</a>
@@ -95,6 +100,11 @@ export default async function Jobs({
         ))}
       </div>
 
+      {source && (
+        <p className="screen-note">
+          מסונן למקור <b>{source}</b> · <Link href={`/jobs?days=${days}`}>כל המקורות ←</Link>
+        </p>
+      )}
       <p className="screen-note">
         {showAll
           ? 'כל המשרות במאגר, כולל ישנות ולא רלוונטיות.'
