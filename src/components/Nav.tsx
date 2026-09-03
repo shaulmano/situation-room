@@ -12,6 +12,7 @@ const ITEMS = [
 
 export default function Nav() {
   const path = usePathname();
+  if (path.startsWith('/login') || path.startsWith('/auth')) return null;
   const on = (h: string) => (h === '/' ? path === '/' : path.startsWith(h));
   return (
     <>

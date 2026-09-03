@@ -25,9 +25,6 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       </head>
       <body>
         <div className="shell">
-          <header className="top">
-            <h1 className="brand">חדר <span>המצב</span></h1>
-          </header>
           <Nav />
           {children}
         </div>
