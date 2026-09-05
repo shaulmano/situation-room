@@ -124,7 +124,11 @@ h2:first-child{margin-top:0}
 .login{max-width:380px;margin:16vh auto;padding:0 18px;text-align:center}
 .login h1{font-family:"Frank Ruhl Libre",Georgia,serif;font-size:2rem;margin:0 0 8px}
 .login p{color:var(--muted);margin:0 0 22px}
-input[type=email]{
+/* Password fields were left out of this rule and so kept the browser's default
+   width, which put "סיסמה חדשה" and "שוב, לאימות" side by side on a wide screen
+   and read as one broken field. They are the same kind of field as the email
+   above them and get the same treatment. */
+input[type=email],input[type=password]{
   width:100%;padding:12px 14px;font:inherit;direction:ltr;text-align:start;
   background:var(--surface);color:var(--ink);
   border:1px solid var(--line);border-radius:7px;margin-bottom:10px;
@@ -371,13 +375,21 @@ a.kpi:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
 .chip.ask{background:var(--raised);color:var(--ink);border:1px solid var(--hair)}
 .chip.must{background:var(--accent-soft);color:var(--accent)}
 
-.sform{display:flex;gap:8px;margin-bottom:12px}
+/* The two width:100% rules further up belong to the login screen, written when
+   every form on the site was one column. In a flex row they are a bug: the
+   button's flex basis becomes the whole container and the input's is zero, so
+   the button eats the line and the field collapses to a square. Both are undone
+   explicitly here rather than by relying on source order — input[type=email]
+   carries an attribute selector and ties with this rule on specificity. */
+.sform{display:flex;gap:8px;margin-bottom:12px;align-items:stretch}
 .sform input{
-  flex:1;font:inherit;padding:.62em .8em;border-radius:7px;
+  flex:1 1 auto;width:auto;min-width:0;margin:0;
+  font:inherit;padding:.62em .8em;border-radius:7px;
   border:1px solid var(--line);background:var(--surface);color:var(--ink);
 }
 .sform input:focus{outline:2px solid var(--accent);outline-offset:1px;border-color:transparent}
 .sform button{
+  flex:0 0 auto;width:auto;margin:0;
   font:inherit;font-weight:700;padding:.62em 1.15em;border-radius:7px;border:0;
   background:var(--ink);color:var(--ground);cursor:pointer;
 }
