@@ -2,15 +2,17 @@
 import { useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 
+type Tally = { matched: number; applied: number; dismissed: number; open: number };
+
 type Props = {
   id: string;
   label: string;
   terms: string[];
   active: boolean;
-  count: number;
+  tally: Tally;
 };
 
-export default function SearchRow({ id, label, terms, active, count }: Props) {
+export default function SearchRow({ id, label, terms, active, tally }: Props) {
   const router = useRouter();
   const [, start] = useTransition();
   const [busy, setBusy] = useState(false);
@@ -34,7 +36,8 @@ export default function SearchRow({ id, label, terms, active, count }: Props) {
       <div className="head">
         <span className="label">{label}</span>
         <span className="spacer" />
-        <span className={`count${count ? '' : ' zero'}`}>{count}</span>
+        {/* What is left to act on — the same rows the jobs screen will show. */}
+        <span className={`count${tally.open ? '' : ' zero'}`}>{tally.open}</span>
       </div>
 
       <div className="chips">
@@ -43,7 +46,13 @@ export default function SearchRow({ id, label, terms, active, count }: Props) {
       </div>
 
       <div className="foot">
-        <span>{active ? 'פעיל — נסרק בכל סריקה' : 'מושהה — לא נסרק'}</span>
+        <span>
+          {active ? 'פעיל' : 'מושהה'}
+          {' · '}
+          {tally.matched} תאמו
+          {tally.applied > 0 && ` · ${tally.applied} הגשת`}
+          {tally.dismissed > 0 && ` · ${tally.dismissed} הסתרת`}
+        </span>
         <span className="spacer" />
         <button disabled={busy} onClick={() => call('PATCH', { active: !active })}>
           {active ? 'השהה' : 'הפעל'}

@@ -18,15 +18,31 @@ export default async function Searches() {
 
   const rows = searches ?? [];
 
-  // One count query per search rather than one big fetch: a search can match a
-  // few hundred postings and none of those rows are wanted here, only the size.
+  // The card counts what is left to do, not what matched.
+  //
+  // A plain match count and the jobs screen disagreed on the first search ever
+  // created — 23 against 19 — and both were right: the feed drops what you have
+  // already applied to. A number you cannot reconcile with the screen next to it
+  // is a number you stop trusting, so the breakdown is spelled out on the card
+  // rather than left as arithmetic for the reader.
+  const [{ data: applied }, { data: hidden }] = await Promise.all([
+    sb.from('applications').select('job_id'),
+    sb.from('job_dismissals').select('job_id'),
+  ]);
+  const appliedIds = new Set((applied ?? []).map((a: any) => a.job_id).filter(Boolean));
+  const hiddenIds = new Set((hidden ?? []).map((d: any) => d.job_id));
+
   const counts = await Promise.all(
     rows.map(async (s) => {
-      const { count } = await sb
+      const { data: ids } = await sb
         .from('search_matches')
-        .select('job_id', { count: 'exact', head: true })
+        .select('job_id')
         .eq('search_id', s.id);
-      return count ?? 0;
+
+      const all = (ids ?? []).map((r: any) => r.job_id);
+      const gone = all.filter((id) => appliedIds.has(id)).length;
+      const hid = all.filter((id) => hiddenIds.has(id) && !appliedIds.has(id)).length;
+      return { matched: all.length, applied: gone, dismissed: hid, open: all.length - gone - hid };
     })
   );
 
@@ -48,7 +64,7 @@ export default async function Searches() {
               label={s.label}
               terms={s.terms ?? []}
               active={s.active}
-              count={counts[i]}
+              tally={counts[i]}
             />
           ))
         )}
