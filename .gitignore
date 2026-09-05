@@ -9,3 +9,7 @@ next-env.d.ts
 supabase/.temp/
 
 .vercel
+
+# python bytecode from the sync scripts
+__pycache__/
+*.pyc
