@@ -1,3 +1,12 @@
+// v3 — badge support.
+// A service worker normally waits for every tab to close before it replaces the
+// running one, so a fix here reached nothing while the app stayed open. These
+// two lines make a new version take over on the next launch instead.
+const SW_VERSION = 3;
+
+self.addEventListener('install', () => self.skipWaiting());
+self.addEventListener('activate', (event) => event.waitUntil(self.clients.claim()));
+
 // Push arrives here even with the app closed. iOS only delivers to a page
 // installed to the Home Screen, which is Apple's rule, not a limitation here.
 self.addEventListener('push', (event) => {
@@ -30,6 +39,13 @@ self.addEventListener('push', (event) => {
 self.addEventListener('message', (event) => {
   if (event.data?.type === 'clear-badge' && self.navigator.clearAppBadge) {
     self.navigator.clearAppBadge().catch(() => {});
+  }
+  if (event.data?.type === 'version') {
+    event.source?.postMessage({
+      type: 'version',
+      version: SW_VERSION,
+      canBadge: typeof self.navigator.setAppBadge === 'function',
+    });
   }
 });
 

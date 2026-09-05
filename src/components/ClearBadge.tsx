@@ -13,6 +13,13 @@ export default function ClearBadge() {
       navigator.serviceWorker?.controller?.postMessage({ type: 'clear-badge' });
     };
 
+    // Refetch sw.js rather than trusting the HTTP cache: a stale worker is
+    // indistinguishable from a feature that does not work.
+    navigator.serviceWorker
+      ?.register('/sw.js', { updateViaCache: 'none' })
+      .then((reg) => reg.update())
+      .catch(() => {});
+
     clear();
     const onVisible = () => { if (document.visibilityState === 'visible') clear(); };
     document.addEventListener('visibilitychange', onVisible);
