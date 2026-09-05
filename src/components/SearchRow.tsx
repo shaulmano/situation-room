@@ -1,0 +1,65 @@
+'use client';
+import { useState, useTransition } from 'react';
+import { useRouter } from 'next/navigation';
+
+type Props = {
+  id: string;
+  label: string;
+  terms: string[];
+  active: boolean;
+  count: number;
+};
+
+export default function SearchRow({ id, label, terms, active, count }: Props) {
+  const router = useRouter();
+  const [, start] = useTransition();
+  const [busy, setBusy] = useState(false);
+
+  async function call(method: 'PATCH' | 'DELETE', body: object) {
+    setBusy(true);
+    const res = await fetch('/api/searches', {
+      method,
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id, ...body }),
+    }).catch(() => null);
+    setBusy(false);
+    if (res?.ok) start(() => router.refresh());
+  }
+
+  const shown = terms.slice(0, 5);
+  const rest = terms.length - shown.length;
+
+  return (
+    <article className={`search${active ? '' : ' off'}`}>
+      <div className="head">
+        <span className="label">{label}</span>
+        <span className="spacer" />
+        <span className={`count${count ? '' : ' zero'}`}>{count}</span>
+      </div>
+
+      <div className="chips">
+        {shown.map((t) => <span key={t} className="chip ask">{t}</span>)}
+        {rest > 0 && <span className="chip">+{rest}</span>}
+      </div>
+
+      <div className="foot">
+        <span>{active ? 'פעיל — נסרק בכל סריקה' : 'מושהה — לא נסרק'}</span>
+        <span className="spacer" />
+        <button disabled={busy} onClick={() => call('PATCH', { active: !active })}>
+          {active ? 'השהה' : 'הפעל'}
+        </button>
+        <button
+          disabled={busy}
+          onClick={() => {
+            // A search is minutes of typing and its matches rebuild on save, so
+            // this is cheap to undo by re-adding — but the confirm stays,
+            // because the two buttons sit next to each other on a phone.
+            if (confirm(`למחוק את "${label}"?`)) call('DELETE', {});
+          }}
+        >
+          מחק
+        </button>
+      </div>
+    </article>
+  );
+}

@@ -7,6 +7,7 @@ import ClearBadge from './ClearBadge';
 const ITEMS = [
   { href: '/',             label: 'חדר המצב', icon: '◉' },
   { href: '/jobs',         label: 'משרות',    icon: '▤' },
+  { href: '/searches',     label: 'חיפושים',  icon: '⌕' },
   { href: '/applications', label: 'הגשות',    icon: '↗' },
   { href: '/replies',      label: 'תשובות',   icon: '✉' },
   { href: '/sources',      label: 'מקורות',   icon: '▦' },
