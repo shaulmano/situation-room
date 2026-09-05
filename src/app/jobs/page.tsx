@@ -3,6 +3,7 @@ import { serverClient } from '@/lib/server';
 import { applyTarget } from '@/lib/apply';
 import Dismiss from '@/components/Dismiss';
 import MarkApplied from '@/components/MarkApplied';
+import { loadFeed } from '@/lib/feed';
 
 export const dynamic = 'force-dynamic';
 
@@ -27,55 +28,17 @@ export default async function Jobs({
   const { data: applied } = await sb.from('applications').select('job_id');
   const appliedIds = new Set((applied ?? []).map((a: any) => a.job_id).filter(Boolean));
 
-  let query = sb
-    .from('matches')
-    .select(
-      'score, cv_id, reasons, red_flags, ' +
-      'jobs!inner(id, title, company, source, location, url, first_seen, on_target, dismissed_at)'
-    )
-    // Newest first. The score still picks which CV fits and produces the match
-    // reasons, but it does not order the feed: with no job descriptions every
-    // score lands in the low forties, so ordering by it is ordering by noise.
-    .order('first_seen', { ascending: false, referencedTable: 'jobs' })
-    .limit(1200);
+  // Newest first, never by score: with no job descriptions every score lands in
+  // the low forties, so ordering by it is ordering by noise. Under searches
+  // there is no score at all — see lib/feed.
+  const feed = await loadFeed(sb, { since, appliedIds, showAll, source });
 
-  if (!showAll) {
-    query = query
-      .eq('jobs.on_target', true)
-      .is('jobs.dismissed_at', null)
-      .gte('jobs.first_seen', since);
-  }
-  // Arriving from a source row on /מקורות: show only what that source brought.
-  if (source) query = query.eq('jobs.source', source);
-
-  const { data } = await query;
-
-  // One row per job: keep only the CV that scored it highest.
-  const best = new Map<string, any>();
-  for (const m of (data ?? []) as any[]) {
-    const id = m.jobs?.id;
-    if (!id || appliedIds.has(id)) continue;
-    // Still the best-scoring CV per job — that is what the chip names.
-    if (!best.has(id) || best.get(id).score < m.score) best.set(id, m);
-  }
-  let picked = [...best.values()].sort(
-    (a, b) => new Date(b.jobs.first_seen).getTime() - new Date(a.jobs.first_seen).getTime()
-  );
-  // cv_id already classifies the posting — the CV that scored it highest is the
-  // job family it belongs to, so no second taxonomy is needed.
-  if (role) picked = picked.filter((m) => m.cv_id === role);
   // No cut. A day is a day; truncating it just hides the tail.
-  const rows = picked;
+  const rows = role ? feed.rows.filter((r) => r.fromId === role) : feed.rows;
 
-  const counts = [...best.values()].reduce<Record<string, number>>((acc, m) => {
-    acc[m.cv_id] = (acc[m.cv_id] ?? 0) + 1;
-    return acc;
-  }, {});
   const base = (showAll ? '/jobs?all=1' : `/jobs?days=${days}`)
     + (source ? `&source=${encodeURIComponent(source)}` : '');
-  const ROLES: [string, string][] = [
-    ['', 'הכל'], ['qa', 'QA'], ['program', 'ניהול פרויקטים'], ['delivery', 'גרסאות ו‑Delivery'],
-  ];
+  const total = feed.rows.length;
 
   return (
     <>
@@ -88,15 +51,19 @@ export default async function Jobs({
         </div>
       </div>
 
+      {/* Under searches these are the person's own searches, so the filter row
+          is however many they have. Under the legacy CVs it is always three. */}
       <div className="filters">
-        {ROLES.map(([id, label]) => (
+        <a href={base} className={'filter' + (role === '' ? ' on' : '')}>
+          הכל<span className="n">{total}</span>
+        </a>
+        {feed.groups.map((g) => (
           <a
-            key={id}
-            href={id ? `${base}&role=${id}` : base}
-            className={'filter' + (role === id ? ' on' : '')}
+            key={g.id}
+            href={`${base}&role=${encodeURIComponent(g.id)}`}
+            className={'filter' + (role === g.id ? ' on' : '')}
           >
-            {label}
-            <span className="n">{id ? (counts[id] ?? 0) : Object.values(counts).reduce((a, b) => a + b, 0)}</span>
+            {g.label}<span className="n">{g.n}</span>
           </a>
         ))}
       </div>
@@ -120,11 +87,9 @@ export default async function Jobs({
       ) : (
         <div className="rows">
           {rows.map((m) => {
-            const j = m.jobs;
-            const why: string[] = (m.reasons ?? []).slice(0, 2);
-            const flags: string[] = (m.red_flags ?? []).filter(
-              (f: string) => !f.includes('אין תיאור')
-            );
+            const j = m.job;
+            const why = m.reasons;
+            const flags = m.flags;
             return (
               <div className="row job" key={j.id}>
                 <span className="grow">
@@ -137,7 +102,10 @@ export default async function Jobs({
                       <span className="chip src">{j.source}</span>
                       {why.map((r) => <span className="chip ok" key={r}>{r}</span>)}
                       {flags.slice(0, 1).map((f) => <span className="chip crit" key={f}>{f}</span>)}
-                      <span className="chip mute">{m.cv_id}</span>
+                      {/* Which search brought it. Under the legacy table this
+                          is the CV family instead — same slot, same question:
+                          why is this in front of me. */}
+                      <span className="chip mute">{m.from}</span>
                     </span>
                   )}
                 </span>
@@ -153,7 +121,7 @@ export default async function Jobs({
                     </a>
                   ) : null;
                 })()}
-                <MarkApplied id={j.id} cvId={m.cv_id} />
+                <MarkApplied id={j.id} cvId={feed.mode === "cvs" ? m.fromId : undefined} />
                 <Dismiss id={j.id} />
               </div>
             );

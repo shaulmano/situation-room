@@ -1,3 +1,4 @@
+import { loadFeed } from '@/lib/feed';
 import Link from 'next/link';
 import { serverClient } from '@/lib/server';
 import { applyTarget } from '@/lib/apply';
@@ -27,38 +28,12 @@ export default async function Dashboard() {
 
   const appliedIds = new Set((applied.data ?? []).map((a: any) => a.job_id).filter(Boolean));
 
-  // Today first; a week is the fallback, not the default. This page answers
-  // "what is there to do this morning" — anything older belongs on /jobs.
-  async function freshJobs(days: number) {
-    const { data } = await sb
-      .from('matches')
-      .select(
-        'score, cv_id, reasons, ' +
-        'jobs!inner(id, title, company, source, location, url, first_seen, on_target, dismissed_at)'
-      )
-      .eq('jobs.on_target', true)
-      .is('jobs.dismissed_at', null)
-      .gte('jobs.first_seen', ago(days))
-      .order('first_seen', { ascending: false, referencedTable: 'jobs' })
-      .limit(900);
-
-    const best = new Map<string, any>();
-    for (const m of (data ?? []) as any[]) {
-      const id = m.jobs?.id;
-      if (!id || appliedIds.has(id)) continue;
-      if (!best.has(id) || best.get(id).score < m.score) best.set(id, m);
-    }
-    return [...best.values()].sort(
-      (a, b) => new Date(b.jobs.first_seen).getTime() - new Date(a.jobs.first_seen).getTime()
-    );
-  }
-
   // Today only, with no fallback to the week. A quiet day should read as a
   // quiet day; padding it with older rows is how this page turned into a
   // second jobs list in the first place.
   // All of today, not a preview of it. Eight was an arbitrary cut that hid 39
   // of the 47 jobs found this morning.
-  const rows = await freshJobs(1);
+  const { rows } = await loadFeed(sb, { since: ago(1), appliedIds, limit: 900 });
 
   const last = lastSent.data?.[0]?.sent_at;
   const daysQuiet = last ? Math.floor((Date.now() - new Date(last).getTime()) / 864e5) : null;
@@ -113,8 +88,8 @@ export default async function Dashboard() {
       ) : (
         <div className="rows">
           {rows.map((m) => {
-            const j = m.jobs;
-            const why: string[] = (m.reasons ?? []).slice(0, 2);
+            const j = m.job;
+            const why = m.reasons;
             const t = applyTarget(j);
             return (
               <div className="row job" key={j.id}>
@@ -126,7 +101,7 @@ export default async function Dashboard() {
                   <span className="why">
                     <span className="chip src">{j.source}</span>
                     {why.map((r) => <span className="chip ok" key={r}>{r}</span>)}
-                    <span className="chip mute">{m.cv_id}</span>
+                    <span className="chip mute">{m.from}</span>
                   </span>
                 </span>
                 {t && (
@@ -138,7 +113,7 @@ export default async function Dashboard() {
                     {t.label}
                   </a>
                 )}
-                <MarkApplied id={j.id} cvId={m.cv_id} />
+                <MarkApplied id={j.id} cvId={m.score === null ? undefined : m.fromId} />
                 <Dismiss id={j.id} />
               </div>
             );
