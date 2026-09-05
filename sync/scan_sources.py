@@ -125,8 +125,23 @@ def scan_one(js, au, src, roles, searches):
             # nobody here had asked for was dropped before it could ever reach
             # anybody. A posting is on target now if it answers *someone's*
             # active search - and if it answers none, nobody wanted it.
-            if not any(sr.matches(s.get("rule"), title) for s in searches):
-                continue
+            #
+            # With no searches defined at all, "nobody wanted it" is true of
+            # every posting and the run saves nothing. That is not a quiet
+            # degradation, it is the scan silently going dark: this shipped and
+            # the very next hourly run took MalamTeam from 27 on target to 0,
+            # with `raw=4230` beside it looking perfectly healthy. The old gates
+            # are the floor until the first search exists.
+            if searches:
+                if not any(sr.matches(s.get("rule"), title) for s in searches):
+                    continue
+            else:
+                if not au._IS_MGMT(title):
+                    continue
+                if not js._RELEVANT_TITLE_RE.search(title):
+                    continue
+                if any(k in low for k in au._NONTECH):
+                    continue
             on_target[url] = j
 
     if raw == 0 and not failed:
