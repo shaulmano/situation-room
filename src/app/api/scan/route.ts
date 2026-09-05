@@ -1,11 +1,24 @@
 import { NextResponse, type NextRequest } from 'next/server';
 import { serverClient } from '@/lib/server';
+import { currentUser, unauthorized, forbidden } from '@/lib/auth';
 
 const REPO = 'shaulmano/situation-room';
 const WORKFLOW = 'scan.yml';
 
 // POST — ask GitHub to run the scan workflow.
+//
+// ⛔ Owner only, and not as a preference. A full scan is ~20 minutes of the
+// 2,000 free Actions minutes a private repo gets each month: one user pressing
+// this ten times burns the month for everybody and every scheduled sync stops
+// until the 1st. It also multiplies the requests hitting the job boards, which
+// is what gets a source blocked — Indeed was lost that way and did not come
+// back. Everyone else gets results from the schedule, which carries their own
+// search terms anyway; there is nothing here for them to press.
 export async function POST(req: NextRequest) {
+  const user = await currentUser();
+  if (!user) return unauthorized();
+  if (!user.isOwner) return forbidden('סריקה ידנית שמורה לבעל המערכת');
+
   // Optional subset: rescanning twelve sources to retry one is fifteen minutes
   // of work for thirty seconds of need.
   const body = await req.json().catch(() => ({}));
@@ -59,8 +72,12 @@ export async function POST(req: NextRequest) {
   return NextResponse.json({ ok: true });
 }
 
-// GET — progress of the current or last run.
+// GET — progress of the current or last run. Readable by anyone signed in: a
+// scan is one shared job over one shared pool, and "a scan is running" is not
+// anyone's private information.
 export async function GET() {
+  if (!(await currentUser())) return unauthorized();
+
   const { data } = await serverClient()
     .from('scan_runs')
     .select('id, started_at, finished_at, total, done, status, note')

@@ -1,0 +1,42 @@
+import { NextResponse } from 'next/server';
+import { serverClient } from './server';
+
+/**
+ * Who is calling, asked once per request.
+ *
+ * The middleware already sends a signed-out browser to /login, but it guards
+ * *pages*. A POST reaches these routes without ever passing a redirect, so a
+ * button hidden in the UI is not a permission — it is a disguise. Every route
+ * below asks here first.
+ *
+ * RLS still stands underneath all of it, and still would have stopped a cross
+ * -tenant read. What it cannot express is "only the owner may spend twenty
+ * minutes of the month's CI budget": that is not a row, so no row policy can
+ * hold it. That check has to live in the route.
+ */
+export type Caller = { id: string; email: string | null; isOwner: boolean };
+
+export async function currentUser(): Promise<Caller | null> {
+  const sb = serverClient();
+  const { data: { user } } = await sb.auth.getUser();
+  if (!user) return null;
+
+  const { data: profile } = await sb
+    .from('profiles')
+    .select('is_owner')
+    .eq('id', user.id)
+    .maybeSingle();
+
+  // No profile means invited-but-not-provisioned, or an account left over from
+  // something else entirely — seven of those were found on this project in
+  // September. Authenticated is not the same as admitted.
+  return profile
+    ? { id: user.id, email: user.email ?? null, isOwner: profile.is_owner === true }
+    : null;
+}
+
+export const unauthorized = () =>
+  NextResponse.json({ error: 'לא מחובר' }, { status: 401 });
+
+export const forbidden = (why = 'אין הרשאה') =>
+  NextResponse.json({ error: why }, { status: 403 });
