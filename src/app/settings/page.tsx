@@ -2,6 +2,7 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { browserClient } from '@/lib/supabase';
+import PushToggle from '@/components/PushToggle';
 
 export default function Settings() {
   const router = useRouter();
@@ -41,6 +42,9 @@ export default function Settings() {
       <div className="rows">
         <div className="row"><span className="grow">מחובר כ־<span className="sub">{email || '…'}</span></span></div>
       </div>
+
+      <h2>התראות</h2>
+      <PushToggle />
 
       <h2>סיסמה</h2>
       {ok ? (

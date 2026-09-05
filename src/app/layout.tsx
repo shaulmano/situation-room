@@ -5,11 +5,15 @@ import Nav from '@/components/Nav';
 export const metadata: Metadata = {
   title: 'חדר המצב',
   description: 'מרכז השליטה של חיפוש העבודה',
+  manifest: '/manifest.json',
+  appleWebApp: { capable: true, title: 'חדר המצב', statusBarStyle: 'default' },
+  icons: { icon: '/icon-192.png', apple: '/apple-touch-icon.png' },
 };
 export const viewport: Viewport = {
   width: 'device-width',
   initialScale: 1,
   viewportFit: 'cover',
+  themeColor: '#9A6317',
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
