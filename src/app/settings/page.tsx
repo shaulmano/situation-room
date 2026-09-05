@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { browserClient } from '@/lib/supabase';
 import PushToggle from '@/components/PushToggle';
+import People from '@/components/People';
 
 export default function Settings() {
   const router = useRouter();
@@ -65,6 +66,8 @@ export default function Settings() {
 
       <h2>חשבון</h2>
       <button type="button" className="link-btn" onClick={signOut}>התנתקות</button>
+
+      <People />
     </>
   );
 }

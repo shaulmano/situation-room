@@ -21,15 +21,25 @@ export async function currentUser(): Promise<Caller | null> {
   const { data: { user } } = await sb.auth.getUser();
   if (!user) return null;
 
-  const { data: profile } = await sb
-    .from('profiles')
-    .select('is_owner')
-    .eq('id', user.id)
-    .maybeSingle();
+  const read = () =>
+    sb.from('profiles').select('is_owner').eq('id', user.id).maybeSingle();
 
-  // No profile means invited-but-not-provisioned, or an account left over from
-  // something else entirely — seven of those were found on this project in
-  // September. Authenticated is not the same as admitted.
+  let { data: profile } = await read();
+
+  // No profile yet. Either an invitation is waiting for this address, or the
+  // account is left over from something else — seven of those were sitting on
+  // this project in September, from a scaffold abandoned in June. Authenticated
+  // has never been the same thing as admitted.
+  //
+  // redeem_invite() is the only path from one to the other: it runs as its
+  // owner, matches on the caller's own verified email claim, and creates at most
+  // one profile. It cannot be aimed at anyone else's invitation, and it returns
+  // false rather than failing when there is nothing to redeem.
+  if (!profile) {
+    const { data: admitted } = await sb.rpc('redeem_invite');
+    if (admitted) ({ data: profile } = await read());
+  }
+
   return profile
     ? { id: user.id, email: user.email ?? null, isOwner: profile.is_owner === true }
     : null;
