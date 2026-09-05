@@ -42,8 +42,16 @@ export default function People() {
     const body = await res?.json().catch(() => null);
     setBusy(false);
     if (!res?.ok) { setMsg(body?.error ?? 'לא נשלח'); return; }
+    const who = mail.trim();
     setMail('');
-    setMsg(`ההזמנה נרשמה. תגיד ל־${mail.trim()} להיכנס לכתובת של חדר המצב ולהתחבר עם המייל הזה.`);
+    // No password is generated and no message is sent from here — the invite is
+    // only a record saying this address is allowed in. Supabase mails the link,
+    // and only when the person asks for it. Left unsaid, this reads as an email
+    // that never arrived and a password nobody knows.
+    setMsg(
+      `${who} מורשה להיכנס. לא נשלח מייל ואין סיסמה — הוא נכנס לכתובת של חדר המצב, ` +
+      `לוחץ "כניסה בקישור למייל", מקליד את הכתובת הזאת, ופותח את הקישור שיגיע אליו.`
+    );
     load();
   }
 
@@ -72,8 +80,8 @@ export default function People() {
         <button disabled={busy || !mail.trim()}>הזמן</button>
       </form>
       <p className="prow-note">
-        ההזמנה נצמדת לכתובת. מי שיגיע בלי הזמנה על שמו לא מקבל גישה, גם אם
-        הצליח להזדהות.
+        ההזמנה נצמדת לכתובת ואינה שולחת דבר. מי שיגיע בלי הזמנה על שמו לא מקבל
+        גישה, גם אם הצליח להזדהות.
       </p>
       {msg && <p className="sform-msg">{msg}</p>}
 
