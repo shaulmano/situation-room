@@ -59,33 +59,82 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: error?.message ?? 'לא נשמר' }, { status: 500 });
   }
 
-  // Title only — the same rule the matcher itself follows, so what the preview
-  // promised and what the feed shows cannot drift apart.
+  const matched = await link(sb, search.id, user.id, e);
+  return NextResponse.json({ ok: true, id: search.id, matched });
+}
+
+/**
+ * Walk the pool and claim what this search answers.
+ *
+ * Title only — the same rule the matcher itself follows, so what the preview
+ * promised and what the feed shows cannot drift apart.
+ */
+async function link(
+  sb: ReturnType<typeof serverClient>,
+  searchId: string,
+  userId: string,
+  e: ReturnType<typeof expand>
+) {
   const { data: jobs } = await sb.from('jobs').select('id, title');
   const hits = (jobs ?? []).filter((j) => matches(e, j.title));
 
   for (let i = 0; i < hits.length; i += 500) {
     await sb.from('search_matches').upsert(
       hits.slice(i, i + 500).map((j) => ({
-        search_id: search.id,
+        search_id: searchId,
         job_id: j.id,
-        user_id: user.id,
+        user_id: userId,
       })),
       { onConflict: 'search_id,job_id' }
     );
   }
-
-  return NextResponse.json({ ok: true, id: search.id, matched: hits.length });
+  return hits.length;
 }
 
-// PATCH — pause or resume. A paused search stops costing scan time and stops
-// producing alerts; its matches stay, so resuming is instant.
+// PATCH — pause or resume, or re-run the expansion.
+//
+// An expansion is frozen at save time, which is why the typed phrase is kept
+// verbatim: the dictionary is the only thing that improves precision now, so
+// editing it has to be able to reach searches that already exist. Without this
+// a fix to the dictionary only helps searches created after it, and the person
+// who reported the bad matches keeps seeing them.
 export async function PATCH(req: NextRequest) {
   const user = await currentUser();
   if (!user) return unauthorized();
 
-  const { id, active } = await req.json().catch(() => ({}));
+  const { id, active, reexpand } = await req.json().catch(() => ({}));
   if (!id) return NextResponse.json({ error: 'missing id' }, { status: 400 });
+
+  if (reexpand) {
+    const sb = serverClient();
+    const { data: row } = await sb
+      .from('searches')
+      .select('id, label')
+      .eq('id', id)
+      .eq('user_id', user.id)
+      .maybeSingle();
+    if (!row) return NextResponse.json({ error: 'no such search' }, { status: 404 });
+
+    const e = expand(row.label);
+    await sb
+      .from('searches')
+      .update({
+        terms: e.terms,
+        rule: rule(e),
+        seniority: e.seniority,
+        expanded_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      })
+      .eq('id', id)
+      .eq('user_id', user.id);
+
+    // Rebuilt, not merged. A narrower dictionary has to be able to *remove* a
+    // posting it no longer claims, and leaving the old rows would mean an
+    // improvement could only ever add.
+    await sb.from('search_matches').delete().eq('search_id', id);
+    const matched = await link(sb, id, user.id, e);
+    return NextResponse.json({ ok: true, matched });
+  }
 
   const { data, error } = await serverClient()
     .from('searches')

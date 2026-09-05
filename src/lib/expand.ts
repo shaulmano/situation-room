@@ -7,10 +7,12 @@
  * transliteration on half of AllJobs — so one phrase has to become a handful of
  * terms or two thirds of the postings are never returned at all.
  *
- * This is the dictionary path: free, instant, and it only knows what is written
- * here. `expandWithClaude` wraps it and asks a model when a key is configured,
- * which is the only way an unlisted profession ever works — but it falls back
- * to this, so a missing key or a failed call costs nothing.
+ * A dictionary, deliberately: free, instant, and it only knows what is written
+ * here. A model would expand an unlisted profession and would draw tighter
+ * lists than these; it was weighed and dropped on 05/09 — a paid dependency for
+ * a handful of calls a month is a bad trade on a tool given away for nothing.
+ * The cost of that choice is precision, and precision here is bought by editing
+ * this file when a search comes back holding the wrong jobs.
  *
  * ── asking and recognising are not the same list ──
  * The first draft used one list for both and it was visibly wrong on the real
@@ -88,11 +90,21 @@ const FAMILIES: Record<string, Family> = {
     base: ['Data Analyst', 'אנליסט נתונים', 'BI Developer', 'Data Engineer', 'מפתח BI'],
     lead: ['Data Team Leader', 'ראש צוות דאטה', 'Head of Data', 'מנהל BI'],
   },
-  it: {
-    match: ['תמיכה', 'support', 'helpdesk', 'help desk', 'sysadmin', 'רשתות', 'network',
-            'נטוורק', 'מערכות מידע', 'סיסטם'],
-    base: ['IT Support', 'תמיכה טכנית', 'System Administrator', 'Helpdesk', 'איש מערכות מידע'],
-    lead: ['IT Manager', 'מנהל מערכות מידע', 'Head of IT', 'ראש צוות תמיכה'],
+  // Support and systems were one family and should not have been. "support
+  // manager" came back holding "Network Infrastructure Project Manager" and
+  // "מנהל/ת פרויקטים מערכות מידע", because one bucket held תמיכה beside רשתות
+  // and מערכות מידע and the rank word closed the deal. Helping users and running
+  // infrastructure are different jobs applied for with different CVs.
+  support: {
+    match: ['תמיכה', 'support', 'helpdesk', 'help desk', 'service desk', 'תומך'],
+    base: ['IT Support', 'תמיכה טכנית', 'Helpdesk', 'Service Desk', 'Technical Support'],
+    lead: ['Support Manager', 'Support Team Leader', 'ראש צוות תמיכה', 'מנהל תמיכה',
+           'Helpdesk Manager', 'מנהל תמיכה טכנית'],
+  },
+  sysadmin: {
+    match: ['sysadmin', 'סיסטם', 'רשתות', 'network', 'נטוורק', 'מערכות מידע'],
+    base: ['System Administrator', 'איש מערכות מידע', 'Network Administrator', 'IT Specialist'],
+    lead: ['IT Manager', 'מנהל מערכות מידע', 'Head of IT', 'ראש צוות סיסטם'],
   },
   product: {
     match: ['מוצר', 'product', 'ux', 'ui', 'חוויית משתמש'],

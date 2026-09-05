@@ -57,6 +57,11 @@ export default function SearchRow({ id, label, terms, active, tally }: Props) {
         <button disabled={busy} onClick={() => call('PATCH', { active: !active })}>
           {active ? 'השהה' : 'הפעל'}
         </button>
+        {/* The dictionary is the only thing that sharpens a search now, so a
+            search made before a fix to it has to be able to pick the fix up. */}
+        <button disabled={busy} onClick={() => call('PATCH', { reexpand: true })}>
+          רענן
+        </button>
         <button
           disabled={busy}
           onClick={() => {
