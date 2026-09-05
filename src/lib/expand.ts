@@ -197,6 +197,24 @@ export function expand(input: string): Expansion {
 }
 
 /**
+ * The rule, in the shape the scanner also reads.
+ *
+ * The scan is Python and this is TypeScript, and both decide the same question.
+ * Porting the matcher would leave two copies that agree the day they are written
+ * and stop agreeing after the first fix to one of them — invisibly, because a
+ * posting silently dropped looks exactly like one that was never returned. So
+ * the rule is data, computed once here and only evaluated on either side.
+ */
+export type Rule = { any: string[]; all: string[][] };
+
+export function rule(e: Pick<Expansion, 'match' | 'must' | 'seniority'>): Rule {
+  const all: string[][] = [];
+  if (e.must.length) all.push(e.must);
+  if (e.seniority === 'lead') all.push(LEAD_IN_TITLE);
+  return { any: e.match, all };
+}
+
+/**
  * Does this posting belong in this search's feed?
  *
  * The title, and nothing else. The description would pull in every posting that
@@ -210,13 +228,17 @@ export function matches(
   e: Pick<Expansion, 'match' | 'must' | 'seniority'>,
   title: string
 ): boolean {
+  return matchesRule(rule(e), title);
+}
+
+/**
+ * The one place the rule is interpreted on this side. Asking for a leadership
+ * role and getting an engineering post is not a near miss — it is a different
+ * job — which is why rank sits in `all` rather than widening `any`.
+ */
+export function matchesRule(r: Rule, title: string): boolean {
   const hay = norm(title);
   const has = (list: string[]) => list.some((t) => t.trim() && hay.includes(norm(t).trim()));
-
-  if (!has(e.match)) return false;
-  if (e.must.length > 0 && !has(e.must)) return false;
-  // Asked for a leadership role and the posting does not name one: an engineer
-  // job is not a near miss of a manager job, it is a different job.
-  if (e.seniority === 'lead' && !has(LEAD_IN_TITLE)) return false;
-  return true;
+  if (!has(r.any)) return false;
+  return r.all.every((group) => has(group));
 }

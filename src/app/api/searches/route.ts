@@ -1,7 +1,7 @@
 import { NextResponse, type NextRequest } from 'next/server';
 import { serverClient } from '@/lib/server';
 import { currentUser, unauthorized } from '@/lib/auth';
-import { expand, matches } from '@/lib/expand';
+import { expand, matches, rule } from '@/lib/expand';
 
 /** More than this and one person's terms crowd out everyone else's scan time. */
 const MAX_ACTIVE = 5;
@@ -45,6 +45,9 @@ export async function POST(req: NextRequest) {
       user_id: user.id,
       label: text,
       terms: e.terms,
+      // The scanner reads this and never re-derives it, so the app and the scan
+      // cannot drift into disagreeing about what belongs to whom.
+      rule: rule(e),
       seniority: e.seniority,
       expanded_by: e.by,
       expanded_at: new Date().toISOString(),

@@ -19,6 +19,7 @@ import json, os, sys
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from gmail_sync import sql, q  # same Management API path, same reasoning
+import searches as sr
 
 DEFAULT = os.path.expanduser("~/Documents/job-search/jobs.jsonl")
 BATCH = 200
@@ -103,6 +104,27 @@ def main():
         )
         total += len(chunk)
         print("  upserted %d/%d" % (total, len(all_rows)))
+
+    # Link what arrived to the searches it answers. Every screen joins
+    # search_matches, so a posting written without a row here is invisible
+    # however well it fits - the trap the scan already fell into once, with
+    # thirty Malam and SQLink jobs sitting on target and showing nowhere.
+    searches = sr.active()
+    if searches:
+        # By url, not by the id in the file: the upsert conflicts on url, so a
+        # posting already in the table kept the id it already had. Linking to
+        # the file's id would fail the foreign key on every job seen before -
+        # which is most of them, since the file is cumulative.
+        urls = [r["url"] for r in all_rows if r["url"]]
+        saved = []
+        for i in range(0, len(urls), 200):
+            vals = ",".join(q(u) for u in urls[i:i + 200])
+            saved += sql("select id, title from jobs where url in (%s)" % vals)
+        per = sr.write_matches(searches, saved)
+        by_id = {s["id"]: s["label"] for s in searches}
+        print("\nlinked to searches:")
+        for sid, n in sorted(per.items(), key=lambda kv: -kv[1]):
+            print("  %-5d %s" % (n, by_id.get(sid, sid)))
 
     out = sql("select source, count(*)::text as n from jobs group by source order by count(*) desc")
     print("\njobs by source:")

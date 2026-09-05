@@ -23,6 +23,7 @@ import hashlib, os, sys, time
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from gmail_sync import sql, q
+import searches as sr
 
 BOT = os.environ.get("BOT_DIR") or os.path.expanduser("~/Documents/job-search")
 sys.path.insert(0, BOT)
@@ -91,7 +92,7 @@ def save_jobs(jobs):
         )
 
 
-def scan_one(js, au, src):
+def scan_one(js, au, src, roles, searches):
     """Returns (raw, on_target_jobs, unique, failed, reason)."""
     fn = js.SCRAPERS.get(src)
     if not fn:
@@ -101,7 +102,7 @@ def scan_one(js, au, src):
     on_target = {}
     failed, reason = False, None
 
-    for role in js.SCHEDULED_ROLES:
+    for role in roles:
         try:
             found = fn(role) or []
         except Exception as e:
@@ -115,13 +116,16 @@ def scan_one(js, au, src):
                 continue
             seen_urls.add(url)
             low = (title + " " + (j.get("company") or "")).lower()
-            if not au._IS_MGMT(title):
-                continue
+            # _BAD stays: it is a junk filter - reposted spam, "עבודה מהבית",
+            # pyramid schemes - and junk is junk whatever anyone is looking for.
             if any(k in low for k in au._BAD):
                 continue
-            if not js._RELEVANT_TITLE_RE.search(title):
-                continue
-            if any(k in low for k in au._NONTECH):
+            # What replaced _IS_MGMT, _RELEVANT_TITLE_RE and _NONTECH: those
+            # three encoded one person's search into the pipeline, so a posting
+            # nobody here had asked for was dropped before it could ever reach
+            # anybody. A posting is on target now if it answers *someone's*
+            # active search - and if it answers none, nobody wanted it.
+            if not any(sr.matches(s.get("rule"), title) for s in searches):
                 continue
             on_target[url] = j
 
@@ -135,17 +139,38 @@ def scan_one(js, au, src):
 def main():
     js, au = load()
     only = [a for a in sys.argv[1:] if not a.startswith("-")] or js.SCHEDULED_SOURCES
+
+    searches = sr.active()
+    # Rotate the shopping list between runs so a term that sits past the cap is
+    # asked a few times a day rather than never.
+    offset = int(sql("select count(*)::int as n from scan_runs")[0]["n"]) if searches else 0
+    roles = sr.query_terms(searches, offset)
+
+    # Before anyone has defined a search there is nothing to ask for, and an
+    # empty list would scan twelve sources for nothing and write a run that
+    # looks like every source failed. The old hardcoded roles are the floor.
+    if not roles:
+        roles = js.SCHEDULED_ROLES
+        print("no active searches - falling back to the built-in roles", flush=True)
+
     print("sources: %s" % ", ".join(only), flush=True)
+    print("terms  : %s" % " · ".join(roles), flush=True)
+    print("searches: %d active" % len(searches), flush=True)
 
     run_id = start_run(len(only))
     print("run %s" % run_id, flush=True)
 
-    done = 0
+    done, saved = 0, set()
     try:
         for src in only:
             t0 = time.time()
-            raw, found, uniq, failed, reason = scan_one(js, au, src)
+            raw, found, uniq, failed, reason = scan_one(js, au, src, roles, searches)
             save_jobs(found)
+            # The url, not the id we would have generated: the upsert conflicts
+            # on url, so a posting already in the table keeps the id it already
+            # had. Linking to a guessed id would fail the foreign key, and on a
+            # posting that was already known - the common case.
+            saved.update(j["url"] for j in found)
             done += 1
             record(run_id, src, raw, len(found), uniq, failed, reason, done)
             print("  %-12s raw=%-6d on_target=%-4d unique=%-5d %ds %s"
@@ -154,6 +179,21 @@ def main():
     except Exception as e:
         finish_run(run_id, done, "failed", "%s: %s" % (type(e).__name__, str(e)[:160]))
         raise
+
+    # A scan links what it saved, in the same run. Counting a posting and then
+    # leaving it unlinked is how thirty Malam and SQLink jobs once sat in the
+    # table, on target and undismissed, and showed on no screen at all.
+    if saved and searches:
+        urls = list(saved)
+        rows = []
+        for i in range(0, len(urls), 200):
+            vals = ",".join(q(u) for u in urls[i:i + 200])
+            rows += sql("select id, title from jobs where url in (%s)" % vals)
+        per = sr.write_matches(searches, rows)
+        by_id = {s["id"]: s["label"] for s in searches}
+        for sid, n in sorted(per.items(), key=lambda kv: -kv[1]):
+            print("  linked %-4d → %s" % (n, by_id.get(sid, sid)), flush=True)
+
     finish_run(run_id, done)
     print("\nwrote %d scan rows" % done, flush=True)
 
