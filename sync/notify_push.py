@@ -136,6 +136,8 @@ def main():
         "body": names + (f" ועוד {extra}" if extra > 0 else ""),
         "url": "/",
         "tag": "new-jobs",
+        # Drives the number on the home-screen icon.
+        "count": len(rows),
     }
 
     pub, priv = vapid()

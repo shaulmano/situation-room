@@ -2,6 +2,7 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import RefreshOnFocus from './RefreshOnFocus';
+import ClearBadge from './ClearBadge';
 
 const ITEMS = [
   { href: '/',             label: 'חדר המצב', icon: '◉' },
@@ -19,6 +20,7 @@ export default function Nav() {
   return (
     <>
       <RefreshOnFocus />
+      <ClearBadge />
       <header className="top">
         <h1 className="brand">חדר <span>המצב</span></h1>
       </header>

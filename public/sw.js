@@ -14,11 +14,28 @@ self.addEventListener('push', (event) => {
     renotify: true,
     data: { url: data.url || '/' },
   };
-  event.waitUntil(self.registration.showNotification(title, options));
+  // The badge is the count of unseen jobs, not of notifications — a batch of 47
+  // is one alert and a 47 on the icon.
+  const badge = Number(data.count) || 0;
+  event.waitUntil(Promise.all([
+    self.registration.showNotification(title, options),
+    badge > 0 && self.navigator.setAppBadge
+      ? self.navigator.setAppBadge(badge).catch(() => {})
+      : Promise.resolve(),
+  ]));
+});
+
+// The app asks for the badge to be cleared once it has been opened; doing it
+// from the service worker means it works whichever window is in front.
+self.addEventListener('message', (event) => {
+  if (event.data?.type === 'clear-badge' && self.navigator.clearAppBadge) {
+    self.navigator.clearAppBadge().catch(() => {});
+  }
 });
 
 self.addEventListener('notificationclick', (event) => {
   event.notification.close();
+  if (self.navigator.clearAppBadge) self.navigator.clearAppBadge().catch(() => {});
   const url = event.notification.data?.url || '/';
   event.waitUntil(
     clients.matchAll({ type: 'window', includeUncontrolled: true }).then((list) => {
