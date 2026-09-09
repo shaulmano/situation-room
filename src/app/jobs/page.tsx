@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import { serverClient } from '@/lib/server';
 import { applyTarget } from '@/lib/apply';
+import { jobAge } from '@/lib/age';
 import Dismiss from '@/components/Dismiss';
 import MarkApplied from '@/components/MarkApplied';
 
@@ -31,7 +32,7 @@ export default async function Jobs({
     .from('matches')
     .select(
       'score, cv_id, reasons, red_flags, ' +
-      'jobs!inner(id, title, company, source, location, url, first_seen, on_target, dismissed_at)'
+      'jobs!inner(id, title, company, source, location, url, first_seen, posted, on_target, dismissed_at)'
     )
     // Newest first. The score still picks which CV fits and produces the match
     // reasons, but it does not order the feed: with no job descriptions every
@@ -135,6 +136,10 @@ export default async function Jobs({
                   {(
                     <span className="why">
                       <span className="chip src">{j.source}</span>
+                      {(() => {
+                        const a = jobAge(j.posted, j.first_seen);
+                        return a ? <span className={`chip age ${a.tone}`}>{a.label}</span> : null;
+                      })()}
                       {why.map((r) => <span className="chip ok" key={r}>{r}</span>)}
                       {flags.slice(0, 1).map((f) => <span className="chip crit" key={f}>{f}</span>)}
                       <span className="chip mute">{m.cv_id}</span>

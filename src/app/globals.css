@@ -340,3 +340,11 @@ a.kpi:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
   background:transparent;color:var(--crit);border:1px solid var(--crit);
 }
 .scanbtn.retry:hover:not(:disabled){background:var(--crit-soft)}
+
+/* Age is the only signal there is for whether a posting is still open — the
+   boards answer 200 for roles filled weeks ago — so it is coloured, not just
+   printed. Same bands the score uses, so a row and its score never disagree. */
+.chip.age.fresh{background:var(--good-soft);color:var(--good)}
+.chip.age.ok{background:var(--raised);color:var(--muted);border:1px solid var(--hair)}
+.chip.age.warn{background:var(--warn-soft);color:var(--warn)}
+.chip.age.crit{background:var(--crit-soft);color:var(--crit)}

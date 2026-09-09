@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import { serverClient } from '@/lib/server';
 import { applyTarget } from '@/lib/apply';
+import { jobAge } from '@/lib/age';
 import Dismiss from '@/components/Dismiss';
 import MarkApplied from '@/components/MarkApplied';
 
@@ -34,7 +35,7 @@ export default async function Dashboard() {
       .from('matches')
       .select(
         'score, cv_id, reasons, ' +
-        'jobs!inner(id, title, company, source, location, url, first_seen, on_target, dismissed_at)'
+        'jobs!inner(id, title, company, source, location, url, first_seen, posted, on_target, dismissed_at)'
       )
       .eq('jobs.on_target', true)
       .is('jobs.dismissed_at', null)
@@ -125,6 +126,10 @@ export default async function Dashboard() {
                   </span>
                   <span className="why">
                     <span className="chip src">{j.source}</span>
+                      {(() => {
+                        const a = jobAge(j.posted, j.first_seen);
+                        return a ? <span className={`chip age ${a.tone}`}>{a.label}</span> : null;
+                      })()}
                     {why.map((r) => <span className="chip ok" key={r}>{r}</span>)}
                     <span className="chip mute">{m.cv_id}</span>
                   </span>
