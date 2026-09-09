@@ -4,32 +4,46 @@ import ScanNow from '@/components/ScanNow';
 
 export const dynamic = 'force-dynamic';
 
-// The twelve the bot is configured to scan. Listing them here rather than only
-// what the scans table happens to hold means a source that stopped reporting
-// shows up as a gap instead of vanishing from the screen.
-const SCHEDULED = [
-  'linkedin', 'alljobs', 'drushim', 'comeet', 'gotfriends', 'experis',
-  'dialog', 'sqlink', 'nisha', 'malamteam', 'one1', 'secretjobs',
+// The screen is called "sources" and was read as "where do my jobs come from".
+// It answered a different question: "when did I last scan this myself".
+//
+// Those came apart because postings reach the database by two paths and only
+// one of them writes a `scans` row. The bot scrapes every 90 minutes, commits
+// jobs.jsonl, and the sync copies it in — jobs appear, no scan row. The manual
+// scan writes both. So on 09/09 this screen showed AllJobs at 232 and LinkedIn
+// at 359 from a run six days earlier, presented as current, and showed nothing
+// at all for Greenhouse, which had delivered that same day.
+//
+// What a source brought is now counted from the postings themselves, in the
+// window on screen, whichever path carried them. The scan tallies stay as the
+// second line, dated, because "97,290 raw → 27 on target" is the only thing
+// that says whether a scraper is earning its runtime — but they are no longer
+// what the screen leads with.
+const KNOWN: [string, string, string][] = [
+  // id (scans table) · display name · jobs.source string
+  ['linkedin',   'LinkedIn',    'LinkedIn'],
+  ['alljobs',    'AllJobs',     'AllJobs'],
+  ['drushim',    'דרושים',      'Drushim'],
+  ['comeet',     'Comeet',      'Comeet'],
+  ['greenhouse', 'Greenhouse',  'Greenhouse'],
+  ['gotfriends', 'GotFriends',  'GotFriends'],
+  ['experis',    'Experis',     'Experis'],
+  ['dialog',     'Dialog',      'Dialog'],
+  ['sqlink',     'SQLink',      'SQLink'],
+  ['nisha',      'נישה',        'Nisha'],
+  ['malamteam',  'מלם תים',     'Malam Team'],
+  ['one1',       'ONE / טלדור', 'One1'],
+  ['secretjobs', 'SecretJobs',  'SecretJobs'],
 ];
-
-// The scans table keys sources by id; jobs.source carries the display name the
-// scraper stamped on each row, and the two were never the same string.
-const NAME: Record<string, string> = {
-  linkedin: 'LinkedIn', alljobs: 'AllJobs', drushim: 'דרושים', comeet: 'Comeet',
-  gotfriends: 'GotFriends', experis: 'Experis', dialog: 'Dialog', sqlink: 'SQLink',
-  nisha: 'נישה', malamteam: 'מלם תים', one1: 'ONE / טלדור', secretjobs: 'SecretJobs',
-};
-const JOB_SOURCE: Record<string, string> = {
-  linkedin: 'LinkedIn', alljobs: 'AllJobs', drushim: 'Drushim', comeet: 'Comeet',
-  gotfriends: 'GotFriends', experis: 'Experis', dialog: 'Dialog', sqlink: 'SQLink',
-  nisha: 'Nisha', malamteam: 'Malam Team', one1: 'One1', secretjobs: 'SecretJobs',
-};
 
 const RANGES: [string, string, number][] = [
   ['1', 'היום', 1],
   ['7', 'שבוע', 7],
   ['all', 'הכל', 3650],
 ];
+
+const short = (iso: string) =>
+  new Date(iso).toLocaleDateString('he-IL', { day: 'numeric', month: 'numeric' });
 
 export default async function Sources({
   searchParams,
@@ -41,7 +55,7 @@ export default async function Sources({
   const days = (RANGES.find((r) => r[0] === key) ?? RANGES[0])[2];
   const since = new Date(Date.now() - days * 864e5).toISOString();
 
-  const [{ data: runs }, { data: scans }] = await Promise.all([
+  const [{ data: runs }, { data: scans }, { data: arrived }] = await Promise.all([
     sb.from('scan_runs')
       .select('id, started_at, finished_at, total, done, status, note')
       .order('started_at', { ascending: false }).limit(1),
@@ -50,7 +64,23 @@ export default async function Sources({
       .gte('ran_at', since)
       .order('ran_at', { ascending: false })
       .limit(2000),
+    // created_at, not first_seen: the question here is what reached this
+    // database inside the window, and first_seen is the bot's own clock — a
+    // posting it found last week and synced this morning belongs to today.
+    sb.from('jobs')
+      .select('source, on_target, created_at')
+      .gte('created_at', since)
+      .limit(5000),
   ]);
+
+  const came = new Map<string, { n: number; on: number; last: string }>();
+  for (const j of (arrived ?? []) as any[]) {
+    const cur = came.get(j.source) ?? { n: 0, on: 0, last: j.created_at };
+    cur.n += 1;
+    if (j.on_target) cur.on += 1;
+    if (j.created_at > cur.last) cur.last = j.created_at;
+    came.set(j.source, cur);
+  }
 
   // Summed across every scan in the window, not just the last one — over a week
   // "how much did this source bring" is the question, and one snapshot cannot
@@ -77,16 +107,23 @@ export default async function Sources({
     agg.set(s.source, cur);
   }
 
-  const rows = SCHEDULED.map((id) => ({ id, a: agg.get(id) ?? null }))
-    .sort((x, y) => (y.a?.on ?? -1) - (x.a?.on ?? -1));
+  // A source that delivered but is not in KNOWN still gets a row. That list is
+  // hand-maintained and the pipeline is not; a new scraper should appear here
+  // the day it brings something, not the day someone remembers to add it.
+  const extra = [...came.keys()].filter((s) => !KNOWN.some((k) => k[2] === s));
+  const rows = [
+    ...KNOWN.map(([id, name, jobSource]) => ({ id, name, jobSource })),
+    ...extra.map((s) => ({ id: s.toLowerCase(), name: s, jobSource: s })),
+  ]
+    .map((r) => ({ ...r, got: came.get(r.jobSource) ?? null, a: agg.get(r.id) ?? null }))
+    .sort((x, y) => (y.got?.n ?? -1) - (x.got?.n ?? -1));
 
-  const totalOn = rows.reduce((n, r) => n + (r.a?.on ?? 0), 0);
-  const live = rows.filter((r) => (r.a?.on ?? 0) > 0).length;
-  const scanCount = Math.max(0, ...rows.map((r) => r.a?.runs ?? 0));
-  const newest = rows.map((r) => r.a?.last).filter(Boolean).sort().reverse()[0];
+  const totalIn = rows.reduce((n, r) => n + (r.got?.n ?? 0), 0);
+  const live = rows.filter((r) => (r.got?.n ?? 0) > 0).length;
   const rangeLabel = (RANGES.find((r) => r[0] === key) ?? RANGES[0])[1];
-  // Anything that failed or came back empty in its most recent run — the set
-  // worth retrying without paying for the ten that worked.
+
+  // Worth retrying: scanned in the window and came back failed or empty. A
+  // source nobody scanned is not a failure, it is a source nobody scanned.
   const failed = rows
     .filter(({ a }) => a && (a.failed || a.on === 0))
     .map(({ id }) => id);
@@ -107,30 +144,36 @@ export default async function Sources({
       <ScanNow initial={(runs?.[0] as any) ?? null} failed={failed} />
 
       <p className="screen-note">
-        {newest
-          ? `${rangeLabel} · ${scanCount} סריקות · ${totalOn} משרות על המטרה מ־${live} מקורות · אחרונה ${new Date(newest).toLocaleString('he-IL', { dateStyle: 'short', timeStyle: 'short' })}`
-          : `לא נרשמה סריקה ב${rangeLabel === 'הכל' ? 'כלל' : `טווח "${rangeLabel}"`}.`}
+        {totalIn > 0
+          ? `${rangeLabel} · ${totalIn} משרות נכנסו מ־${live} מקורות. הספירה היא מה שהגיע למסד — דרך הבוט או דרך סריקה ידנית.`
+          : `${rangeLabel} · לא נכנסה אף משרה בטווח הזה.`}
       </p>
 
       <div className="rows">
-        {rows.map(({ id, a }) => {
-          const on = a?.on ?? 0;
-          const state = !a ? ['לא נסרק', 'mute']
-            : a.failed ? ['כשל', 'crit']
-            : on > 0 ? ['תקין', 'ok']
-            : ['אין על המטרה', 'warn'];
-          const href = `/jobs?days=${key === 'all' ? 3650 : key}&source=${encodeURIComponent(JOB_SOURCE[id] ?? id)}`;
+        {rows.map(({ id, name, jobSource, got, a }) => {
+          const n = got?.n ?? 0;
+          const state = n > 0 ? ['מביא', 'ok']
+            : a?.failed ? ['כשל בסריקה', 'crit']
+            : a ? ['נסרק, אין תוצאות', 'warn']
+            : ['שקט', 'mute'];
+
+          // Two clocks on one line, each saying which it is. The scan tally can
+          // be six days old while the arrivals are from this morning.
+          const detail = [
+            got ? `${n} נכנסו · אחרונה ${short(got.last)}` : 'לא נכנסה משרה',
+            a
+              ? `סריקה ${short(a.last!)}: ${a.raw.toLocaleString()} גולמי → ${a.on} על המטרה${a.reason ? ` · ${a.reason}` : ''}`
+              : 'לא נסרק ידנית בטווח',
+          ].join('  |  ');
+
+          const href = `/jobs?days=${key === 'all' ? 3650 : key}&source=${encodeURIComponent(jobSource)}`;
           return (
             <Link className="row" key={id} href={href}>
               <span className="grow">
-                {NAME[id] ?? id}
-                <span className="sub">
-                  {a
-                    ? `${a.raw.toLocaleString()} גולמי · ${a.fresh.toLocaleString()} ייחודיות · ${on} על המטרה · ${a.runs} סריקות${a.reason ? ' · ' + a.reason : ''}`
-                    : 'לא רץ בטווח הזה'}
-                </span>
+                {name}
+                <span className="sub">{detail}</span>
               </span>
-              {on > 0 && <span className="count">{on}</span>}
+              {n > 0 && <span className="count">{n}</span>}
               <span className={'chip ' + state[1]}>{state[0]}</span>
             </Link>
           );
