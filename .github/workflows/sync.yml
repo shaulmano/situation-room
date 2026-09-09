@@ -8,10 +8,20 @@ name: Sync from the bot
 #
 # Offset by 20 minutes from the bot's schedule so it reads a finished commit
 # rather than racing the run that is writing it.
+# The bot dispatches this the moment it commits a new jobs.jsonl, so the
+# schedule is no longer how postings arrive — it is the floor under a dispatch
+# that never came, because the token expired or GitHub dropped the call.
+#
+# It used to run sixteen times a day and that was the only path in. Keeping
+# sixteen alongside the dispatch would have doubled the runs to about 1,900
+# minutes a month against a 2,000-minute quota on a private repo, and the
+# month it ran out every sync would stop until the 1st.
+#
+# Three a day, in UTC. Israel is UTC+3 in summer and UTC+2 in winter, so these
+# drift by an hour twice a year and nothing depends on the exact minute.
 on:
   schedule:
-    - cron: '20 0,3,6,9,12,15,18,21 * * *'
-    - cron: '50 1,4,7,10,13,16,19,22 * * *'
+    - cron: '10 2,10,18 * * *'
   workflow_dispatch:
 
 concurrency:
