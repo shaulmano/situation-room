@@ -1,6 +1,6 @@
 import Link from 'next/link';
 import { serverClient } from '@/lib/server';
-import { applyTarget } from '@/lib/apply';
+import { applyTarget, directLinks } from '@/lib/apply';
 import { jobAge } from '@/lib/age';
 import Dismiss from '@/components/Dismiss';
 import MarkApplied from '@/components/MarkApplied';
@@ -143,6 +143,15 @@ export default async function Dashboard() {
                     {t.label}
                   </a>
                 )}
+                {directLinks(j).map((d) => (
+                  <a
+                    key={d.label}
+                    className="apply indirect"
+                    href={d.href} target="_blank" rel="noreferrer"
+                  >
+                    {d.label}
+                  </a>
+                ))}
                 <MarkApplied id={j.id} cvId={m.cv_id} />
                 <Dismiss id={j.id} />
               </div>
