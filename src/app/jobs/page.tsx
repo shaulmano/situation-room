@@ -76,7 +76,7 @@ export default async function Jobs({
   const keys = [...new Set(rows.map((m) => companyKey(m.jobs.company)).filter(Boolean))];
   const warm = new Map<string, WarmContact[]>();
   if (keys.length > 0) {
-    const select = 'id, full_name, title, linkedin_url, email, phone, company_key';
+    const select = 'id, full_name, title, linkedin_url, email, phone, contacted_at, company_key';
     // Past a certain width the `in` list stops fitting in a url, so the whole
     // table comes over instead and the filtering happens here. A personal
     // network is a few thousand rows at most.
@@ -194,7 +194,10 @@ export default async function Jobs({
                 ))}
                 <MarkApplied id={j.id} cvId={m.cv_id} />
                 <Dismiss id={j.id} />
-                <JobContacts contacts={warm.get(companyKey(j.company)) ?? []} />
+                <JobContacts
+                  contacts={warm.get(companyKey(j.company)) ?? []}
+                  job={{ company: j.company, title: j.title, cvId: m.cv_id }}
+                />
               </div>
             );
           })}
