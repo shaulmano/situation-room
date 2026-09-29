@@ -17,6 +17,7 @@ export type WarmContact = {
   linkedin_url: string | null;
   email: string | null;
   phone: string | null;
+  contacted_at: string | null;
 };
 
 // Second-degree connections are not in any export and not in any API: they
