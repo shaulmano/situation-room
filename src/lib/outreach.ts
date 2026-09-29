@@ -14,10 +14,13 @@ const CV_FILE: Record<string, string> = {
   delivery: 'Shaul_Mano_Delivery_Manager.pdf',
 };
 
+// Written to follow "I have spent the last 15 years", as one sentence rather
+// than a colon and a list. The colon was what made the earlier version read
+// like a CV instead of a message between two people who know each other.
 const PITCH: Record<string, string> = {
-  qa: '15 years leading QA in enterprise SaaS, most recently as Head of QA at Qmarkets',
-  program: '15 years leading program and release management in enterprise SaaS, most recently at Qmarkets',
-  delivery: '15 years leading delivery and professional services in enterprise SaaS, most recently at Qmarkets',
+  qa: 'leading QA in enterprise SaaS, most recently as Head of QA at Qmarkets',
+  program: 'in program and release management in enterprise SaaS, most recently at Qmarkets',
+  delivery: 'leading delivery and professional services in enterprise SaaS, most recently at Qmarkets',
 };
 
 export function cvUrl(cvId?: string | null): string {
@@ -51,7 +54,7 @@ export function referralMessage(opts: {
   const pitch = PITCH[opts.cvId ?? ''] ?? PITCH.qa;
   return [
     `Hi ${firstName(opts.contactName)}, hope you are doing well.`,
-    `I noticed ${opts.company} is hiring a ${shortTitle(opts.jobTitle)}. It is a close fit for my background: ${pitch}.`,
+    `I noticed ${opts.company} is hiring a ${shortTitle(opts.jobTitle)}. I have spent the last 15 years ${pitch}.`,
     `Would you be open to referring me internally? My CV: ${cvUrl(opts.cvId)}`,
   ].join('\n');
 }
