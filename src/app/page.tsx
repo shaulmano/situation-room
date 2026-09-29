@@ -2,7 +2,9 @@ import Link from 'next/link';
 import { serverClient } from '@/lib/server';
 import { applyTarget, directLinks } from '@/lib/apply';
 import { jobAge } from '@/lib/age';
+import { companyKey, type WarmContact } from '@/lib/contacts';
 import Dismiss from '@/components/Dismiss';
+import JobContacts from '@/components/JobContacts';
 import MarkApplied from '@/components/MarkApplied';
 
 export const dynamic = 'force-dynamic';
@@ -13,10 +15,14 @@ const ago = (days: number) => new Date(Date.now() - days * 864e5).toISOString();
 const CHECKPOINT = new Date('2026-10-15T00:00:00+03:00');
 const CONVERSATION_TARGET = 3;
 
+// A connections export is a manual errand at LinkedIn's end, so the app asks
+// for a fresh one once a month and otherwise stays quiet about it.
+const IMPORT_STALE_DAYS = 30;
+
 export default async function Dashboard() {
   const sb = serverClient();
 
-  const [convos, weekApps, needsReply, silent, lastSent, applied] = await Promise.all([
+  const [convos, weekApps, needsReply, silent, lastSent, applied, lastImport] = await Promise.all([
     sb.from('applications').select('id', { count: 'exact', head: true })
       .in('status', ['conversation', 'interview', 'offer']),
     sb.from('applications').select('id', { count: 'exact', head: true }).gte('sent_at', ago(7)),
@@ -24,12 +30,13 @@ export default async function Dashboard() {
     sb.from('applications').select('id', { count: 'exact', head: true }).eq('status', 'silent'),
     sb.from('applications').select('sent_at').order('sent_at', { ascending: false }).limit(1),
     sb.from('applications').select('job_id'),
+    sb.from('contacts').select('imported_at').order('imported_at', { ascending: false }).limit(1),
   ]);
 
   const appliedIds = new Set((applied.data ?? []).map((a: any) => a.job_id).filter(Boolean));
 
   // Today first; a week is the fallback, not the default. This page answers
-  // "what is there to do this morning" — anything older belongs on /jobs.
+  // "what is there to do this morning", anything older belongs on /jobs.
   async function freshJobs(days: number) {
     const { data } = await sb
       .from('matches')
@@ -61,13 +68,37 @@ export default async function Dashboard() {
   // of the 47 jobs found this morning.
   const rows = await freshJobs(1);
 
+  // The people Shaul already knows at today's companies, in one lookup.
+  const keys = [...new Set(rows.map((m) => companyKey(m.jobs.company)).filter(Boolean))];
+  const warm = new Map<string, WarmContact[]>();
+  if (keys.length > 0) {
+    const select = 'id, full_name, title, linkedin_url, email, phone, company_key';
+    const { data: contacts } = keys.length > 120
+      ? await sb.from('contacts').select(select).limit(5000)
+      : await sb.from('contacts').select(select).in('company_key', keys);
+
+    const wanted = new Set(keys);
+    for (const c of (contacts ?? []) as any[]) {
+      if (!c.company_key || !wanted.has(c.company_key)) continue;
+      const list = warm.get(c.company_key) ?? [];
+      list.push(c);
+      warm.set(c.company_key, list);
+    }
+  }
+
   const last = lastSent.data?.[0]?.sent_at;
   const daysQuiet = last ? Math.floor((Date.now() - new Date(last).getTime()) / 864e5) : null;
   const daysLeft = Math.max(0, Math.ceil((CHECKPOINT.getTime() - Date.now()) / 864e5));
 
+  const importedAt = lastImport.data?.[0]?.imported_at;
+  const importAge = importedAt
+    ? Math.floor((Date.now() - new Date(importedAt).getTime()) / 864e5)
+    : null;
+  const importStale = importAge === null || importAge >= IMPORT_STALE_DAYS;
+
   return (
     <>
-      {/* Every tile leads to the rows it counted — a number you cannot open is
+      {/* Every tile leads to the rows it counted: a number you cannot open is
           a number you have to take on faith. */}
       <div className="kpis">
         <Link className="kpi hero" href="/applications?status=conversation">
@@ -94,6 +125,15 @@ export default async function Dashboard() {
           <b>{daysQuiet} ימים מאז ההגשה האחרונה.</b>{' '}
           נקודת הבדיקה מודדת שיחות, ואין ממה שיצמחו.
         </div>
+      )}
+
+      {importStale && (
+        <p className="screen-note" style={{ marginTop: 14 }}>
+          {importAge === null
+            ? 'אנשי הקשר שלך מלינקדאין עדיין לא הועלו, ולכן אף משרה לא מראה מי מכיר שם.'
+            : `הקשרים מלינקדאין עודכנו לפני ${importAge} ימים.`}{' '}
+          <Link href="/settings">עדכון בהגדרות ←</Link>
+        </p>
       )}
 
       <div className="screen-head">
@@ -126,10 +166,10 @@ export default async function Dashboard() {
                   </span>
                   <span className="why">
                     <span className="chip src">{j.source}</span>
-                      {(() => {
-                        const a = jobAge(j.posted, j.first_seen);
-                        return a ? <span className={`chip age ${a.tone}`}>{a.label}</span> : null;
-                      })()}
+                    {(() => {
+                      const a = jobAge(j.posted, j.first_seen);
+                      return a ? <span className={`chip age ${a.tone}`}>{a.label}</span> : null;
+                    })()}
                     {why.map((r) => <span className="chip ok" key={r}>{r}</span>)}
                     <span className="chip mute">{m.cv_id}</span>
                   </span>
@@ -138,7 +178,7 @@ export default async function Dashboard() {
                   <a
                     className={'apply' + (t.indirect ? ' indirect' : '')}
                     href={t.href} target="_blank" rel="noreferrer"
-                    title={t.indirect ? 'המקור חסום מאחורי הרשמה — פותח חיפוש למשרה הזו' : undefined}
+                    title={t.indirect ? 'המקור חסום מאחורי הרשמה, פותח חיפוש למשרה הזו' : undefined}
                   >
                     {t.label}
                   </a>
@@ -154,6 +194,7 @@ export default async function Dashboard() {
                 ))}
                 <MarkApplied id={j.id} cvId={m.cv_id} />
                 <Dismiss id={j.id} />
+                <JobContacts contacts={warm.get(companyKey(j.company)) ?? []} />
               </div>
             );
           })}
