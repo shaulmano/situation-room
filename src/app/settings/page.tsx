@@ -2,6 +2,7 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { browserClient } from '@/lib/supabase';
+import ContactsImport from '@/components/ContactsImport';
 import PushToggle from '@/components/PushToggle';
 
 export default function Settings() {
@@ -43,6 +44,9 @@ export default function Settings() {
         <div className="row"><span className="grow">מחובר כ־<span className="sub">{email || '…'}</span></span></div>
       </div>
 
+      <h2>אנשי קשר מלינקדאין</h2>
+      <ContactsImport />
+
       <h2>התראות</h2>
       <PushToggle />
 
@@ -55,9 +59,9 @@ export default function Settings() {
             קבע סיסמה פעם אחת, ומכאן הכניסה נשמרת בדפדפן בלי סבב מייל.
           </p>
           <input type="password" required minLength={8} placeholder="סיסמה חדשה"
-                 autoComplete="new-password" value={pw} onChange={(e) => setPw(e.target.value)} />
+            autoComplete="new-password" value={pw} onChange={(e) => setPw(e.target.value)} />
           <input type="password" required minLength={8} placeholder="שוב, לאימות"
-                 autoComplete="new-password" value={pw2} onChange={(e) => setPw2(e.target.value)} />
+            autoComplete="new-password" value={pw2} onChange={(e) => setPw2(e.target.value)} />
           <button disabled={busy}>{busy ? 'שומר…' : 'קבע סיסמה'}</button>
           {msg && <p style={{ color: 'var(--crit)', marginTop: 10 }}>{msg}</p>}
         </form>
