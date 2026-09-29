@@ -88,7 +88,7 @@ export async function POST(req: NextRequest) {
 // import, which is the whole point of keeping them in separate columns.
 export async function PATCH(req: NextRequest) {
   const body = (await req.json().catch(() => null)) as
-    | { id?: unknown; phone?: unknown; note?: unknown }
+    | { id?: unknown; phone?: unknown; note?: unknown; contacted?: unknown }
     | null;
   const id = typeof body?.id === 'string' ? body.id : '';
   if (!id) return NextResponse.json({ error: 'missing id' }, { status: 400 });
@@ -96,6 +96,11 @@ export async function PATCH(req: NextRequest) {
   const patch: Record<string, string | null> = { updated_at: new Date().toISOString() };
   if (typeof body?.phone === 'string') patch.phone = body.phone.trim() || null;
   if (typeof body?.note === 'string') patch.note = body.note.trim() || null;
+  // Marking an outreach is a timestamp, not a flag: the job screen shows how
+  // long ago it was, which is what decides whether to follow up.
+  if (typeof body?.contacted === 'boolean') {
+    patch.contacted_at = body.contacted ? new Date().toISOString() : null;
+  }
 
   const { error } = await serverClient().from('contacts').update(patch).eq('id', id);
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
