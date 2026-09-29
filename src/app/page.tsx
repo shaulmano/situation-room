@@ -72,7 +72,7 @@ export default async function Dashboard() {
   const keys = [...new Set(rows.map((m) => companyKey(m.jobs.company)).filter(Boolean))];
   const warm = new Map<string, WarmContact[]>();
   if (keys.length > 0) {
-    const select = 'id, full_name, title, linkedin_url, email, phone, company_key';
+    const select = 'id, full_name, title, linkedin_url, email, phone, contacted_at, company_key';
     const { data: contacts } = keys.length > 120
       ? await sb.from('contacts').select(select).limit(5000)
       : await sb.from('contacts').select(select).in('company_key', keys);
@@ -194,7 +194,10 @@ export default async function Dashboard() {
                 ))}
                 <MarkApplied id={j.id} cvId={m.cv_id} />
                 <Dismiss id={j.id} />
-                <JobContacts contacts={warm.get(companyKey(j.company)) ?? []} />
+                <JobContacts
+                  contacts={warm.get(companyKey(j.company)) ?? []}
+                  job={{ company: j.company, title: j.title, cvId: m.cv_id }}
+                />
               </div>
             );
           })}

@@ -1,6 +1,7 @@
 'use client';
 import { useState } from 'react';
 import { mutualsHref, type WarmContact } from '@/lib/contacts';
+import { referralMessage } from '@/lib/outreach';
 
 // The block that sits under a job row when Shaul already knows someone at that
 // company. Collapsed by default: on a day with forty jobs, four of them warm,
@@ -29,9 +30,17 @@ const link: React.CSSProperties = {
   whiteSpace: 'nowrap',
 };
 
-export default function JobContacts({ contacts }: { contacts: WarmContact[] }) {
+const button: React.CSSProperties = { ...link, background: 'transparent', cursor: 'pointer', width: 'auto' };
+
+export type JobRef = { company: string; title: string; cvId?: string | null };
+
+export default function JobContacts({ contacts, job }: { contacts: WarmContact[]; job: JobRef }) {
   const [rows, setRows] = useState(contacts);
   if (rows.length === 0) return null;
+
+  function patch(id: string, fields: Partial<WarmContact>) {
+    setRows((prev) => prev.map((p) => (p.id === id ? { ...p, ...fields } : p)));
+  }
 
   return (
     <details
@@ -49,13 +58,7 @@ export default function JobContacts({ contacts }: { contacts: WarmContact[] }) {
       </summary>
 
       {rows.map((c) => (
-        <Contact
-          key={c.id}
-          contact={c}
-          onPhone={(phone) =>
-            setRows((prev) => prev.map((p) => (p.id === c.id ? { ...p, phone } : p)))
-          }
-        />
+        <Contact key={c.id} contact={c} job={job} onPatch={(f) => patch(c.id, f)} />
       ))}
     </details>
   );
@@ -63,27 +66,58 @@ export default function JobContacts({ contacts }: { contacts: WarmContact[] }) {
 
 function Contact({
   contact,
-  onPhone,
+  job,
+  onPatch,
 }: {
   contact: WarmContact;
-  onPhone: (phone: string | null) => void;
+  job: JobRef;
+  onPatch: (fields: Partial<WarmContact>) => void;
 }) {
   const [editing, setEditing] = useState(false);
-  const [value, setValue] = useState(contact.phone ?? '');
+  const [phone, setPhone] = useState(contact.phone ?? '');
+  const [draft, setDraft] = useState<string | null>(null);
+  const [copied, setCopied] = useState(false);
   const [busy, setBusy] = useState(false);
   const mutuals = mutualsHref(contact.linkedin_url);
 
-  async function save() {
+  const askedDays = contact.contacted_at
+    ? Math.floor((Date.now() - new Date(contact.contacted_at).getTime()) / 864e5)
+    : null;
+
+  async function save(fields: Record<string, unknown>, applied: Partial<WarmContact>) {
     setBusy(true);
     const res = await fetch('/api/contacts', {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ id: contact.id, phone: value }),
+      body: JSON.stringify({ id: contact.id, ...fields }),
     }).catch(() => null);
     setBusy(false);
-    if (res?.ok) {
-      onPhone(value.trim() || null);
-      setEditing(false);
+    if (res?.ok) onPatch(applied);
+    return !!res?.ok;
+  }
+
+  // The message is built once, when the panel opens, and then left alone. It is
+  // a draft in a textarea, not generated text on a leash: editing it before
+  // copying is the normal case, not an exception.
+  function openDraft() {
+    setDraft(
+      referralMessage({
+        contactName: contact.full_name,
+        company: job.company,
+        jobTitle: job.title,
+        cvId: job.cvId,
+      })
+    );
+  }
+
+  async function copy() {
+    if (draft === null) return;
+    try {
+      await navigator.clipboard.writeText(draft);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch {
+      setCopied(false);
     }
   }
 
@@ -96,11 +130,17 @@ function Contact({
             {contact.title}
           </span>
         )}
+        {askedDays !== null && (
+          <span style={{ display: 'block', color: 'var(--good)', fontSize: '.72rem', fontWeight: 600 }}>
+            {askedDays === 0 ? 'פנית היום' : `פנית לפני ${askedDays} ימים`}
+          </span>
+        )}
       </span>
 
-      {contact.email && (
-        <a style={link} href={`mailto:${contact.email}`}>מייל</a>
-      )}
+      <button type="button" style={button} onClick={() => (draft === null ? openDraft() : setDraft(null))}>
+        {draft === null ? 'פנייה' : 'סגור'}
+      </button>
+      {contact.email && <a style={link} href={`mailto:${contact.email}`}>מייל</a>}
       {contact.phone && (
         <a style={link} href={`tel:${contact.phone.replace(/[^+\d]/g, '')}`} dir="ltr">
           {contact.phone}
@@ -110,32 +150,20 @@ function Contact({
         <a style={link} href={contact.linkedin_url} target="_blank" rel="noreferrer">פרופיל</a>
       )}
       {mutuals && (
-        <a
-          style={link}
-          href={mutuals}
-          target="_blank"
-          rel="noreferrer"
-          title="לינקדאין מציג מי מהקשרים שלו מוכר גם לך"
-        >
+        <a style={link} href={mutuals} target="_blank" rel="noreferrer" title="לינקדאין מציג מי מהקשרים שלו מוכר גם לך">
           מי עוד מכיר
         </a>
       )}
 
       {!contact.phone && !editing && (
-        <button
-          type="button"
-          onClick={() => setEditing(true)}
-          style={{ ...link, background: 'transparent', cursor: 'pointer', width: 'auto' }}
-        >
-          הוסף טלפון
-        </button>
+        <button type="button" style={button} onClick={() => setEditing(true)}>הוסף טלפון</button>
       )}
 
       {editing && (
         <span style={{ display: 'flex', gap: 6, flex: '1 1 160px' }}>
           <input
-            value={value}
-            onChange={(e) => setValue(e.target.value)}
+            value={phone}
+            onChange={(e) => setPhone(e.target.value)}
             placeholder="052-0000000"
             dir="ltr"
             style={{
@@ -152,13 +180,59 @@ function Contact({
           />
           <button
             type="button"
-            onClick={save}
+            style={button}
             disabled={busy}
-            style={{ ...link, background: 'transparent', cursor: 'pointer', width: 'auto' }}
+            onClick={async () => {
+              const ok = await save({ phone }, { phone: phone.trim() || null });
+              if (ok) setEditing(false);
+            }}
           >
             {busy ? '…' : 'שמור'}
           </button>
         </span>
+      )}
+
+      {draft !== null && (
+        <div style={{ flex: '1 1 100%', marginTop: 6 }}>
+          <textarea
+            value={draft}
+            onChange={(e) => setDraft(e.target.value)}
+            rows={5}
+            style={{
+              width: '100%',
+              font: 'inherit',
+              fontSize: '.8rem',
+              lineHeight: 1.5,
+              padding: '.5em .6em',
+              background: 'var(--surface)',
+              color: 'var(--ink)',
+              border: '1px solid var(--line)',
+              borderRadius: 6,
+              resize: 'vertical',
+            }}
+          />
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginTop: 6 }}>
+            <button type="button" style={button} onClick={copy}>
+              {copied ? 'הועתק' : 'העתק'}
+            </button>
+            {contact.linkedin_url && (
+              <a style={link} href={contact.linkedin_url} target="_blank" rel="noreferrer">
+                פתח שיחה בלינקדאין
+              </a>
+            )}
+            <button
+              type="button"
+              style={button}
+              disabled={busy}
+              onClick={async () => {
+                const ok = await save({ contacted: true }, { contacted_at: new Date().toISOString() });
+                if (ok) setDraft(null);
+              }}
+            >
+              {busy ? '…' : 'סמן שפניתי'}
+            </button>
+          </div>
+        </div>
       )}
     </div>
   );
