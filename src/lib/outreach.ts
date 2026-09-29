@@ -1,7 +1,8 @@
 // The referral message, assembled per job so that nothing has to be written
 // from scratch. Shaul messages people he already knows, on LinkedIn, and asks
-// them to refer him internally. Three short lines: long messages there do not
-// get read.
+// them to refer him internally. Three short lines, in English: the names, the
+// companies and the job titles are all English anyway, and a Hebrew sentence
+// with an English title glued into it reads worse than either language alone.
 //
 // The CV lives in a public Supabase Storage bucket, one file per job family,
 // named after the same cv_id the matcher already assigns. No attachment is
@@ -14,9 +15,9 @@ const CV_FILE: Record<string, string> = {
 };
 
 const PITCH: Record<string, string> = {
-  qa: 'זה בול התחום שלי, 15 שנה בניהול QA בסאס ארגוני.',
-  program: 'זה בול התחום שלי, 15 שנה בניהול תוכניות וגרסאות בסאס ארגוני.',
-  delivery: 'זה בול התחום שלי, 15 שנה בניהול Delivery ושירותים מקצועיים בסאס ארגוני.',
+  qa: '15 years leading QA in enterprise SaaS, most recently as Head of QA at Qmarkets',
+  program: '15 years leading program and release management in enterprise SaaS, most recently at Qmarkets',
+  delivery: '15 years leading delivery and professional services in enterprise SaaS, most recently at Qmarkets',
 };
 
 export function cvUrl(cvId?: string | null): string {
@@ -25,10 +26,20 @@ export function cvUrl(cvId?: string | null): string {
   return `${base}/storage/v1/object/public/cv/${file}`;
 }
 
-// First name only. "היי ישראל ישראלי" reads like a form letter, which is the
-// one thing this message cannot afford.
+// First name only. "Hi Yotam Cohen" reads like a form letter, which is the one
+// thing this message cannot afford.
 function firstName(full: string): string {
   return (full ?? '').trim().split(/\s+/)[0] ?? '';
+}
+
+// Boards publish titles like "Technical Program Manager Silicon Design
+// Services and Strategic Extended Workforce". A whole line of corporate
+// wording inside a three-line message buries the ask, so the title is cut at
+// the first comma or bracket and capped at six words.
+function shortTitle(title: string): string {
+  const head = (title ?? '').split(/[,|(\u2013\u2014-]/)[0].trim();
+  const words = head.split(/\s+/).filter(Boolean);
+  return words.length > 6 ? words.slice(0, 6).join(' ') : head;
 }
 
 export function referralMessage(opts: {
@@ -39,8 +50,8 @@ export function referralMessage(opts: {
 }): string {
   const pitch = PITCH[opts.cvId ?? ''] ?? PITCH.qa;
   return [
-    `היי ${firstName(opts.contactName)}, מה שלומך?`,
-    `ראיתי ש${opts.company} מגייסת ל${opts.jobTitle}. ${pitch}`,
-    `תוכל להפנות אותי פנימית? קורות חיים כאן: ${cvUrl(opts.cvId)}`,
+    `Hi ${firstName(opts.contactName)}, hope you are doing well.`,
+    `I noticed ${opts.company} is hiring a ${shortTitle(opts.jobTitle)}. It is a close fit for my background: ${pitch}.`,
+    `Would you be open to referring me internally? My CV: ${cvUrl(opts.cvId)}`,
   ].join('\n');
 }
