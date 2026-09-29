@@ -2,7 +2,9 @@ import Link from 'next/link';
 import { serverClient } from '@/lib/server';
 import { applyTarget, directLinks } from '@/lib/apply';
 import { jobAge } from '@/lib/age';
+import { companyKey, type WarmContact } from '@/lib/contacts';
 import Dismiss from '@/components/Dismiss';
+import JobContacts from '@/components/JobContacts';
 import MarkApplied from '@/components/MarkApplied';
 
 export const dynamic = 'force-dynamic';
@@ -56,17 +58,40 @@ export default async function Jobs({
   for (const m of (data ?? []) as any[]) {
     const id = m.jobs?.id;
     if (!id || appliedIds.has(id)) continue;
-    // Still the best-scoring CV per job — that is what the chip names.
+    // Still the best-scoring CV per job, that is what the chip names.
     if (!best.has(id) || best.get(id).score < m.score) best.set(id, m);
   }
   let picked = [...best.values()].sort(
     (a, b) => new Date(b.jobs.first_seen).getTime() - new Date(a.jobs.first_seen).getTime()
   );
-  // cv_id already classifies the posting — the CV that scored it highest is the
+  // cv_id already classifies the posting: the CV that scored it highest is the
   // job family it belongs to, so no second taxonomy is needed.
   if (role) picked = picked.filter((m) => m.cv_id === role);
   // No cut. A day is a day; truncating it just hides the tail.
   const rows = picked;
+
+  // Who Shaul already knows at the companies on this screen. One query for the
+  // whole feed, not one per row: at three hundred rows that is three hundred
+  // round trips for what is a lookup.
+  const keys = [...new Set(rows.map((m) => companyKey(m.jobs.company)).filter(Boolean))];
+  const warm = new Map<string, WarmContact[]>();
+  if (keys.length > 0) {
+    const select = 'id, full_name, title, linkedin_url, email, phone, company_key';
+    // Past a certain width the `in` list stops fitting in a url, so the whole
+    // table comes over instead and the filtering happens here. A personal
+    // network is a few thousand rows at most.
+    const { data: contacts } = keys.length > 120
+      ? await sb.from('contacts').select(select).limit(5000)
+      : await sb.from('contacts').select(select).in('company_key', keys);
+
+    const wanted = new Set(keys);
+    for (const c of (contacts ?? []) as any[]) {
+      if (!c.company_key || !wanted.has(c.company_key)) continue;
+      const list = warm.get(c.company_key) ?? [];
+      list.push(c);
+      warm.set(c.company_key, list);
+    }
+  }
 
   const counts = [...best.values()].reduce<Record<string, number>>((acc, m) => {
     acc[m.cv_id] = (acc[m.cv_id] ?? 0) + 1;
@@ -152,7 +177,7 @@ export default async function Jobs({
                     <a
                       className={'apply' + (t.indirect ? ' indirect' : '')}
                       href={t.href} target="_blank" rel="noreferrer"
-                      title={t.indirect ? 'המקור חסום מאחורי הרשמה — פותח חיפוש למשרה הזו' : undefined}
+                      title={t.indirect ? 'המקור חסום מאחורי הרשמה, פותח חיפוש למשרה הזו' : undefined}
                     >
                       {t.label}
                     </a>
@@ -169,6 +194,7 @@ export default async function Jobs({
                 ))}
                 <MarkApplied id={j.id} cvId={m.cv_id} />
                 <Dismiss id={j.id} />
+                <JobContacts contacts={warm.get(companyKey(j.company)) ?? []} />
               </div>
             );
           })}
