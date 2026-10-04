@@ -34,6 +34,13 @@ const button: React.CSSProperties = { ...link, background: 'transparent', cursor
 
 export type JobRef = { company: string; title: string; cvId?: string | null };
 
+// The three CVs, in the same ids the matcher uses.
+const CVS: [string, string][] = [
+  ['qa', 'QA'],
+  ['program', 'תוכניות'],
+  ['delivery', 'Delivery'],
+];
+
 export default function JobContacts({ contacts, job }: { contacts: WarmContact[]; job: JobRef }) {
   const [rows, setRows] = useState(contacts);
   if (rows.length === 0) return null;
@@ -76,6 +83,11 @@ function Contact({
   const [editing, setEditing] = useState(false);
   const [phone, setPhone] = useState(contact.phone ?? '');
   const [draft, setDraft] = useState<string | null>(null);
+  // Which CV the message points at. It starts at the family the matcher picked,
+  // but that pick is wrong often enough to matter: a Principal Product Manager
+  // posting came through as delivery. Getting it wrong here is not a chip on a
+  // row, it is the wrong file in a message to someone doing Shaul a favour.
+  const [cv, setCv] = useState<string>(job.cvId ?? 'qa');
   const [copied, setCopied] = useState(false);
   const [busy, setBusy] = useState(false);
   const mutuals = mutualsHref(contact.linkedin_url);
@@ -99,15 +111,17 @@ function Contact({
   // The message is built once, when the panel opens, and then left alone. It is
   // a draft in a textarea, not generated text on a leash: editing it before
   // copying is the normal case, not an exception.
+  function compose(cvId: string): string {
+    return referralMessage({
+      contactName: contact.full_name,
+      company: job.company,
+      jobTitle: job.title,
+      cvId,
+    });
+  }
+
   function openDraft() {
-    setDraft(
-      referralMessage({
-        contactName: contact.full_name,
-        company: job.company,
-        jobTitle: job.title,
-        cvId: job.cvId,
-      })
-    );
+    setDraft(compose(cv));
   }
 
   async function copy() {
@@ -211,6 +225,24 @@ function Contact({
               resize: 'vertical',
             }}
           />
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginTop: 6, alignItems: 'center' }}>
+            <span style={{ fontSize: '.72rem', color: 'var(--muted)' }}>קורות חיים:</span>
+            {CVS.map(([id, label]) => (
+              <button
+                key={id}
+                type="button"
+                onClick={() => { setCv(id); setDraft(compose(id)); }}
+                style={{
+                  ...button,
+                  opacity: cv === id ? 1 : 0.5,
+                  borderStyle: cv === id ? 'solid' : 'dashed',
+                }}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginTop: 6 }}>
             <button type="button" style={button} onClick={copy}>
               {copied ? 'הועתק' : 'העתק'}
