@@ -5,6 +5,7 @@ import { jobAge } from '@/lib/age';
 import { companyKey, type WarmContact } from '@/lib/contacts';
 import { postingKey } from '@/lib/dedupe';
 import Dismiss from '@/components/Dismiss';
+import DismissAll from '@/components/DismissAll';
 import JobContacts from '@/components/JobContacts';
 import MarkApplied from '@/components/MarkApplied';
 
@@ -41,7 +42,11 @@ export default async function Jobs({
     // reasons, but it does not order the feed: with no job descriptions every
     // score lands in the low forties, so ordering by it is ordering by noise.
     .order('first_seen', { ascending: false, referencedTable: 'jobs' })
-    .limit(1200);
+    // Raised from 1200 because the source filter is no longer a database
+    // filter. It cannot be one: a posting is a row here only after its copies
+    // from every board are grouped, so filtering before the grouping would
+    // return the LinkedIn copy of a job and hide that Comeet also has it.
+    .limit(3000);
 
   if (!showAll) {
     query = query
@@ -49,8 +54,6 @@ export default async function Jobs({
       .is('jobs.dismissed_at', null)
       .gte('jobs.first_seen', since);
   }
-  // Arriving from a source row on /מקורות: show only what that source brought.
-  if (source) query = query.eq('jobs.source', source);
 
   const { data } = await query;
 
@@ -91,8 +94,29 @@ export default async function Jobs({
   // cv_id already classifies the posting: the CV that scored it highest is the
   // job family it belongs to, so no second taxonomy is needed.
   if (role) picked = picked.filter((m) => m.cv_id === role);
+
+  // Which boards the rows on screen came from, counted per board. A row that
+  // three boards listed counts once under each of them, because the question
+  // the filter answers is "show me what this board brought", and that job is
+  // one of the things it brought.
+  const sourcesOf = (m: any): string[] => [
+    ...new Set<string>(
+      m.copies.map((c: any) => (c.jobs.source as string) || '').filter(Boolean)
+    ),
+  ];
+  const sourceCounts = picked.reduce<Record<string, number>>((acc, m) => {
+    for (const s of sourcesOf(m)) acc[s] = (acc[s] ?? 0) + 1;
+    return acc;
+  }, {});
+  const SOURCES = Object.entries(sourceCounts).sort((a, b) => b[1] - a[1]);
+
+  if (source) picked = picked.filter((m) => sourcesOf(m).includes(source));
   // No cut. A day is a day; truncating it just hides the tail.
   const rows = picked;
+
+  // Every copy of every row on screen, so that closing the set closes the
+  // duplicates too rather than leaving them to come back under another board.
+  const allIds = rows.flatMap((m) => m.copies.map((c: any) => c.jobs.id as string));
 
   // Who Shaul already knows at the companies on this screen. One query for the
   // whole feed, not one per row: at three hundred rows that is three hundred
@@ -121,8 +145,11 @@ export default async function Jobs({
     acc[m.cv_id] = (acc[m.cv_id] ?? 0) + 1;
     return acc;
   }, {});
-  const base = (showAll ? '/jobs?all=1' : `/jobs?days=${days}`)
-    + (source ? `&source=${encodeURIComponent(source)}` : '');
+  const window_ = showAll ? '/jobs?all=1' : `/jobs?days=${days}`;
+  // Each row of chips changes its own dimension and keeps the other two, so
+  // picking a board does not silently throw away the role you were looking at.
+  const base = window_ + (source ? `&source=${encodeURIComponent(source)}` : '');
+  const sourceBase = window_ + (role ? `&role=${role}` : '');
   const ROLES: [string, string][] = [
     ['', 'הכל'], ['qa', 'QA'], ['program', 'ניהול פרויקטים'], ['delivery', 'גרסאות ו‑Delivery'],
   ];
@@ -151,11 +178,39 @@ export default async function Jobs({
         ))}
       </div>
 
+      {SOURCES.length > 1 && (
+        <div className="filters">
+          <a href={sourceBase} className={'filter' + (source ? '' : ' on')}>
+            כל המקורות
+            <span className="n">{Object.values(sourceCounts).reduce((a, b) => a + b, 0)}</span>
+          </a>
+          {SOURCES.map(([src, n]) => (
+            <a
+              key={src}
+              href={`${sourceBase}&source=${encodeURIComponent(src)}`}
+              className={'filter' + (source === src ? ' on' : '')}
+            >
+              {src}
+              <span className="n">{n}</span>
+            </a>
+          ))}
+        </div>
+      )}
+
       {source && (
         <p className="screen-note">
-          מסונן למקור <b>{source}</b> · <Link href={`/jobs?days=${days}`}>כל המקורות ←</Link>
+          מסונן למקור <b>{source}</b> · <Link href={sourceBase}>כל המקורות ←</Link>
         </p>
       )}
+
+      {/* Only under a filter. On the unfiltered feed this would be a button
+          that empties the screen, which is not a thing to put one tap away. */}
+      {source && rows.length > 0 && (
+        <div className="scanbar">
+          <DismissAll ids={allIds} label={source} />
+        </div>
+      )}
+
       <p className="screen-note">
         {showAll
           ? 'כל המשרות במאגר, כולל ישנות ולא רלוונטיות.'
