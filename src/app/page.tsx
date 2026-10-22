@@ -5,6 +5,7 @@ import { jobAge } from '@/lib/age';
 import { companyKey, type WarmContact } from '@/lib/contacts';
 import { postingKey } from '@/lib/dedupe';
 import Dismiss from '@/components/Dismiss';
+import DismissAll from '@/components/DismissAll';
 import JobContacts from '@/components/JobContacts';
 import MarkApplied from '@/components/MarkApplied';
 
@@ -20,8 +21,13 @@ const CONVERSATION_TARGET = 3;
 // for a fresh one once a month and otherwise stays quiet about it.
 const IMPORT_STALE_DAYS = 30;
 
-export default async function Dashboard() {
+export default async function Dashboard({
+  searchParams,
+}: {
+  searchParams?: { source?: string };
+}) {
   const sb = serverClient();
+  const source = searchParams?.source ?? '';
 
   const [convos, weekApps, needsReply, silent, lastSent, applied, lastImport] = await Promise.all([
     sb.from('applications').select('id', { count: 'exact', head: true })
@@ -87,7 +93,28 @@ export default async function Dashboard() {
   // second jobs list in the first place.
   // All of today, not a preview of it. Eight was an arbitrary cut that hid 39
   // of the 47 jobs found this morning.
-  const rows = await freshJobs(1);
+  let picked = await freshJobs(1);
+
+  // Which boards today's rows came from, counted per board. A row that three
+  // boards listed counts once under each, because the question the filter
+  // answers is "show me what this board brought", and that job is one of them.
+  const sourcesOf = (m: any): string[] => [
+    ...new Set<string>(
+      m.copies.map((c: any) => (c.jobs.source as string) || '').filter(Boolean)
+    ),
+  ];
+  const sourceCounts = picked.reduce<Record<string, number>>((acc, m) => {
+    for (const s of sourcesOf(m)) acc[s] = (acc[s] ?? 0) + 1;
+    return acc;
+  }, {});
+  const SOURCES = Object.entries(sourceCounts).sort((a, b) => b[1] - a[1]);
+
+  if (source) picked = picked.filter((m) => sourcesOf(m).includes(source));
+  const rows = picked;
+
+  // Every copy of every row on screen, so closing the set closes the duplicates
+  // too instead of leaving them to come back tomorrow under another board.
+  const allIds = rows.flatMap((m) => m.copies.map((c: any) => c.jobs.id as string));
 
   // The people Shaul already knows at today's companies, in one lookup.
   const keys = [...new Set(rows.map((m) => companyKey(m.jobs.company)).filter(Boolean))];
@@ -158,19 +185,65 @@ export default async function Dashboard() {
       )}
 
       <div className="screen-head">
-        <h2>חדשות היום</h2>
+        <h2>{source || 'חדשות היום'}</h2>
         <Link className="more" href="/jobs">כל המשרות ←</Link>
       </div>
+
+      {/* Shown even for a single source: on a day when one board brought the
+          whole screen, hiding the row hides the only way to reach "close all
+          of them", which is the day it is most wanted. */}
+      {SOURCES.length > 0 && (
+        <div className="filters">
+          {SOURCES.length > 1 && (
+            <a href="/" className={'filter' + (source ? '' : ' on')}>
+              כל המקורות
+              <span className="n">{Object.values(sourceCounts).reduce((a, b) => a + b, 0)}</span>
+            </a>
+          )}
+          {SOURCES.map(([src, n]) => (
+            // A selected chip clears itself, so one chip is still a working
+            // toggle when there is no "all sources" chip to go back to.
+            <a
+              key={src}
+              href={source === src ? '/' : `/?source=${encodeURIComponent(src)}`}
+              className={'filter' + (source === src ? ' on' : '')}
+            >
+              {src}
+              <span className="n">{n}</span>
+            </a>
+          ))}
+        </div>
+      )}
+
+      {/* Only under a filter. On the unfiltered screen this would be a button
+          that empties the day, one tap away from everything else. */}
+      {source && rows.length > 0 && (
+        <div className="scanbar">
+          <DismissAll ids={allIds} label={source} />
+        </div>
+      )}
+
       <p className="screen-note">
         {rows.length > 0
-          ? `${rows.length} נסרקו היום ולא הגשת אליהן.`
+          ? source
+            ? `${rows.length} מ־${source} היום, ולא הגשת אליהן.`
+            : `${rows.length} נסרקו היום ולא הגשת אליהן.`
           : 'הסריקה של היום לא החזירה משרות חדשות על המטרה.'}
       </p>
 
       {rows.length === 0 ? (
         <div className="empty">
-          <b>אין חדש היום</b>
-          <Link href="/jobs?days=7">הצג את השבוע</Link> · או בדוק במסך המקורות אם מקור הפסיק להחזיר.
+          {source ? (
+            <>
+              <b>אין משרות מ־{source} היום</b>
+              <Link href="/">חזרה לכל המקורות</Link>
+            </>
+          ) : (
+            <>
+              <b>אין חדש היום</b>
+              <Link href="/jobs?days=7">הצג את השבוע</Link> · או בדוק במסך המקורות אם מקור הפסיק להחזיר.
+            </>
+          )}
         </div>
       ) : (
         <div className="rows">

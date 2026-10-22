@@ -178,16 +178,23 @@ export default async function Jobs({
         ))}
       </div>
 
-      {SOURCES.length > 1 && (
+      {/* Shown even for a single source. Hiding the row on a one-board day was
+          hiding the only way to reach "close all of them", on exactly the day
+          when one board is responsible for the whole screen. */}
+      {SOURCES.length > 0 && (
         <div className="filters">
-          <a href={sourceBase} className={'filter' + (source ? '' : ' on')}>
-            כל המקורות
-            <span className="n">{Object.values(sourceCounts).reduce((a, b) => a + b, 0)}</span>
-          </a>
+          {SOURCES.length > 1 && (
+            <a href={sourceBase} className={'filter' + (source ? '' : ' on')}>
+              כל המקורות
+              <span className="n">{Object.values(sourceCounts).reduce((a, b) => a + b, 0)}</span>
+            </a>
+          )}
           {SOURCES.map(([src, n]) => (
+            // A selected chip clears itself, so one chip is still a working
+            // toggle when there is no "all sources" chip to go back to.
             <a
               key={src}
-              href={`${sourceBase}&source=${encodeURIComponent(src)}`}
+              href={source === src ? sourceBase : `${sourceBase}&source=${encodeURIComponent(src)}`}
               className={'filter' + (source === src ? ' on' : '')}
             >
               {src}
