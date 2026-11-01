@@ -64,3 +64,19 @@ jobs:
         run: |
           pip install cryptography
           python sync/notify_push.py
+
+      # אחרי שהכל רץ: האם בכלל נכנסו משרות. שומר הסף שבריפו של הבוט בודק
+      # שהריצה בענן הצליחה, וזה בדיוק מה שנשאר ירוק בכל תקלה של 2026.
+      # הבדיקה הזאת שואלת את המסד מה יצא, ולא את GitHub אם הוא רץ.
+      # if: always() כדי שכשל בשלב קודם לא ישתיק דווקא את מי שאמור לצעוק.
+      - name: Is anything actually arriving
+        if: always()
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+          SUPABASE_PROJECT_REF: ${{ secrets.SUPABASE_PROJECT_REF }}
+          VAPID_PUBLIC_KEY: ${{ secrets.VAPID_PUBLIC_KEY }}
+          VAPID_PRIVATE_KEY: ${{ secrets.VAPID_PRIVATE_KEY }}
+          GITHUB_EVENT_NAME: ${{ github.event_name }}
+        run: |
+          pip install cryptography
+          python sync/health.py
