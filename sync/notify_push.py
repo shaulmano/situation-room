@@ -16,7 +16,10 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from gmail_sync import sql, q
 
 MAX_TITLES = 3          # named in the body; the rest are counted
-SITE = os.environ.get("SITE_URL", "https://situation-room-pied.vercel.app")
+# 1.11.2026: הכתובת הישנה, situation-room-pied, ישבה על חשבון Vercel שהושהה
+# ב-30/10 בגלל חריגה ממכסת הבקשות. האפליקציה הועברה לחשבון נפרד, ושם היא
+# מקבלת מכסה משלה במקום לחלוק אותה עם סביבת ה-QA של הרמטיקון.
+SITE = os.environ.get("SITE_URL", "https://situation-room-rosy.vercel.app")
 
 
 def vapid():
