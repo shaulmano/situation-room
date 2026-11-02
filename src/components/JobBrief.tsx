@@ -60,7 +60,7 @@ export type BriefJob = {
 type CvRequest = {
   id: number;
   status: 'pending' | 'working' | 'done' | 'error';
-  result: string | null;
+  filename: string | null;
   note: string | null;
 };
 
@@ -79,7 +79,6 @@ export default function JobBrief({
   const [state, setState] = useState<'' | 'saving' | 'saved' | 'copied' | 'error'>('');
   const [req, setReq] = useState<CvRequest | null>(null);
   const [reqMsg, setReqMsg] = useState('');
-  const [showCv, setShowCv] = useState(false);
 
   async function expand() {
     setOpen(true);
@@ -108,7 +107,7 @@ export default function JobBrief({
       return;
     }
     const body = await res.json();
-    setReq({ id: body.request?.id, status: 'pending', result: null, note: null });
+    setReq({ id: body.request?.id, status: 'pending', filename: null, note: null });
   }
 
   function brief() {
@@ -221,22 +220,19 @@ export default function JobBrief({
         )}
 
         {req && req.status === 'done' && (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-            <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center' }}>
-              <span className="chip ok">קורות חיים מוכנים</span>
-              <button type="button" style={btn} onClick={() => setShowCv(!showCv)}>
-                {showCv ? 'סגור' : 'הצג'}
-              </button>
-              <button
-                type="button"
-                style={btn}
-                onClick={() => navigator.clipboard.writeText(req.result || '').catch(() => {})}
+          <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center' }}>
+            {req.filename ? (
+              // קישור ולא כפתור: ההורדה היא ניווט, והדפדפן בטלפון מטפל בזה
+              // נכון בלי שום קוד שלנו.
+              <a
+                className="apply"
+                href={`/api/cv/file?id=${req.id}`}
+                download={req.filename}
               >
-                העתק
-              </button>
-            </div>
-            {showCv && (
-              <textarea style={area} readOnly value={req.result || ''} />
+                הורד קורות חיים
+              </a>
+            ) : (
+              <span className="chip mute">הטקסט מוכן, הקובץ עדיין לא</span>
             )}
           </div>
         )}

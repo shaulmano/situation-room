@@ -15,9 +15,11 @@ export async function GET(req: NextRequest) {
   if (!jobId) return NextResponse.json({ error: 'missing job_id' }, { status: 400 });
 
   // האחרונה בלבד. בקשה חוזרת על אותה משרה מחליפה את הקודמת מבחינת התצוגה.
+  // בלי pdf_base64: הקובץ שוקל כמאה קילובייט, ובדיקת סטטוס לא צריכה אותו.
+  // filename מתמלא רק כשהקובץ נכתב, ולכן הוא הסימן שיש מה להוריד.
   const { data, error } = await serverClient()
     .from('cv_requests')
-    .select('id, status, result, note, created_at, done_at')
+    .select('id, status, filename, note, created_at, done_at')
     .eq('job_id', jobId)
     .order('created_at', { ascending: false })
     .limit(1)

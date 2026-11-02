@@ -13,6 +13,12 @@ create table if not exists cv_requests (
   base_cv_id  text references cvs(id),
   -- pending בהמתנה, working נאסף, done מוכן, error נכשל
   status      text not null default 'pending',
+  -- הקובץ עצמו, base64. שאול לא רוצה להעתיק טקסט אלא להוריד קובץ מוכן.
+  -- base64 בתוך השורה ולא אחסון חיצוני: קובץ של עמוד אחד הוא כמאה קילובייט,
+  -- וזה חוסך דלי אחסון, הרשאות, וקישור ציבורי לקורות החיים שלו.
+  pdf_base64  text,
+  filename    text,
+  -- הטקסט נשמר גם הוא, כדי שאפשר יהיה לתקן ניסוח בלי לייצר מחדש.
   result      text,
   note        text,
   created_at  timestamptz default now(),
