@@ -8,6 +8,9 @@ import { useEffect, useState } from 'react';
 // קובץ PDF אפשר רק להוריד. את הקובץ עצמו שמודבק להודעות בלינקדאין ממשיכים
 // להחזיק ב-Storage, והשדה filename מצביע אליו.
 const btn: React.CSSProperties = {
+  // width מפורש: globals.css נותן ל-button רוחב מלא בשביל טופס הכניסה, וכאן
+  // זה מתח את "ערוך" על כל השורה והרחיק אותו מהשם שהוא שייך לו.
+  width: 'auto',
   fontSize: '.78rem',
   fontWeight: 700,
   color: 'var(--accent)',
