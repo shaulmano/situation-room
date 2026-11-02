@@ -85,6 +85,7 @@ export default function JobBrief({
   const [reqMsg, setReqMsg] = useState('');
   const [rejecting, setRejecting] = useState(false);
   const [feedback, setFeedback] = useState('');
+  const [dlMsg, setDlMsg] = useState('');
 
   async function expand() {
     setOpen(true);
@@ -98,6 +99,47 @@ export default function JobBrief({
     if (desc?.ok) setText(((await desc.json()).description as string) || '');
     if (cv?.ok) setReq(((await cv.json()).request as CvRequest) ?? null);
     setLoaded(true);
+  }
+
+  // מסירת הקובץ בטלפון.
+  //
+  // קישור רגיל לא עובד שם: הקובץ נפתח בתוך אותו עמוד, בלי כפתור סגירה ובלי
+  // שמירה, וגם target="_blank" לא עזר כי החלון שנפתח ריק מכפתורים. לכן
+  // מושכים את הקובץ ומוסרים אותו לתפריט השיתוף של המערכת, ששם יש "שמור
+  // בקבצים" וגם שליחה במייל או בוואטסאפ, וזה ממילא מה שעושים עם קורות חיים.
+  //
+  // במחשב אין תפריט שיתוף, ושם נופלים להורדה רגילה דרך blob.
+  async function deliverCv() {
+    if (!req) return;
+    setDlMsg('מוריד…');
+    const res = await fetch(`/api/cv/file?id=${req.id}`).catch(() => null);
+    if (!res || !res.ok) {
+      setDlMsg('ההורדה נכשלה');
+      return;
+    }
+    const blob = await res.blob();
+    const name = req.filename || 'cv.pdf';
+    setDlMsg('');
+
+    const nav = navigator as any;
+    try {
+      const file = new File([blob], name, { type: 'application/pdf' });
+      if (nav.canShare && nav.canShare({ files: [file] })) {
+        await nav.share({ files: [file], title: name });
+        return;
+      }
+    } catch {
+      // ביטול של תפריט השיתוף הוא שגיאה, והוא לא כישלון. נופלים להורדה.
+    }
+
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = name;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 10000);
   }
 
   // rejectId מסומן כשזו דחייה של גרסה קיימת: הישנה מסומנת נדחתה, וההערה
@@ -255,20 +297,9 @@ export default function JobBrief({
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
           <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center' }}>
             {req.filename ? (
-              // קישור ולא כפתור: ההורדה היא ניווט, והדפדפן בטלפון מטפל בזה
-              // נכון בלי שום קוד שלנו.
-              /* target="_blank": בטלפון הקובץ נפתח בתוך אותו עמוד, ואז אין
-                 לאן לחזור ואין איך לסגור. בלשונית נפרדת הדפדפן נותן גם סגירה
-                 וגם שיתוף ושמירה, והעמוד של חדר המצב נשאר מאחור. */
-              <a
-                className="apply"
-                href={`/api/cv/file?id=${req.id}`}
-                download={req.filename}
-                target="_blank"
-                rel="noreferrer"
-              >
-                הורד קורות חיים
-              </a>
+              <button type="button" style={btn} onClick={deliverCv}>
+                {dlMsg || 'הורד קורות חיים'}
+              </button>
             ) : (
               <span className="chip mute">הטקסט מוכן, הקובץ עדיין לא</span>
             )}
