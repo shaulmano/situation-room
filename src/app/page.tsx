@@ -6,6 +6,7 @@ import { companyKey, type WarmContact } from '@/lib/contacts';
 import { postingKey } from '@/lib/dedupe';
 import Dismiss from '@/components/Dismiss';
 import DismissAll from '@/components/DismissAll';
+import JobBrief from '@/components/JobBrief';
 import JobContacts from '@/components/JobContacts';
 import MarkApplied from '@/components/MarkApplied';
 
@@ -294,6 +295,7 @@ export default async function Dashboard({
                   contacts={warm.get(companyKey(j.company)) ?? []}
                   job={{ company: j.company, title: j.title, cvId: m.cv_id }}
                 />
+                <JobBrief job={{ id: j.id, title: j.title, company: j.company, url: j.url }} />
               </div>
             );
           })}
