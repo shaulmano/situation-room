@@ -257,10 +257,15 @@ export default function JobBrief({
             {req.filename ? (
               // קישור ולא כפתור: ההורדה היא ניווט, והדפדפן בטלפון מטפל בזה
               // נכון בלי שום קוד שלנו.
+              /* target="_blank": בטלפון הקובץ נפתח בתוך אותו עמוד, ואז אין
+                 לאן לחזור ואין איך לסגור. בלשונית נפרדת הדפדפן נותן גם סגירה
+                 וגם שיתוף ושמירה, והעמוד של חדר המצב נשאר מאחור. */
               <a
                 className="apply"
                 href={`/api/cv/file?id=${req.id}`}
                 download={req.filename}
+                target="_blank"
+                rel="noreferrer"
               >
                 הורד קורות חיים
               </a>
