@@ -91,6 +91,11 @@ def fetch():
     sql("update cv_requests set status = 'pending' "
         "where status = 'working' and created_at < now() - interval '1 hour';")
 
+    # תמונת מצב קצרה של הטבלה. בלעדיה "אין בקשות" ו"הבקשה נתקעה במצב אחר"
+    # נראים זהים, וזה בדיוק מה שבלבל אותנו בבדיקה הראשונה.
+    for row in sql("select status, count(*) as n from cv_requests group by status order by status;"):
+        summary("STATUS %s: %s" % (row["status"], row["n"]))
+
     rows = sql(
         "select r.id, r.job_id, r.base_cv_id, r.feedback, "
         "       j.title, j.company, j.url, j.description "
