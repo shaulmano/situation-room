@@ -66,6 +66,25 @@ def push(title, body):
         print(f"  {sub['endpoint'][:48]}… -> {send(sub, payload, pub, priv)}")
 
 
+def jobs_without_matches():
+    """משרה שנכנסה אבל לא נוקדה. בלתי נראית על המסך, ובלי שום שגיאה.
+
+    2.11.2026: גרסת קורות חיים חדשה הפילה את score.py, והמשרות של אותו יום
+    נכנסו ל-jobs בלי שורה ב-matches. כל המסכים מצרפים jobs ל-matches, ולכן
+    הלוח נראה ריק בזמן שהמשרות היו שם. שתי הבדיקות הקיימות לא תפסו את זה:
+    המשרות כן נכנסו, והמקורות כן הביאו.
+    """
+    n = sql(
+        "select count(*) n from jobs j "
+        "where j.first_seen >= now() - interval '24 hours' "
+        "  and not exists (select 1 from matches m where m.job_id = j.id)"
+    )[0]['n']
+    print(f'jobs from the last 24h with no match row: {n}')
+    if int(n) == 0:
+        return None
+    return f'{n} משרות נכנסו ולא נוקדו, ולכן הן לא מופיעות על המסך'
+
+
 def main():
     # הסנכרון רץ שלוש פעמים ביום. מתריעים בבוקר ובערב בלבד, כדי שהתראה
     # בזמן תקלה ממושכת תגיע פעמיים ביום ולא שלוש. הרצה ידנית תמיד בודקת.
@@ -74,7 +93,8 @@ def main():
     if not manual and hour not in (4, 20):
         print(f'{hour:02d}:00 Israel: not an alerting slot, checking only')
 
-    problems = [p for p in (quiet_pipeline(), sources_gone_quiet()) if p]
+    problems = [p for p in (quiet_pipeline(), sources_gone_quiet(),
+                            jobs_without_matches()) if p]
 
     if not problems:
         print('healthy')

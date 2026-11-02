@@ -156,11 +156,35 @@ def main():
     jobs = sql("select id, title, company, location, posted, description from jobs")
     print("scoring %d jobs against %d CVs" % (len(jobs), len(cvs)))
 
-    rows = []
+    # שגיאה על צמד אחד לא מפילה את כל המעבר.
+    #
+    # 2.11.2026: גרסת קורות חיים חדשה הפילה את כל הניקוד ב-KeyError, והניקוד
+    # רץ בתוך הוורקפלו של הסנכרון. התוצאה: המשרות כן נכנסו למסד, אבל בלי
+    # שורת התאמה, והמסכים מצרפים jobs ל-matches ולכן הן היו בלתי נראות.
+    # משרה בלי התאמה היא משרה שלא קיימת מבחינת שאול, וזה קרה בלי שום שגיאה
+    # על המסך.
+    #
+    # לכן: כל צמד נתפס בנפרד, הספירה נרשמת, ובסוף נכשלים בקול רק אם חלק גדול
+    # נפל. ככה תקלה בגרסה אחת עולה את הגרסה הזאת, לא את כל הלוח.
+    rows, failures, first_error = [], 0, None
     for job in jobs:
         for cv_id, cv_text in cvs.items():
-            total, dims, reasons, flags = score_one(job, cv_id, cv_text)
+            try:
+                total, dims, reasons, flags = score_one(job, cv_id, cv_text)
+            except Exception as e:
+                failures += 1
+                if first_error is None:
+                    first_error = "%s/%s: %s" % (job.get("id"), cv_id, e)
+                continue
             rows.append((job["id"], cv_id, total, dims, reasons, flags))
+
+    if failures:
+        print("WARNING: %d of %d pairs failed to score. First: %s"
+              % (failures, failures + len(rows), first_error))
+        if failures > (failures + len(rows)) * 0.2:
+            raise SystemExit(
+                "more than a fifth of the pairs failed to score - refusing to "
+                "write a partial ranking: %s" % first_error)
 
     def arr(items):
         return "array[" + ",".join(q(x) for x in items) + "]::text[]" if items else "'{}'::text[]"
