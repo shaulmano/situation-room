@@ -19,6 +19,7 @@
 import base64
 import json
 import os
+import re
 import subprocess
 import sys
 import tempfile
@@ -141,6 +142,29 @@ def fetch():
     summary("--- END ---")
 
 
+def file_name_for(request_id, fallback=""):
+    """שם הקובץ נגזר מהמשרה עצמה, לא ממה שנבחר בזמן הכתיבה.
+
+    שאול מוריד קובץ ואחר כך מחפש אותו בין עשרה קבצים בתיקייה. שם כמו
+    Shaul_Mano_Product_Manager לא אומר לאיזו משרה הוא שייך. החברה והתפקיד
+    אומרים, והם כבר שמורים על המשרה.
+
+    אותיות עבריות נשמרות: iOS ואנדרואיד מציגים אותן נכון, ועדיף שם בעברית
+    על שם חתוך.
+    """
+    rows = sql("select j.company, j.title from cv_requests r "
+               "join jobs j on j.id = r.job_id where r.id = %s;" % request_id)
+    parts = ["Shaul Mano"]
+    if rows:
+        parts += [rows[0].get("company") or "", rows[0].get("title") or ""]
+    raw = " ".join(p for p in parts if p).strip() or fallback or "cv"
+    # רווחים לקו תחתון, וכל מה שאינו אות, ספרה, קו תחתון או מקף יורד.
+    name = re.sub(r"\s+", "_", raw)
+    name = "".join(c for c in name if c.isalnum() or c in "_-")
+    name = re.sub(r"_+", "_", name).strip("_")[:90]
+    return (name or "cv") + ".pdf"
+
+
 def plain_text(content):
     """הטקסט שנשמר לצד הקובץ, כדי שאפשר יהיה לתקן ניסוח בלי לייצר מחדש."""
     out = [content.get("name", ""), content.get("headline", ""), content.get("contact", "")]
@@ -184,9 +208,7 @@ def render(content_path, request_id, filename):
         summary("ERROR: output is not a PDF")
         raise SystemExit(1)
 
-    name = "".join(c for c in (filename or "cv.pdf") if c.isalnum() or c in "._-") or "cv.pdf"
-    if not name.lower().endswith(".pdf"):
-        name += ".pdf"
+    name = file_name_for(request_id, filename)
 
     # מרכאות דולר: ה-base64 הוא כמאה אלף תווים ואין טעם לברוח כל גרש בנפרד.
     sql("update cv_requests set status = 'done', done_at = now(), "
