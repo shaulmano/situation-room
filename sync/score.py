@@ -27,6 +27,19 @@ CVS = {
     "delivery": ["release", "delivery", "deployment", "גרסאות", "שחרור"],
 }
 
+def keywords_for(cv_id):
+    """מילות המפתח של גרסת קורות חיים, גם כשאיש לא הגדיר אותן.
+
+    המילון למעלה מכסה את שלוש הגרסאות הוותיקות. גרסה שנוספה מהמסך בהגדרות
+    לא נמצאת בו, ובמקום להפיל את הצינור היא מנוקדת מול כל המילים, בתוספת
+    המילים שבמזהה שלה עצמו. "rnd-program-manager" נותן rnd, program, manager.
+    """
+    if cv_id in CVS:
+        return CVS[cv_id]
+    from_id = [w for w in re.split(r"[^a-z0-9]+", (cv_id or "").lower()) if len(w) > 2]
+    return sorted(set(sum(CVS.values(), []) + from_id))
+
+
 MGMT = ["manager", "director", "head of", "lead", "leader", "vp", "chief", "מנהל", "ראש צוות", "ראש.ת"]
 IC = ["engineer", "developer", "analyst", "specialist", "junior", "student", "מפתח", "סטודנט"]
 
@@ -64,7 +77,16 @@ def score_one(job, cv_id, cv_text):
     dims, reasons, flags = {}, [], []
 
     # role — does the title name what this CV is for
-    hits = count(title, CVS[cv_id])
+    #
+    # 2.11.2026: המסך החדש בהגדרות מאפשר להוסיף גרסת קורות חיים, והמילון כאן
+    # היה קבוע בקוד. גרסה שלא הופיעה בו הפילה את score.py ב-KeyError, ומכיוון
+    # שהניקוד רץ בתוך אותו וורקפלו של הסנכרון, כל המשרות החדשות נעצרו בדרך
+    # למסד. היום לא נכנסה אף משרה אחרי 12:30 בגלל זה.
+    #
+    # גרסה שאינה במילון מנוקדת מול כל מילות המפתח: עדיף ניקוד גס על גרסה
+    # חדשה מאשר צינור שנופל. keywords_for מחזיר גם מילים מתוך שם הגרסה עצמה,
+    # כך ש-rnd-program-manager תופס program ו-manager בלי שאיש יגדיר כלום.
+    hits = count(title, keywords_for(cv_id))
     dims["role"] = 30 if hits >= 2 else 22 if hits == 1 else 0
     if dims["role"] == 0:
         flags.append("הכותרת לא תואמת את קובץ קורות החיים")
