@@ -117,6 +117,23 @@ export default async function Dashboard({
   // too instead of leaving them to come back tomorrow under another board.
   const allIds = rows.flatMap((m) => m.copies.map((c: any) => c.jobs.id as string));
 
+  // Which of today's rows already has a tailored CV waiting, in one lookup.
+  // Without this the only way to find a finished CV is to open every row.
+  // The table arrives with migration 0005, so a missing table reads as "none"
+  // rather than taking the screen down with it.
+  const cvStatus = new Map<string, string>();
+  if (rows.length > 0) {
+    const { data: reqs } = await sb
+      .from('cv_requests')
+      .select('job_id, status, created_at')
+      .in('job_id', allIds)
+      .order('created_at', { ascending: false });
+
+    for (const r of (reqs ?? []) as any[]) {
+      if (!cvStatus.has(r.job_id)) cvStatus.set(r.job_id, r.status);
+    }
+  }
+
   // The people Shaul already knows at today's companies, in one lookup.
   const keys = [...new Set(rows.map((m) => companyKey(m.jobs.company)).filter(Boolean))];
   const warm = new Map<string, WarmContact[]>();
@@ -295,7 +312,17 @@ export default async function Dashboard({
                   contacts={warm.get(companyKey(j.company)) ?? []}
                   job={{ company: j.company, title: j.title, cvId: m.cv_id }}
                 />
-                <JobBrief job={{ id: j.id, title: j.title, company: j.company, url: j.url }} />
+                <JobBrief
+                  job={{
+                    id: j.id, title: j.title, company: j.company,
+                    url: j.url, cvId: m.cv_id,
+                  }}
+                  cvStatus={
+                    (m.copies
+                      .map((c: any) => cvStatus.get(c.jobs.id))
+                      .find(Boolean) as any) ?? null
+                  }
+                />
               </div>
             );
           })}

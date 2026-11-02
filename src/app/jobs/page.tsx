@@ -126,6 +126,23 @@ export default async function Jobs({
   // duplicates too rather than leaving them to come back under another board.
   const allIds = rows.flatMap((m) => m.copies.map((c: any) => c.jobs.id as string));
 
+  // Which rows already have a tailored CV waiting, in one lookup. Without it
+  // the only way to find a finished CV is to open every row. The table arrives
+  // with migration 0005, so a missing one reads as "none" instead of taking
+  // the screen down.
+  const cvStatus = new Map<string, string>();
+  if (rows.length > 0) {
+    const { data: reqs } = await sb
+      .from('cv_requests')
+      .select('job_id, status, created_at')
+      .in('job_id', allIds)
+      .order('created_at', { ascending: false });
+
+    for (const r of (reqs ?? []) as any[]) {
+      if (!cvStatus.has(r.job_id)) cvStatus.set(r.job_id, r.status);
+    }
+  }
+
   // Who Shaul already knows at the companies on this screen. One query for the
   // whole feed, not one per row: at three hundred rows that is three hundred
   // round trips for what is a lookup.
@@ -294,7 +311,17 @@ export default async function Jobs({
                   contacts={warm.get(companyKey(j.company)) ?? []}
                   job={{ company: j.company, title: j.title, cvId: m.cv_id }}
                 />
-                <JobBrief job={{ id: j.id, title: j.title, company: j.company, url: j.url }} />
+                <JobBrief
+                  job={{
+                    id: j.id, title: j.title, company: j.company,
+                    url: j.url, cvId: m.cv_id,
+                  }}
+                  cvStatus={
+                    (m.copies
+                      .map((c: any) => cvStatus.get(c.jobs.id))
+                      .find(Boolean) as any) ?? null
+                  }
+                />
               </div>
             );
           })}
