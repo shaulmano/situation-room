@@ -125,7 +125,9 @@ export default function JobBrief({
     try {
       const file = new File([blob], name, { type: 'application/pdf' });
       if (nav.canShare && nav.canShare({ files: [file] })) {
-        await nav.share({ files: [file], title: name });
+        // רק files. כותרת או טקסט לצד הקובץ נשמרים ב-iOS כפריט נפרד,
+        // וזה מה שיצר קובץ text ריק של 38 בייט ליד ה-PDF.
+        await nav.share({ files: [file] });
         return;
       }
     } catch {
