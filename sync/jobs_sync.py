@@ -70,6 +70,10 @@ def rows(path):
                 "first_seen": j.get("first_seen") or None,
                 "last_seen": j.get("last_seen") or None,
                 "on_target": any(k in title.lower() for k in ON_TARGET),
+                # הבוט מושך את התיאור מהעמוד הציבורי של לינקדאין ועד 2.11.2026
+                # הוא נזרק לפני הכתיבה לקובץ. בלי תיאור הניקוד עובד לפי הכותרת
+                # בלבד, ושאול נדרש להדביק את המודעה ידנית כדי לקבל קורות חיים.
+                "description": (j.get("description") or "")[:3000] or None,
             }
 
 
@@ -85,21 +89,25 @@ def main():
     for i in range(0, len(all_rows), BATCH):
         chunk = all_rows[i:i + BATCH]
         vals = ",".join(
-            "(%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)"
+            "(%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)"
             % (q(r["id"]), q(r["title"]), q(r["company"]), q(r["source"]), q(r["url"]),
                q(r["location"]), q(r["posted"]), q(r["first_seen"]), q(r["last_seen"]),
-               "true" if r["on_target"] else "false")
+               "true" if r["on_target"] else "false", q(r["description"]))
             for r in chunk
         )
         sql(
             # Conflict on the url, not the id. jobs.jsonl and the live scan give
             # the same posting different ids, and the url is what identifies it.
             "insert into jobs "
-            "(id,title,company,source,url,location,posted,first_seen,last_seen,on_target) "
+            "(id,title,company,source,url,location,posted,first_seen,last_seen,on_target,"
+            "description) "
             "values %s on conflict (url) do update set title=excluded.title, "
             "company=excluded.company, location=excluded.location, "
             "posted=excluded.posted, last_seen=excluded.last_seen, "
-            "on_target=excluded.on_target;" % vals
+            "on_target=excluded.on_target, "
+            # coalesce ולא השמה: שאול מדביק תיאורים ידנית, וריצה שבה הבוט לא
+            # הביא תיאור היתה מוחקת את מה שהוא כתב.
+            "description=coalesce(excluded.description, jobs.description);" % vals
         )
         total += len(chunk)
         print("  upserted %d/%d" % (total, len(all_rows)))
