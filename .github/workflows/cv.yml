@@ -1,0 +1,83 @@
+name: CV requests
+
+# הצד שמחבר בין הכפתור בחדר המצב לבין קלוד.
+#
+# הדרך הראשונה שנבנתה היתה מחבר Supabase בתוך קלוד, והיא נפלה על שני דברים:
+# מחבר מאפשר ארגון אחד בלבד, והארגון של חדר המצב אינו זה של manomatic, וניסיון
+# להוסיף מחבר שני נתקע כי הרשת של שאול לא מגיעה ל-api.supabase.com, ושם יושב
+# מסך האישור.
+#
+# לרנר של GitHub אין את הבעיה: הוא כבר כותב מכאן למסד בכל סריקה. לכן קלוד
+# מפעיל את הוורקפלו הזה במקום לדבר עם המסד בעצמו.
+#
+#   mode=fetch   מדפיס את הבקשה הממתינה הבאה עם תיאור המשרה וגרסת הבסיס.
+#                קלוד קורא את זה מיומן הריצה.
+#   mode=render  מקבל את התוכן שקלוד כתב, מרנדר PDF וכותב אותו לשורה.
+#
+# ידני בלבד. אין כאן שעון: הבקשה מגיעה מלחיצה של שאול, וקלוד הוא שמפעיל.
+on:
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: 'fetch or render'
+        required: true
+        default: 'fetch'
+      request_id:
+        description: 'cv_requests.id (render only)'
+        required: false
+      filename:
+        description: 'Shaul_Mano_Role.pdf (render only)'
+        required: false
+      content:
+        description: 'JSON for tools/render_cv.mjs (render only)'
+        required: false
+
+# שתי ריצות על אותה בקשה היו כותבות שתי גרסאות לאותה שורה.
+concurrency:
+  group: situation-room-cv
+  cancel-in-progress: false
+
+jobs:
+  cv:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      # רק למצב render. fetch הוא שאילתה אחת ולא צריך דפדפן, ומשיכת Chromium
+      # לכל בדיקה אם יש בקשה היתה דקה שלמה על כלום.
+      - uses: actions/setup-node@v4
+        if: inputs.mode == 'render'
+        with:
+          node-version: '20'
+
+      - name: Install Playwright
+        if: inputs.mode == 'render'
+        run: |
+          npm install --no-save playwright@1.49.1
+          npx playwright install --with-deps chromium
+
+      - name: Fetch the next pending request
+        if: inputs.mode == 'fetch'
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+          SUPABASE_PROJECT_REF: ${{ secrets.SUPABASE_PROJECT_REF }}
+        run: python sync/cv_requests.py fetch
+
+      - name: Render and store the PDF
+        if: inputs.mode == 'render'
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+          SUPABASE_PROJECT_REF: ${{ secrets.SUPABASE_PROJECT_REF }}
+          CV_CONTENT: ${{ inputs.content }}
+          CV_REQUEST_ID: ${{ inputs.request_id }}
+          CV_FILENAME: ${{ inputs.filename }}
+        run: |
+          # דרך משתנה סביבה ולא דרך שורת הפקודה: התוכן הוא JSON עם מרכאות,
+          # גרשים וסוגריים, ו-bash היה מפרק אותו.
+          python -c "import os,io; io.open('content.json','w',encoding='utf-8').write(os.environ['CV_CONTENT'])"
+          python sync/cv_requests.py render content.json "$CV_REQUEST_ID" "$CV_FILENAME"
