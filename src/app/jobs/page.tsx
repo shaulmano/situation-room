@@ -93,6 +93,13 @@ export default async function Jobs({
     );
   // cv_id already classifies the posting: the CV that scored it highest is the
   // job family it belongs to, so no second taxonomy is needed.
+  // המאגר שהצ'יפים סופרים: אחרי שהוסרו מה שהוגש ומה שנסגר ואחרי הקיבוץ,
+  // ולפני בחירת המשפחה, כי כל צ'יפ צריך לדעת כמה יש בו ולא כמה יש בנבחר.
+  //
+  // 2.11.2026: קודם הם נספרו מתוך תוצאת השאילתה, לפני סינון ההגשות. התוצאה
+  // הייתה "הכל 15" מעל רשימה ריקה, מיד אחרי ששאול סימן את כולן כהוגשו, וזה
+  // נקרא כאילו משרות שהגיש חזרו.
+  const family = picked;
   if (role) picked = picked.filter((m) => m.cv_id === role);
 
   // Which boards the rows on screen came from, counted per board. A row that
@@ -141,7 +148,7 @@ export default async function Jobs({
     }
   }
 
-  const counts = [...best.values()].reduce<Record<string, number>>((acc, m) => {
+  const counts = family.reduce<Record<string, number>>((acc, m) => {
     acc[m.cv_id] = (acc[m.cv_id] ?? 0) + 1;
     return acc;
   }, {});
