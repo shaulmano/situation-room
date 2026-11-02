@@ -49,6 +49,10 @@ const area: React.CSSProperties = {
   boxSizing: 'border-box',
 };
 
+// הפקודה שמפעילה את ההכנה מיד, במקום לחכות לאיסוף בשעה העגולה. היא מוצגת
+// על השורה עצמה: אין טעם ביכולת שצריך לזכור איפה היא ואיך קוראים לה.
+const RUN_NOW = 'תריץ קורות חיים';
+
 export type BriefJob = {
   id: string;
   title: string;
@@ -218,9 +222,26 @@ export default function JobBrief({
         )}
 
         {req && (req.status === 'pending' || req.status === 'working') && (
-          <span className="chip mute">
-            הבקשה נרשמה. קלוד מכין את הגרסה ושולח התראה כשהיא מוכנה
-          </span>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+            <span className="chip mute">
+              הבקשה נרשמה. קלוד אוסף אותה בשעה העגולה ושולח התראה כשהקובץ מוכן
+            </span>
+            {/* הפקודה עצמה על השורה, ולא במקום אחר שצריך לזכור. מי שלא רוצה
+                לחכות לשעה העגולה פשוט מעתיק אותה לקלוד. */}
+            <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center' }}>
+              <span style={{ fontSize: '.76rem', color: 'var(--muted)' }}>
+                רוצה שזה יקרה עכשיו? כתוב לקלוד:
+              </span>
+              <code style={{ fontSize: '.78rem', fontWeight: 700 }}>{RUN_NOW}</code>
+              <button
+                type="button"
+                style={btn}
+                onClick={() => navigator.clipboard.writeText(RUN_NOW).catch(() => {})}
+              >
+                העתק
+              </button>
+            </div>
+          </div>
         )}
 
         {req && req.status === 'error' && (
