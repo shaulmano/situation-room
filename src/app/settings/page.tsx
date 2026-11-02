@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { browserClient } from '@/lib/supabase';
 import ContactsImport from '@/components/ContactsImport';
+import CvLibrary from '@/components/CvLibrary';
 import PushToggle from '@/components/PushToggle';
 
 export default function Settings() {
@@ -43,6 +44,9 @@ export default function Settings() {
       <div className="rows">
         <div className="row"><span className="grow">מחובר כ־<span className="sub">{email || '…'}</span></span></div>
       </div>
+
+      <h2>קורות חיים</h2>
+      <CvLibrary />
 
       <h2>אנשי קשר מלינקדאין</h2>
       <ContactsImport />
