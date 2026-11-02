@@ -11,8 +11,11 @@ create table if not exists cv_requests (
   id          bigint generated always as identity primary key,
   job_id      text not null references jobs(id) on delete cascade,
   base_cv_id  text references cvs(id),
-  -- pending בהמתנה, working נאסף, done מוכן, error נכשל
+  -- pending בהמתנה, working נאסף, done מוכן, rejected נדחה, error נכשל
   status      text not null default 'pending',
+  -- מה שהוא ביקש לשנות כשדחה את הגרסה הקודמת. בלי זה ייצור חוזר מחזיר את
+  -- אותה גרסה בניסוח אחר, כי אין שום דבר שמסמן מה היה לא בסדר.
+  feedback    text,
   -- הקובץ עצמו, base64. שאול לא רוצה להעתיק טקסט אלא להוריד קובץ מוכן.
   -- base64 בתוך השורה ולא אחסון חיצוני: קובץ של עמוד אחד הוא כמאה קילובייט,
   -- וזה חוסך דלי אחסון, הרשאות, וקישור ציבורי לקורות החיים שלו.

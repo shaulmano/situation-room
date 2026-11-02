@@ -30,10 +30,20 @@ export async function GET(req: NextRequest) {
 }
 
 export async function POST(req: NextRequest) {
-  const { job_id, base_cv_id } = await req.json();
+  const { job_id, base_cv_id, reject_id, feedback } = await req.json();
   if (!job_id) return NextResponse.json({ error: 'missing job_id' }, { status: 400 });
 
   const sb = serverClient();
+
+  // דחייה: הגרסה הקודמת מסומנת נדחתה, וההערה עוברת לבקשה החדשה. בלי העברת
+  // ההערה הייצור החוזר מחזיר את אותה גרסה בניסוח אחר, כי שום דבר לא מסמן
+  // מה היה לא בסדר בקודמת.
+  if (reject_id) {
+    await sb
+      .from('cv_requests')
+      .update({ status: 'rejected', note: typeof feedback === 'string' ? feedback.trim() || null : null })
+      .eq('id', reject_id);
+  }
 
   // בלי תיאור אין מה לכוון מולו, והתוצאה הייתה גרסה גנרית שנראית כמו עבודה
   // אמיתית. עדיף לסרב כאן מאשר להחזיר משהו שלא שווה כלום.
@@ -66,6 +76,7 @@ export async function POST(req: NextRequest) {
 
   const row: Record<string, unknown> = { job_id, status: 'pending' };
   if (typeof base_cv_id === 'string' && base_cv_id.trim()) row.base_cv_id = base_cv_id.trim();
+  if (typeof feedback === 'string' && feedback.trim()) row.feedback = feedback.trim();
 
   const { data, error } = await sb
     .from('cv_requests')

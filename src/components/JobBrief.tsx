@@ -79,6 +79,8 @@ export default function JobBrief({
   const [state, setState] = useState<'' | 'saving' | 'saved' | 'copied' | 'error'>('');
   const [req, setReq] = useState<CvRequest | null>(null);
   const [reqMsg, setReqMsg] = useState('');
+  const [rejecting, setRejecting] = useState(false);
+  const [feedback, setFeedback] = useState('');
 
   async function expand() {
     setOpen(true);
@@ -94,12 +96,19 @@ export default function JobBrief({
     setLoaded(true);
   }
 
-  async function askForCv() {
+  // rejectId מסומן כשזו דחייה של גרסה קיימת: הישנה מסומנת נדחתה, וההערה
+  // נוסעת לבקשה החדשה.
+  async function askForCv(rejectId?: number) {
     setReqMsg('');
     const res = await fetch('/api/cv/request', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ job_id: job.id, base_cv_id: job.cvId ?? null }),
+      body: JSON.stringify({
+        job_id: job.id,
+        base_cv_id: job.cvId ?? null,
+        reject_id: rejectId ?? null,
+        feedback: feedback.trim() || null,
+      }),
     }).catch(() => null);
 
     if (!res || !res.ok) {
@@ -107,6 +116,8 @@ export default function JobBrief({
       return;
     }
     const body = await res.json();
+    setRejecting(false);
+    setFeedback('');
     setReq({ id: body.request?.id, status: 'pending', filename: null, note: null });
   }
 
@@ -199,7 +210,7 @@ export default function JobBrief({
             type="button"
             style={btn}
             disabled={text.trim().length < 120}
-            onClick={askForCv}
+            onClick={() => askForCv()}
             title={text.trim().length < 120 ? 'קודם הדבק ושמור את תיאור המשרה' : undefined}
           >
             ייצר קורות חיים למשרה הזאת
@@ -215,11 +226,12 @@ export default function JobBrief({
         {req && req.status === 'error' && (
           <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center' }}>
             <span className="chip crit">{req.note || 'הייצור נכשל'}</span>
-            <button type="button" style={btn} onClick={askForCv}>נסה שוב</button>
+            <button type="button" style={btn} onClick={() => askForCv(req.id)}>נסה שוב</button>
           </div>
         )}
 
         {req && req.status === 'done' && (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
           <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center' }}>
             {req.filename ? (
               // קישור ולא כפתור: ההורדה היא ניווט, והדפדפן בטלפון מטפל בזה
@@ -234,6 +246,32 @@ export default function JobBrief({
             ) : (
               <span className="chip mute">הטקסט מוכן, הקובץ עדיין לא</span>
             )}
+            <button
+              type="button"
+              style={{ ...btn, borderColor: 'var(--hair)', color: 'var(--muted)' }}
+              onClick={() => setRejecting(!rejecting)}
+            >
+              {rejecting ? 'ביטול' : 'דחה וייצר שוב'}
+            </button>
+          </div>
+
+          {/* ההערה היא מה שמונע מהגרסה הבאה להיות אותו דבר בניסוח אחר, ולכן
+              היא מוצעת כאן ולא נדרשת: דחייה בלי הסבר עדיפה על דחייה שנתקעת. */}
+          {rejecting && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+              <textarea
+                style={{ ...area, minHeight: 70 }}
+                value={feedback}
+                onChange={(e) => setFeedback(e.target.value)}
+                placeholder="מה לשנות? לדוגמה: להדגיש ניהול תקציב, פחות על QA. אפשר להשאיר ריק"
+              />
+              <div>
+                <button type="button" style={btn} onClick={() => askForCv(req.id)}>
+                  ייצר גרסה חדשה
+                </button>
+              </div>
+            </div>
+          )}
           </div>
         )}
 
