@@ -19,7 +19,7 @@ on:
   workflow_dispatch:
     inputs:
       mode:
-        description: 'fetch or render'
+        description: 'fetch, render or audit'
         required: true
         default: 'fetch'
       request_id:
@@ -60,6 +60,14 @@ jobs:
         run: |
           npm install --no-save playwright@1.49.1
           npx playwright install --with-deps chromium
+
+      # משווה את הגרסאות שכבר יוצרו. קריאה בלבד.
+      - name: Audit the versions already produced
+        if: inputs.mode == 'audit'
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+          SUPABASE_PROJECT_REF: ${{ secrets.SUPABASE_PROJECT_REF }}
+        run: python sync/cv_requests.py audit 5
 
       - name: Fetch the next pending request
         if: inputs.mode == 'fetch'

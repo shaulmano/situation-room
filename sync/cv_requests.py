@@ -165,6 +165,28 @@ def file_name_for(request_id, fallback=""):
     return (name or "cv") + ".pdf"
 
 
+def audit(n=5):
+    """מדפיס את הגרסאות האחרונות שיוצרו, כדי לבדוק אם הן באמת שונות זו מזו.
+
+    שאול אמר שהוא מרגיש שאין הבדל בין אחת לשנייה. הרגשה כזאת נבדקת ולא
+    מנוחשת: אם הפתיחות והשורות חוזרות, הכתיבה מתכנסת לאותו תבנית ללא קשר
+    למשרה, וזה כישלון של ההנחיה ולא של הפורמט.
+    """
+    rows = sql(
+        "select r.id, j.title, j.company, length(r.result) as chars, r.result "
+        "from cv_requests r join jobs j on j.id = r.job_id "
+        "where r.status in ('done','rejected') and r.result is not null "
+        "order by r.created_at desc limit %d;" % int(n))
+    if not rows:
+        summary("AUDIT: no generated versions yet")
+        return
+    for r in rows:
+        summary("")
+        summary("=== REQUEST %s | %s | %s | %s chars ==="
+                % (r["id"], r.get("company") or "?", r.get("title") or "?", r["chars"]))
+        summary((r.get("result") or "")[:1400])
+
+
 def plain_text(content):
     """הטקסט שנשמר לצד הקובץ, כדי שאפשר יהיה לתקן ניסוח בלי לייצר מחדש."""
     out = [content.get("name", ""), content.get("headline", ""), content.get("contact", "")]
@@ -223,6 +245,8 @@ if __name__ == "__main__":
     mode = sys.argv[1] if len(sys.argv) > 1 else "fetch"
     if mode == "fetch":
         fetch()
+    elif mode == "audit":
+        audit(sys.argv[2] if len(sys.argv) > 2 else 5)
     elif mode == "render":
         render(sys.argv[2], sys.argv[3], sys.argv[4] if len(sys.argv) > 4 else "cv.pdf")
     else:
