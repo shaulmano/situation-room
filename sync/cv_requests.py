@@ -139,6 +139,19 @@ def fetch():
     if prev:
         summary("--- PREVIOUS REJECTED VERSION ---")
         summary(prev[0].get("result") or "")
+
+    # הגרסה האחרונה שנוצרה למשרה אחרת. היא כאן כדי שהכותב יראה ממה להתרחק:
+    # ב-3.11.2026 התברר שארבע הגרסאות הראשונות היו כמעט זהות בגוף, והבדילו
+    # רק בכותרת ובתקציר. בלי לראות את הקודמת אין איך לדעת שחוזרים על עצמך.
+    other = sql(
+        "select j.title, r.result from cv_requests r join jobs j on j.id = r.job_id "
+        "where r.status = 'done' and r.result is not null and r.job_id <> %s "
+        "order by r.created_at desc limit 1;" % q(r["job_id"]))
+    if other:
+        summary("--- LAST VERSION WRITTEN FOR A DIFFERENT JOB (%s) ---"
+                % (other[0].get("title") or "?"))
+        summary(other[0].get("result") or "")
+
     summary("--- END ---")
 
 
