@@ -36,8 +36,19 @@ def keywords_for(cv_id):
     """
     if cv_id in CVS:
         return CVS[cv_id]
-    from_id = [w for w in re.split(r"[^a-z0-9]+", (cv_id or "").lower()) if len(w) > 2]
-    return sorted(set(sum(CVS.values(), []) + from_id))
+
+    # 3.11.2026: קודם הוחזרו כאן כל מילות המפתח של כל הגרסאות. זה מנע את
+    # הקריסה אבל הפך את הגרסה החדשה למתאימה לכל משרה, ולכן היא ניצחה בכל
+    # שורה בלוח: כל המשרות הוצגו כ-rnd-program-manager.
+    #
+    # עכשיו היא מקבלת רק את המילים שבשמה. "rnd-program-manager" נותן rnd
+    # ו-program, בלי manager, כי בכירות נמדדת בממד נפרד והמילה הזאת היתה
+    # מכניסה אותה לכל כותרת ניהולית בלי קשר לתחום.
+    stop = set(MGMT) | set(IC) | {"the", "and", "for", "cvs"}
+    from_id = [w for w in re.split(r"[^a-z0-9]+", (cv_id or "").lower())
+               if len(w) > 2 and w not in stop]
+    # בלי שום מילה שמישה, עדיף ניקוד גס על ניקוד אפס.
+    return sorted(set(from_id)) or sorted(set(sum(CVS.values(), [])))
 
 
 MGMT = ["manager", "director", "head of", "lead", "leader", "vp", "chief", "מנהל", "ראש צוות", "ראש.ת"]
