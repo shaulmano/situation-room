@@ -122,9 +122,14 @@ export default function JobBrief({
     setDlMsg('');
 
     const nav = navigator as any;
+    // רק במכשיר מגע. ב-Windows יש גם תפריט שיתוף, ולכן הוא נפתח במקום הורדה
+    // ושאול נתקע בלי קובץ. במחשב רוצים קובץ בתיקיית ההורדות, ובטלפון רוצים
+    // את תפריט השיתוף כי שם אין תיקיית הורדות נוחה.
+    const touch = typeof window !== 'undefined'
+      && window.matchMedia?.('(pointer: coarse)')?.matches;
     try {
       const file = new File([blob], name, { type: 'application/pdf' });
-      if (nav.canShare && nav.canShare({ files: [file] })) {
+      if (touch && nav.canShare && nav.canShare({ files: [file] })) {
         // רק files. כותרת או טקסט לצד הקובץ נשמרים ב-iOS כפריט נפרד,
         // וזה מה שיצר קובץ text ריק של 38 בייט ליד ה-PDF.
         await nav.share({ files: [file] });
