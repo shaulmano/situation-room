@@ -19,7 +19,7 @@ on:
   workflow_dispatch:
     inputs:
       mode:
-        description: 'fetch, render or audit'
+        description: 'fetch, render, audit or dismissals'
         required: true
         default: 'fetch'
       request_id:
@@ -68,6 +68,14 @@ jobs:
           SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
           SUPABASE_PROJECT_REF: ${{ secrets.SUPABASE_PROJECT_REF }}
         run: python sync/cv_requests.py audit 5
+
+      # מה שאול סוגר ב-X. קריאה בלבד, לא משנה שום שורה.
+      - name: What he closes with X
+        if: inputs.mode == 'dismissals'
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+          SUPABASE_PROJECT_REF: ${{ secrets.SUPABASE_PROJECT_REF }}
+        run: cd sync && python dismiss_patterns.py
 
       - name: Fetch the next pending request
         if: inputs.mode == 'fetch'
