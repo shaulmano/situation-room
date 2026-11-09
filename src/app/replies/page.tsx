@@ -7,7 +7,7 @@ const CLS: Record<string, [string, string]> = {
   rejection: ['דחייה', 'crit'],
   info_request: ['בקשת מידע', 'warn'],
   interview: ['זימון', 'ok'],
-  viewed: ['נצפה', 'warn'],
+  viewed: ['לינקדאין דיווח', 'warn'],
 };
 
 export default async function Replies() {
@@ -69,7 +69,7 @@ export default async function Replies() {
         <div className="rows">
           {viewed.map((a: any) => (
             <div className="row" key={a.id}>
-              <span className="chip warn">נצפה</span>
+              <span className="chip warn">לינקדאין דיווח</span>
               <span className="grow">
                 {a.company}
                 <span className="sub">

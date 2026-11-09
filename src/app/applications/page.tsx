@@ -6,7 +6,10 @@ export const dynamic = 'force-dynamic';
 
 const LABEL: Record<string, [string, string]> = {
   sent: ['נשלח', 'mute'],
-  acknowledged: ['נצפה', 'warn'],
+  // 9.11.2026: לא "נצפה". המקור היחיד הוא מייל של לינקדאין, הוא לא אומר
+  // איזו משרה, והוא לא קיים בכלל להגשות שלא דרך לינקדאין. שאול שאל מאיפה
+  // המידע, ובצדק: הכותרת תיארה ידיעה שאין לנו.
+  acknowledged: ['לינקדאין דיווח', 'warn'],
   replied: ['נענה', 'ok'],
   conversation: ['שיחה', 'ok'],
   interview: ['ראיון', 'ok'],
@@ -54,7 +57,7 @@ export default async function Applications({
   const FILTER_LABEL: Record<string, string> = {
     conversation: 'שיחות שהתקיימו',
     silent: 'ללא מענה',
-    acknowledged: 'נצפו על ידי מגייס',
+    acknowledged: 'לינקדאין דיווח שנפתחו',
     replied: 'נענו',
   };
   const MONTHS_FULL = ['ינואר', 'פברואר', 'מרץ', 'אפריל', 'מאי', 'יוני', 'יולי',
@@ -156,9 +159,9 @@ export default async function Applications({
 
       <div className="kpis">
         <div className="kpi"><div className="kpi-l">סה״כ</div><div className="kpi-v">{rows.length}</div></div>
-        <div className="kpi"><div className="kpi-l">נצפו על ידי מגייס</div><div className="kpi-v">{seenTotal}</div></div>
+        <div className="kpi"><div className="kpi-l">לינקדאין דיווח שנפתחו</div><div className="kpi-v">{seenTotal}</div></div>
         <div className="kpi">
-          <div className="kpi-l">שיעור צפייה</div>
+          <div className="kpi-l">שיעור הדיווח</div>
           <div className="kpi-v">{Math.round((seenTotal / rows.length) * 100)}%</div>
         </div>
       </div>
@@ -186,7 +189,7 @@ export default async function Applications({
         ))}
       </div>
       <p className="screen-note">
-        הכהה בתוך כל עמודה הוא החלק שמגייס פתח. הקשה על חודש מציגה אותו.
+        הכהה בתוך כל עמודה הוא מה שלינקדאין דיווח עליו. הקשה על חודש מציגה אותו.
       </p>
 
       <h2>פילוח</h2>
@@ -209,7 +212,16 @@ export default async function Applications({
           )
         )}
       </div>
-      <p className="screen-note">העמודה האחרונה היא שיעור הצפייה — כמה מהן מגייס פתח.</p>
+      <p className="screen-note">העמודה האחרונה היא שיעור הדיווח, לא שיעור הקריאה.</p>
+
+      {/* מה האות הזה כן אומר ומה לא. בלי זה המספר נקרא כידיעה על התנהגות
+          של מגייסים, והוא לא. */}
+      <p className="screen-note">
+        המקור היחיד הוא מייל של לינקדאין, &quot;your application was viewed by&quot;,
+        שנשלח כשמישהו בצד המגייס פותח את ההגשה במערכת שלהם. המייל מציין חברה
+        ולא משרה, ולכן ההצמדה להגשה מסוימת היא הערכה. הגשה שלא דרך לינקדאין
+        לא מייצרת אות כזה כלל, והיעדר מייל אינו עדות שאיש לא פתח.
+      </p>
 
       <h2>{filtered ? 'ההגשות בחתך הזה' : 'אחרונות'}</h2>
 
