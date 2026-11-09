@@ -31,8 +31,11 @@ export default async function Dashboard({
   const source = searchParams?.source ?? '';
 
   const [convos, weekApps, needsReply, silent, lastSent, applied, lastImport, upcoming] = await Promise.all([
+    // 9.11.2026: קודם נספר הסטטוס הנוכחי בלבד, ולכן דחייה אחרי ראיון מחקה
+    // את הראיון מהמניין והאריח נשאר אפס גם אחרי ששאול סימן. stage מחזיק את
+    // השלב הרחוק ביותר שההגשה הגיעה אליו, והוא לא נמחק.
     sb.from('applications').select('id', { count: 'exact', head: true })
-      .in('status', ['conversation', 'interview', 'offer']),
+      .not('stage', 'is', null),
     sb.from('applications').select('id', { count: 'exact', head: true }).gte('sent_at', ago(7)),
     sb.from('events').select('id', { count: 'exact', head: true }).eq('classification', 'info_request'),
     sb.from('applications').select('id', { count: 'exact', head: true }).eq('status', 'silent'),
@@ -209,7 +212,7 @@ export default async function Dashboard({
           {/* היעד היה ל-15/10 והתאריך עבר. אריח שמראה "0 ימים נותרו" לנצח
               הוא לא מדידה, ולכן אחרי שהתאריך חלף הוא מציג רק את המספר. */}
           <div className="kpi-l">
-            שיחות שהתקיימו{daysLeft > 0 ? ` · יעד ${CONVERSATION_TARGET} עד 15/10` : ''}
+            שיחות וראיונות שהתקיימו{daysLeft > 0 ? ` · יעד ${CONVERSATION_TARGET} עד 15/10` : ''}
           </div>
           <div className="kpi-v">{convos.count ?? 0}</div>
           {daysLeft > 0 && <div className="kpi-foot">{daysLeft} ימים נותרו</div>}

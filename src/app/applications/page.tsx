@@ -33,7 +33,7 @@ export default async function Applications({
 
   const { data } = await serverClient()
     .from('applications')
-    .select('id, company, role, recipient, cv_id, channel, sent_at, status, next_at, next_kind, note')
+    .select('id, company, role, recipient, cv_id, channel, sent_at, status, next_at, next_kind, note, stage')
     .order('sent_at', { ascending: false });
 
   const all = (data ?? []) as any[];
@@ -48,7 +48,9 @@ export default async function Applications({
     if (needle && !`${a.company ?? ''} ${a.role ?? ''} ${a.recipient ?? ''}`
       .toLowerCase().includes(needle)) return false;
     if (month && monthKey(new Date(a.sent_at)) !== month) return false;
-    if (status === 'conversation') return CONVERSATION.includes(a.status);
+    // אותו חתך בדיוק שהאריח בחדר המצב סופר: מה שהגיע לשיחה, גם אם נדחה
+    // אחר כך. ראיון שלא עברת הוא עדיין ראיון שהתקיים.
+    if (status === 'conversation') return Boolean(a.stage) || CONVERSATION.includes(a.status);
     if (status && a.status !== status) return false;
     if (range === 'week') return new Date(a.sent_at).getTime() >= weekAgo;
     return true;
@@ -259,7 +261,8 @@ export default async function Applications({
               <span className={'chip ' + cls}>{txt}</span>
               {/* שיחה או ראיון נקבעים בטלפון ולא משאירים עקבה בג'ימייל, ולכן
                   זאת הדרך היחידה שהם נכנסים למערכת. */}
-              <AppStep id={a.id} status={a.status} nextAt={a.next_at} nextKind={a.next_kind} />
+              <AppStep id={a.id} status={a.status} stage={a.stage}
+                        nextAt={a.next_at} nextKind={a.next_kind} />
               {a.note && <span className="sub" style={{ width: '100%' }}>{a.note}</span>}
             </div>
           );

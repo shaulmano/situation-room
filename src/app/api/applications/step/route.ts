@@ -7,13 +7,22 @@ import { serverClient } from '@/lib/server';
 // 'conversation' ו-'interview', והסנכרון מג'ימייל ידע לקבוע רק 'acknowledged'
 // ו-'silent', ולכן האריח "שיחות שהתקיימו" הראה אפס תמיד.
 //
-// מגייס שמתקשר בטלפון לא משאיר עקבה בג'ימייל. זה חייב להיות ידני, ובתנועה
-// אחת: שאול לרוב לא ליד מחשב.
+// ואחרי שנבנה, שאול סימן שתי הגשות ועדיין ראה אפס. שתי סיבות, ושתיהן
+// מתוקנות כאן:
+//
+// 1. הרישום דרש הקשה שנייה על "שמור". עכשיו ההקשה הראשונה שומרת, והתאריך
+//    וההערה הם עידון של שורה שכבר קיימת.
+// 2. 'rejected' דרס את מה שהיה לפניו. עכשיו stage מחזיק את השלב הרחוק
+//    ביותר שההגשה הגיעה אליו והוא לא נמחק, ו-status מחזיק את מה שקורה
+//    עכשיו. ראיון שלא עבר הוא stage='interview' עם status='rejected'.
 
 const ALLOWED = new Set([
   'sent', 'acknowledged', 'replied', 'conversation',
   'interview', 'offer', 'rejected', 'silent',
 ]);
+
+// עד כמה רחוק הגיעה ההגשה. דחייה אינה שלב: היא סוף, ויכולה לבוא מכל שלב.
+const RANK: Record<string, number> = { call: 1, interview: 2, offer: 3 };
 
 export async function POST(req: NextRequest) {
   const { id, status, at, kind, note } = await req.json();
@@ -35,9 +44,21 @@ export async function POST(req: NextRequest) {
   }
 
   const sb = serverClient();
+  const { data: before } = await sb
+    .from('applications').select('stage, status').eq('id', id).single();
+
   const patch: Record<string, unknown> = { status, status_by: 'shaul' };
-  // ראיון שעבר הוא לא ראיון קרוב. מנקה את התאריך כששולחים סטטוס סוגר, כדי
-  // שהוא לא ימשיך לשבת בראש חדר המצב.
+
+  // השלב הרחוק ביותר, ולעולם לא אחורה. הגשה שהגיעה לראיון ואז נדחתה
+  // נשארת הגשה שהגיעה לראיון.
+  const newStage = kind === 'interview' ? 'interview' : kind === 'call' ? 'call'
+    : status === 'offer' ? 'offer' : '';
+  if (newStage && (RANK[newStage] ?? 0) > (RANK[before?.stage ?? ''] ?? 0)) {
+    patch.stage = newStage;
+    patch.stage_at = nextAt ?? new Date().toISOString();
+  }
+
+  // דחייה סוגרת את מה שהיה קבוע, אבל לא את מה שכבר קרה.
   if (status === 'rejected' || status === 'offer') {
     patch.next_at = null;
     patch.next_kind = null;
@@ -51,7 +72,7 @@ export async function POST(req: NextRequest) {
     .from('applications')
     .update(patch)
     .eq('id', id)
-    .select('id, company, role')
+    .select('id, company, stage, status')
     .single();
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
@@ -68,5 +89,5 @@ export async function POST(req: NextRequest) {
     classified_by: 'shaul',
   });
 
-  return NextResponse.json({ ok: true, company: data?.company ?? null });
+  return NextResponse.json({ ok: true, stage: data?.stage ?? null });
 }

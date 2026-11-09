@@ -4,15 +4,21 @@ import { useRouter } from 'next/navigation';
 
 // רישום מה שקרה אחרי ההגשה: שיחה, ראיון, דחייה, הצעה.
 //
-// 9.11.2026. שאול שאל איפה הוא מכניס שיחת טלפון או ראיון. לא היה איפה:
-// מסך ההגשות הציג 'שיחה' ו'ראיון' אבל שום דבר לא יכול היה לקבוע אותם.
+// 9.11.2026, גרסה שנייה. בראשונה ההקשה רק פתחה שורת תאריך, והרישום קרה
+// בהקשה על "שמור". שאול סימן, לא לחץ שמור, ולא נשמר כלום. זאת בדיוק
+// המלכודת שהוא ביקש להימנע ממנה: תנועה שצריך לזכור להשלים.
 //
-// שתי תנועות ולא יותר: הקשה על "שיחה" או "ראיון" פותחת שורת תאריך, הקשה
-// שנייה שומרת. דחייה היא הקשה אחת. הוא לרוב לא ליד מחשב.
+// עכשיו ההקשה הראשונה שומרת מיד, עם השעה הנוכחית. שורת התאריך וההערה
+// נפתחות אחריה כעידון של שורה שכבר קיימת, ואפשר להתעלם מהן לגמרי.
 
-type Props = { id: string; status: string; nextAt?: string | null; nextKind?: string | null };
+type Props = {
+  id: string; status: string;
+  stage?: string | null; nextAt?: string | null; nextKind?: string | null;
+};
 
-const KIND_LABEL: Record<string, string> = { call: 'שיחה', interview: 'ראיון' };
+const KIND_LABEL: Record<string, string> = {
+  call: 'שיחה', interview: 'ראיון', offer: 'הצעה',
+};
 
 // שעון ישראל, בפורמט שה-input של datetime-local מבין. toISOString היה נותן
 // UTC, ושעתיים פחות.
@@ -22,7 +28,7 @@ function localValue(d: Date) {
     + `T${p(d.getHours())}:${p(d.getMinutes())}`;
 }
 
-export default function AppStep({ id, status, nextAt, nextKind }: Props) {
+export default function AppStep({ id, status, stage, nextAt, nextKind }: Props) {
   const router = useRouter();
   const [open, setOpen] = useState<'' | 'call' | 'interview'>('');
   const [when, setWhen] = useState('');
@@ -30,31 +36,30 @@ export default function AppStep({ id, status, nextAt, nextKind }: Props) {
   const [saved, setSaved] = useState('');
   const [pending, start] = useTransition();
 
-  async function send(body: Record<string, unknown>) {
+  async function send(body: Record<string, unknown>, label: string) {
+    setSaved('שומר');
     const res = await fetch('/api/applications/step', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ id, ...body }),
     }).catch(() => null);
     if (!res || !res.ok) {
-      setSaved('לא נשמר');
+      setSaved('לא נשמר, נסה שוב');
       return;
     }
-    setOpen('');
-    setSaved('נשמר');
+    setSaved(label);
     start(() => router.refresh());
   }
 
-  function begin(kind: 'call' | 'interview') {
-    if (open === kind) {
-      setOpen('');
-      return;
-    }
-    // ברירת מחדל: עכשיו. רוב הרישומים הם על שיחה שכבר קרתה, ואז אין מה
-    // להקליד בכלל.
-    if (!when) setWhen(localValue(new Date()));
-    setSaved('');
+  // ההקשה הזאת היא הרישום. מה שנפתח אחריה הוא רשות.
+  async function mark(kind: 'call' | 'interview') {
+    const now = localValue(new Date());
+    setWhen(now);
     setOpen(kind);
+    await send(
+      { status: kind === 'interview' ? 'interview' : 'conversation', kind, at: now },
+      kind === 'interview' ? 'נרשם ראיון' : 'נרשמה שיחה',
+    );
   }
 
   const btn: React.CSSProperties = {
@@ -68,8 +73,14 @@ export default function AppStep({ id, status, nextAt, nextKind }: Props) {
 
   return (
     <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, width: '100%', marginTop: 8 }}>
-      {nextAt && (
+      {/* מה שההגשה הגיעה אליו נשאר על המסך גם אחרי דחייה. */}
+      {stage && (
         <span className="chip ok" style={{ alignSelf: 'center' }}>
+          הגיע ל{KIND_LABEL[stage] ?? stage}
+        </span>
+      )}
+      {nextAt && (
+        <span className="chip warn" style={{ alignSelf: 'center' }}>
           {KIND_LABEL[nextKind ?? 'call'] ?? 'שיחה'}{' '}
           {new Date(nextAt).toLocaleString('he-IL', {
             day: 'numeric', month: 'numeric', hour: '2-digit', minute: '2-digit',
@@ -77,23 +88,25 @@ export default function AppStep({ id, status, nextAt, nextKind }: Props) {
         </span>
       )}
 
-      <button type="button" style={open === 'call' ? btn : quiet}
-              onClick={() => begin('call')} disabled={pending}>
-        שיחת טלפון
+      <button type="button" style={quiet} onClick={() => mark('call')} disabled={pending}>
+        הייתה שיחה
       </button>
-      <button type="button" style={open === 'interview' ? btn : quiet}
-              onClick={() => begin('interview')} disabled={pending}>
-        ראיון
+      <button type="button" style={quiet} onClick={() => mark('interview')} disabled={pending}>
+        היה ראיון
       </button>
       {status !== 'rejected' && (
         <button type="button" style={quiet} disabled={pending}
-                onClick={() => send({ status: 'rejected' })}>
+                onClick={() => send({ status: 'rejected' }, 'נרשמה דחייה')}>
           נדחה
         </button>
       )}
-      {saved && (
-        <span className="chip mute" style={{ alignSelf: 'center' }}>{saved}</span>
+      {status !== 'offer' && (
+        <button type="button" style={quiet} disabled={pending}
+                onClick={() => send({ status: 'offer', kind: 'offer' }, 'נרשמה הצעה')}>
+          הצעה
+        </button>
       )}
+      {saved && <span className="chip mute" style={{ alignSelf: 'center' }}>{saved}</span>}
 
       {open && (
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, width: '100%' }}>
@@ -113,14 +126,13 @@ export default function AppStep({ id, status, nextAt, nextKind }: Props) {
           <button
             type="button" style={btn} disabled={pending || !when}
             onClick={() => send({
-              // ראיון שנקבע למחר הוא עדיין 'interview': האריח סופר מגע עם
-              // מגייס, ולא רק מגע שכבר קרה.
               status: open === 'interview' ? 'interview' : 'conversation',
               kind: open, at: when, note,
-            })}
+            }, 'עודכן')}
           >
-            שמור
+            עדכן תאריך
           </button>
+          <button type="button" style={quiet} onClick={() => setOpen('')}>סגור</button>
         </div>
       )}
     </div>
