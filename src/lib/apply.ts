@@ -19,7 +19,18 @@ export function applyTarget(job: {
   const source = job.source ?? '';
 
   if (PAYWALLED.has(source)) {
-    const terms = [job.title, job.company].filter(Boolean).join(' ');
+    // 9.11.2026: החיפוש הוביל לשום מקום, ובצדק. הכותרת של SecretJobs נגזרת
+    // מה-slug ונגמרת במזהה הקסדצימלי, למשל "Project Manager Iot Solutions
+    // Telit Cinterion B37C51C69951", והחברה רשומה "SecretJobs". חיפוש
+    // בלינקדאין על המחרוזת הזאת לא מחזיר כלום.
+    //
+    // שם החברה כבר יושב בתוך הכותרת, לפני המזהה, ולכן מספיק להוריד את המזהה
+    // ולא לצרף שם חברה שהוא שם המקור.
+    const clean = (job.title ?? '')
+      .replace(/\s+[0-9A-Fa-f]{8,}\s*$/, '')
+      .trim();
+    const company = job.company && job.company !== source ? job.company : '';
+    const terms = [clean, company].filter(Boolean).join(' ');
     if (!terms) return null;
     return {
       href: `https://www.linkedin.com/jobs/search/?keywords=${encodeURIComponent(terms)}&location=Israel`,

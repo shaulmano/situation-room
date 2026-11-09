@@ -15,7 +15,7 @@ being taken out of the public repo.
 
 Run: python sync/jobs_sync.py [path-to-jobs.jsonl]
 """
-import json, os, sys
+import json, os, re, sys
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from gmail_sync import sql, q  # same Management API path, same reasoning
@@ -59,10 +59,23 @@ def rows(path):
             title = (j.get("title") or "").strip()
             if not title:
                 continue
+            # 9.11.2026: הכותרות של SecretJobs נגזרות מה-slug ונגמרות במזהה
+            # הקסדצימלי, למשל "Project Manager Iot Solutions Telit Cinterion
+            # B37C51C69951". הוא מופיע על המסך ומזהם גם את החיפוש בלינקדאין
+            # שהכפתור בונה, ושאול אמר שהחיפוש לא מגיע לשום מקום.
+            title = re.sub(r"\s+[0-9A-Fa-f]{8,}\s*$", "", title).strip() or title
             yield {
                 "id": jid,
                 "title": title[:200],
-                "company": (j.get("company") or "")[:120] or None,
+                # חברה ששמה כשם המקור אינה שם חברה. SecretJobs רשם את עצמו,
+                # והשורה הציגה "SecretJobs · Israel" במקום שם המעסיק. שם
+                # המעסיק האמיתי יושב ממילא בתוך הכותרת.
+                "company": (
+                    None
+                    if (j.get("company") or "").strip().lower()
+                    == (j.get("source") or "").strip().lower()
+                    else (j.get("company") or "")[:120] or None
+                ),
                 "source": j.get("source") or "unknown",
                 "url": j.get("url") or None,
                 "location": (j.get("location") or "")[:120] or None,
