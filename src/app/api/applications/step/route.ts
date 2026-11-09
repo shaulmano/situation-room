@@ -47,7 +47,15 @@ export async function POST(req: NextRequest) {
   const { data: before } = await sb
     .from('applications').select('stage, status').eq('id', id).single();
 
-  const patch: Record<string, unknown> = { status, status_by: 'shaul' };
+  // הגשה שכבר סומנה כנדחתה ועכשיו נרשם עליה ראיון: הראיון התקיים, הדחייה
+  // עדיין עומדת. שאול תיאר בדיוק את זה, "ראיון שלא עברתי". רישום השלב לא
+  // מבטל את הסוף.
+  const closed = before?.status === 'rejected' || before?.status === 'offer';
+  const keepClosed = closed && (status === 'conversation' || status === 'interview');
+  const patch: Record<string, unknown> = {
+    status: keepClosed ? before!.status : status,
+    status_by: 'shaul',
+  };
 
   // השלב הרחוק ביותר, ולעולם לא אחורה. הגשה שהגיעה לראיון ואז נדחתה
   // נשארת הגשה שהגיעה לראיון.
