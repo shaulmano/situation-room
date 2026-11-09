@@ -191,6 +191,13 @@ a:focus-visible,button:focus-visible,input:focus-visible{outline:2px solid var(-
 }
 .more:hover{text-decoration:underline}
 
+/* עמודה בגרף היא קישור לחודש שלה. 9.11.2026: קודם זה היה div, ולא הייתה
+   שום דרך לראות את 238 ההגשות של ספטמבר. */
+.col{text-decoration:none;color:inherit;border-radius:5px}
+.col:hover .col-bar{filter:brightness(.94)}
+.col.on .col-bar{outline:2px solid var(--accent);outline-offset:1px}
+.col.on .col-l{color:var(--accent);font-weight:700}
+
 .chip.src{
   background:var(--ink);color:var(--surface);font-weight:700;
   letter-spacing:.01em;

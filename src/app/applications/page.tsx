@@ -19,10 +19,14 @@ const MONTHS = ['ינו', 'פבר', 'מרץ', 'אפר', 'מאי', 'יונ', 'י�
 export default async function Applications({
   searchParams,
 }: {
-  searchParams: { status?: string; range?: string };
+  searchParams: { status?: string; range?: string; month?: string; q?: string };
 }) {
   const status = searchParams.status ?? '';
   const range = searchParams.range ?? '';
+  // המפתח הוא YYYY-M עם חודש מאפס, בדיוק כמו ב-buckets, כדי שעמודה בגרף
+  // והחתך שהיא פותחת ייגזרו מאותו ערך ולא משני חישובים שיכולים להיפרד.
+  const month = searchParams.month ?? '';
+  const q = searchParams.q ?? '';
 
   const { data } = await serverClient()
     .from('applications')
@@ -35,20 +39,35 @@ export default async function Applications({
   // tile lands on those rows rather than on all 161.
   const CONVERSATION = ['conversation', 'interview', 'offer'];
   const weekAgo = Date.now() - 7 * 864e5;
+  const monthKey = (d: Date) => `${d.getFullYear()}-${d.getMonth()}`;
+  const needle = q.trim().toLowerCase();
   const rows = all.filter((a) => {
+    if (needle && !`${a.company ?? ''} ${a.role ?? ''} ${a.recipient ?? ''}`
+      .toLowerCase().includes(needle)) return false;
+    if (month && monthKey(new Date(a.sent_at)) !== month) return false;
     if (status === 'conversation') return CONVERSATION.includes(a.status);
     if (status && a.status !== status) return false;
     if (range === 'week') return new Date(a.sent_at).getTime() >= weekAgo;
     return true;
   });
-  const filtered = Boolean(status || range);
+  const filtered = Boolean(status || range || month || needle);
   const FILTER_LABEL: Record<string, string> = {
     conversation: 'שיחות שהתקיימו',
     silent: 'ללא מענה',
     acknowledged: 'נצפו על ידי מגייס',
     replied: 'נענו',
   };
-  const filterName = status ? FILTER_LABEL[status] ?? status : 'הגשות השבוע';
+  const MONTHS_FULL = ['ינואר', 'פברואר', 'מרץ', 'אפריל', 'מאי', 'יוני', 'יולי',
+                      'אוגוסט', 'ספטמבר', 'אוקטובר', 'נובמבר', 'דצמבר'];
+  const monthName = month
+    ? `${MONTHS_FULL[Number(month.split('-')[1])]} ${month.split('-')[0]}`
+    : '';
+  const filterName = [
+    status ? FILTER_LABEL[status] ?? status : '',
+    monthName,
+    needle ? `"${q}"` : '',
+    !status && !monthName && !needle && range === 'week' ? 'הגשות השבוע' : '',
+  ].filter(Boolean).join(' · ');
   // `all`, not `rows`: an empty filter result is not an empty database, and
   // saying the sync never ran would be a lie in that case.
   if (all.length === 0) {
@@ -146,8 +165,16 @@ export default async function Applications({
 
       <h2>לפי חודש</h2>
       <div className="chart">
+        {/* כל עמודה פותחת את החודש שלה. 9.11.2026: הגרף הראה 238 בספטמבר
+            ולא הייתה שום דרך לראות מי הן. מספר שאי אפשר לפתוח הוא מספר
+            שצריך להאמין לו. */}
         {buckets.map((b) => (
-          <div className="col" key={b.key}>
+          <Link
+            className={'col' + (month === b.key ? ' on' : '')}
+            key={b.key}
+            href={b.total ? `/applications?month=${b.key}` : '/applications'}
+            aria-label={`${b.label}, ${b.total} הגשות`}
+          >
             <span className="col-n">{b.total || ''}</span>
             <span className="col-track">
               <span className="col-bar" style={{ height: `${(b.total / peak) * 100}%` }}>
@@ -155,11 +182,11 @@ export default async function Applications({
               </span>
             </span>
             <span className="col-l">{b.label}</span>
-          </div>
+          </Link>
         ))}
       </div>
       <p className="screen-note">
-        הכהה בתוך כל עמודה הוא החלק שמגייס פתח.
+        הכהה בתוך כל עמודה הוא החלק שמגייס פתח. הקשה על חודש מציגה אותו.
       </p>
 
       <h2>פילוח</h2>
@@ -184,9 +211,27 @@ export default async function Applications({
       </div>
       <p className="screen-note">העמודה האחרונה היא שיעור הצפייה — כמה מהן מגייס פתח.</p>
 
-      <h2>אחרונות</h2>
+      <h2>{filtered ? 'ההגשות בחתך הזה' : 'אחרונות'}</h2>
+
+      {/* 9.11.2026: שאול אמר שהיו לו שיחות וראיון והוא לא מצליח לסמן. הסיבה
+          לא הייתה הכפתורים אלא המציאה: המסך הציג 25 שורות מתוך 513, והשיחה
+          הייתה על הגשה מספטמבר. טופס רגיל, בלי JavaScript, כדי שיעבוד גם
+          לפני שה-hydration מסתיים בטלפון. */}
+      <form method="get" style={{ display: 'flex', gap: 6, margin: '10px 0' }}>
+        <input
+          type="search" name="q" defaultValue={q} placeholder="חפש חברה או תפקיד"
+          style={{ flex: 1, minWidth: 0, padding: '.55em .7em', font: 'inherit',
+                   fontSize: '.85rem', border: '1px solid var(--line)',
+                   borderRadius: 6, background: 'var(--surface)', color: 'inherit' }}
+        />
+        {month && <input type="hidden" name="month" value={month} />}
+        {status && <input type="hidden" name="status" value={status} />}
+        <button type="submit" style={{ width: 'auto', flex: 'none', padding: '.55em 1.1em',
+                                       fontSize: '.85rem' }}>חפש</button>
+      </form>
+
       <div className="rows">
-        {rows.slice(0, 25).map((a) => {
+        {rows.slice(0, filtered ? 300 : 25).map((a) => {
           const [txt, cls] = LABEL[a.status] ?? [a.status, 'mute'];
           const days = Math.floor((Date.now() - new Date(a.sent_at).getTime()) / 864e5);
           return (
@@ -208,8 +253,10 @@ export default async function Applications({
           );
         })}
       </div>
-      {rows.length > 25 && (
-        <p className="screen-note">מוצגות 25 מתוך {rows.length}. השאר בגרף.</p>
+      {rows.length > (filtered ? 300 : 25) && (
+        <p className="screen-note">
+          מוצגות {filtered ? 300 : 25} מתוך {rows.length}. הקש על חודש בגרף, או חפש חברה.
+        </p>
       )}
     </>
   );
