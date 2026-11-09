@@ -19,9 +19,12 @@ on:
   workflow_dispatch:
     inputs:
       mode:
-        description: 'fetch, render, audit or dismissals'
+        description: 'fetch, render, audit, dismissals or migrate'
         required: true
         default: 'fetch'
+      migration:
+        description: 'path to a .sql file (migrate only)'
+        required: false
       request_id:
         description: 'cv_requests.id (render only)'
         required: false
@@ -76,6 +79,16 @@ jobs:
           SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
           SUPABASE_PROJECT_REF: ${{ secrets.SUPABASE_PROJECT_REF }}
         run: cd sync && python dismiss_patterns.py
+
+      # מיגרציה. עד 9.11.2026 כל שינוי סכימה הודבק ידנית ל-SQL editor
+      # בדפדפן, כי קלוד לא ניגש למסד הזה. לרנר יש את המפתחות ממילא.
+      - name: Run a migration
+        if: inputs.mode == 'migrate'
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+          SUPABASE_PROJECT_REF: ${{ secrets.SUPABASE_PROJECT_REF }}
+          MIGRATION: ${{ inputs.migration }}
+        run: python sync/migrate.py "$MIGRATION"
 
       - name: Fetch the next pending request
         if: inputs.mode == 'fetch'

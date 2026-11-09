@@ -30,7 +30,7 @@ export default async function Dashboard({
   const sb = serverClient();
   const source = searchParams?.source ?? '';
 
-  const [convos, weekApps, needsReply, silent, lastSent, applied, lastImport] = await Promise.all([
+  const [convos, weekApps, needsReply, silent, lastSent, applied, lastImport, upcoming] = await Promise.all([
     sb.from('applications').select('id', { count: 'exact', head: true })
       .in('status', ['conversation', 'interview', 'offer']),
     sb.from('applications').select('id', { count: 'exact', head: true }).gte('sent_at', ago(7)),
@@ -39,6 +39,14 @@ export default async function Dashboard({
     sb.from('applications').select('sent_at').order('sent_at', { ascending: false }).limit(1),
     sb.from('applications').select('job_id'),
     sb.from('contacts').select('imported_at').order('imported_at', { ascending: false }).limit(1),
+    // שיחות וראיונות שנקבעו. מה שהיה אתמול נשאר יום אחד נוסף, כדי שראיון
+    // שהתקיים הבוקר לא ייעלם מהמסך לפני שנרשם מה קרה בו.
+    sb.from('applications')
+      .select('id, company, role, next_at, next_kind')
+      .not('next_at', 'is', null)
+      .gte('next_at', ago(1))
+      .order('next_at', { ascending: true })
+      .limit(5),
   ]);
 
   const appliedIds = new Set((applied.data ?? []).map((a: any) => a.job_id).filter(Boolean));
@@ -166,11 +174,45 @@ export default async function Dashboard({
     <>
       {/* Every tile leads to the rows it counted: a number you cannot open is
           a number you have to take on faith. */}
+      {/* מה שנקבע בא לפני מה שנספר. שאול ביקש שכל מה שהוא צריך לעשות יהיה
+          מול העיניים ולא בפעמון, ומשהו להיום הוא משימה רגילה ולא אדומה. */}
+      {(upcoming.data ?? []).length > 0 && (
+        <div className="rows" style={{ marginBottom: 14 }}>
+          {(upcoming.data as any[]).map((u) => {
+            const at = new Date(u.next_at);
+            const mins = (at.getTime() - Date.now()) / 6e4;
+            const today = at.toDateString() === new Date().toDateString();
+            const when = at.toLocaleString('he-IL', {
+              weekday: 'short', day: 'numeric', month: 'numeric',
+              hour: '2-digit', minute: '2-digit',
+            });
+            return (
+              <Link className="row" key={u.id} href="/applications?status=conversation">
+                <span className={'chip ' + (mins < 0 ? 'warn' : today ? 'ok' : 'mute')}>
+                  {u.next_kind === 'interview' ? 'ראיון' : 'שיחה'}
+                </span>
+                <span className="grow">
+                  {u.company ?? u.role}
+                  <span className="sub">
+                    {[u.role, when].filter(Boolean).join(' · ')}
+                    {mins < 0 ? ' · לרשום מה קרה' : ''}
+                  </span>
+                </span>
+              </Link>
+            );
+          })}
+        </div>
+      )}
+
       <div className="kpis">
         <Link className="kpi hero" href="/applications?status=conversation">
-          <div className="kpi-l">שיחות שהתקיימו · יעד {CONVERSATION_TARGET} עד 15/10</div>
+          {/* היעד היה ל-15/10 והתאריך עבר. אריח שמראה "0 ימים נותרו" לנצח
+              הוא לא מדידה, ולכן אחרי שהתאריך חלף הוא מציג רק את המספר. */}
+          <div className="kpi-l">
+            שיחות שהתקיימו{daysLeft > 0 ? ` · יעד ${CONVERSATION_TARGET} עד 15/10` : ''}
+          </div>
           <div className="kpi-v">{convos.count ?? 0}</div>
-          <div className="kpi-foot">{daysLeft} ימים נותרו</div>
+          {daysLeft > 0 && <div className="kpi-foot">{daysLeft} ימים נותרו</div>}
         </Link>
         <Link className="kpi" href="/applications?range=week">
           <div className="kpi-l">הגשות השבוע</div>

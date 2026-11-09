@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import { serverClient } from '@/lib/server';
+import AppStep from '@/components/AppStep';
 
 export const dynamic = 'force-dynamic';
 
@@ -25,7 +26,7 @@ export default async function Applications({
 
   const { data } = await serverClient()
     .from('applications')
-    .select('id, company, role, recipient, cv_id, channel, sent_at, status')
+    .select('id, company, role, recipient, cv_id, channel, sent_at, status, next_at, next_kind, note')
     .order('sent_at', { ascending: false });
 
   const all = (data ?? []) as any[];
@@ -199,6 +200,10 @@ export default async function Applications({
               </span>
               <span className="chip mute">{days === 0 ? 'היום' : `${days} ימים`}</span>
               <span className={'chip ' + cls}>{txt}</span>
+              {/* שיחה או ראיון נקבעים בטלפון ולא משאירים עקבה בג'ימייל, ולכן
+                  זאת הדרך היחידה שהם נכנסים למערכת. */}
+              <AppStep id={a.id} status={a.status} nextAt={a.next_at} nextKind={a.next_kind} />
+              {a.note && <span className="sub" style={{ width: '100%' }}>{a.note}</span>}
             </div>
           );
         })}
