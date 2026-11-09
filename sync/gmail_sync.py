@@ -203,14 +203,40 @@ def main():
         print("applications upserted: %d" % len(apps))
 
     # A view is the only engagement signal LinkedIn gives, so treat it as one rung up.
+    #
+    # 9.11.2026: עד היום השורה הזאת הייתה
+    #     update applications set status='acknowledged' where company=X and status='sent'
+    # כלומר מייל צפייה אחד צבע כל הגשה פתוחה לאותה חברה, לפי השם בלבד, בלי
+    # קשר למשרה ובלי קשר לתאריך. במסד: comblack עם עשר הגשות מסומנות
+    # כנצפו, Extreme עם חמש. 36 "נצפו" שמתפרסים על חמש עשרה חברות בלבד,
+    # ושיעור צפייה של 7% שהאמיתי שלו קרוב ל-3%.
+    #
+    # עכשיו כל מייל מסמן הגשה אחת: האחרונה לאותה חברה שנשלחה לפני המייל.
+    # זה עדיין ניחוש, כי לינקדאין לא אומר באיזו משרה מדובר, אבל ניחוש על
+    # שורה אחת הוא לא אותו דבר כמו לצבוע עשר.
     for e in events:
-        sql("update applications set status='acknowledged' where company=%s and status='sent';"
-            % q(e["company"]))
+        sql(
+            "update applications set status='acknowledged' "
+            "where id = (select id from applications "
+            "            where company=%s and status='sent' and sent_at <= %s "
+            "            and status_by = 'auto' "
+            "            order by sent_at desc limit 1);"
+            % (q(e["company"]), q(e["at"]))
+        )
+        # היסטוריה: בלי זה אי אפשר לחשב מחדש בלי לקרוא שוב את כל הג'ימייל.
+        sql(
+            "insert into events (kind, received_at, subject, classification, classified_by) "
+            "values ('view', %s, %s, 'viewed', 'linkedin') on conflict do nothing;"
+            % (q(e["at"]), q("viewed by " + e["company"]))
+        )
     print("view events applied: %d" % len(events))
 
     # No engagement after 14 days is silence, not a pending answer.
+    # status_by: מה ששאול רשם ידנית לא נדרס. שיחה שהוא סימן אינה "שקט" גם
+    # אם ההגשה ישנה.
     sql("update applications set status='silent' "
-        "where status='sent' and sent_at < now() - interval '14 days';")
+        "where status='sent' and status_by = 'auto' "
+        "and sent_at < now() - interval '14 days';")
     print("done")
 
 
