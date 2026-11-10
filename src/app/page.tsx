@@ -25,10 +25,13 @@ const IMPORT_STALE_DAYS = 30;
 export default async function Dashboard({
   searchParams,
 }: {
-  searchParams?: { source?: string };
+  searchParams?: { source?: string; manual?: string };
 }) {
   const sb = serverClient();
   const source = searchParams?.source ?? '';
+  // 10.11.2026: שאול ביקש תג ידני על כל משרה שהגיעה מהחיפוש הממוקד, ופילטר
+  // ידני, והוא מסתכל כאן. שניהם היו קיימים רק במסך המשרות.
+  const onlyManual = searchParams?.manual === '1';
 
   const [convos, weekApps, needsReply, silent, lastSent, applied, lastImport, upcoming] = await Promise.all([
     // 9.11.2026: קודם נספר הסטטוס הנוכחי בלבד, ולכן דחייה אחרי ראיון מחקה
@@ -121,6 +124,9 @@ export default async function Dashboard({
   }, {});
   const SOURCES = Object.entries(sourceCounts).sort((a, b) => b[1] - a[1]);
 
+  const isManual = (m: any) => m.copies.some((c: any) => c.jobs.manual);
+  const manualCount = picked.filter(isManual).length;
+  if (onlyManual) picked = picked.filter(isManual);
   if (source) picked = picked.filter((m) => sourcesOf(m).includes(source));
   const rows = picked;
 
@@ -258,9 +264,21 @@ export default async function Dashboard({
       {SOURCES.length > 0 && (
         <div className="filters">
           {SOURCES.length > 1 && (
-            <a href="/" className={'filter' + (source ? '' : ' on')}>
+            <a href="/" className={'filter' + (source || onlyManual ? '' : ' on')}>
               כל המקורות
               <span className="n">{Object.values(sourceCounts).reduce((a, b) => a + b, 0)}</span>
+            </a>
+          )}
+          {/* ידני: מה שהגיע מהחיפוש הממוקד על התפקידים של שאול, להבדיל
+              מהסריקה הרחבה. נפרד משבבי המקורות, כי המשרה עדיין שייכת
+              ללוח שממנו הגיעה. */}
+          {manualCount > 0 && (
+            <a
+              href={onlyManual ? '/' : '/?manual=1'}
+              className={'filter' + (onlyManual ? ' on' : '')}
+            >
+              ידני
+              <span className="n">{manualCount}</span>
             </a>
           )}
           {SOURCES.map(([src, n]) => (
@@ -325,6 +343,9 @@ export default async function Dashboard({
                     {/* 10.11.2026: התיוג היה רק במסך המשרות, ושאול מסתכל
                         כאן. שינוי לא נגמר עד שהוא בכל המסכים, וזה כלל
                         שהוא עצמו ביקש. */}
+                    {m.copies.some((c: any) => c.jobs.manual) && (
+                      <span className="chip warn">ידני</span>
+                    )}
                     {(() => {
                       const found = m.copies
                         .map((c: any) => c.jobs.found_for)

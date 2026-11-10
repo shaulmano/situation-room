@@ -312,17 +312,18 @@ export default async function Jobs({
                           היא באמת הגיעה מלינקדאין. */}
                       {/* התפקיד שהחיפוש שלו הביא את המשרה. שאול ביקש
                           להבדיל בין מה שהוא מחפש לבין מה שהמערכת גוררת. */}
+                      {/* "ידני" ושם התפקיד הם שני דברים שונים, ושניהם
+                          מוצגים. קודם הוצג רק אחד מהם, ולכן משרה שהגיעה
+                          מהחיפוש הממוקד הראתה את שם התפקיד ולא את התג. */}
+                      {m.copies.some((c: any) => c.jobs.manual) && (
+                        <span className="chip warn">ידני</span>
+                      )}
                       {(() => {
                         const found = m.copies
                           .map((c: any) => c.jobs.found_for)
                           .find(Boolean);
-                        if (isCore(m)) {
-                          return <span className="chip ok">{found}</span>;
-                        }
-                        if (m.copies.some((c: any) => c.jobs.manual)) {
-                          return <span className="chip ok">ידני</span>;
-                        }
-                        return found ? <span className="chip mute">{found}</span> : null;
+                        if (!found) return null;
+                        return <span className={'chip ' + (isCore(m) ? 'ok' : 'mute')}>{found}</span>;
                       })()}
                       {[...new Set(m.copies.map((c: any) => c.jobs.source))].map((src) => (
                         <span className="chip src" key={src as string}>{src as string}</span>
