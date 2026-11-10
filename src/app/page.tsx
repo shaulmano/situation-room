@@ -61,7 +61,7 @@ export default async function Dashboard({
       .from('matches')
       .select(
         'score, cv_id, reasons, ' +
-        'jobs!inner(id, title, company, source, location, url, first_seen, posted, on_target, dismissed_at)'
+        'jobs!inner(id, title, company, source, location, url, first_seen, posted, on_target, dismissed_at, found_for, manual)'
       )
       .eq('jobs.on_target', true)
       .is('jobs.dismissed_at', null)
@@ -322,6 +322,17 @@ export default async function Dashboard({
                     {[j.company, j.location].filter(Boolean).join(' · ')}
                   </span>
                   <span className="why">
+                    {/* 10.11.2026: התיוג היה רק במסך המשרות, ושאול מסתכל
+                        כאן. שינוי לא נגמר עד שהוא בכל המסכים, וזה כלל
+                        שהוא עצמו ביקש. */}
+                    {(() => {
+                      const found = m.copies
+                        .map((c: any) => c.jobs.found_for)
+                        .find(Boolean);
+                      return found
+                        ? <span className="chip ok">{found}</span>
+                        : null;
+                    })()}
                     {[...new Set(m.copies.map((c: any) => c.jobs.source))].map((src) => (
                       <span className="chip src" key={src as string}>{src as string}</span>
                     ))}
