@@ -14,16 +14,6 @@ export async function POST(req: NextRequest) {
     ? raw.filter((x): x is string => typeof x === 'string' && /^[a-z0-9]+$/.test(x))
     : [];
 
-  // 10.11.2026: החיפוש הידני. שאול מפעיל אותו בעצמו על חמשת התפקידים שהוא
-  // מחפש דרך קבע, והתוצאות מסומנות כ"ידני".
-  //
-  // הרשימה יושבת כאן ולא במסך, כדי שהיא תהיה במקום אחד ולא תלויה במה
-  // שנשלח מהדפדפן. התפקידים הם מה ששאול כתב, בלשונו.
-  const manual = (body as { manual?: unknown }).manual === true;
-  const MANUAL_ROLES = [
-    'Director QA', 'Project Manager', 'Program Manager',
-    'QA Team Lead', 'Release Manager',
-  ];
 
   const token = process.env.GITHUB_DISPATCH_TOKEN;
   if (!token) {
@@ -59,12 +49,7 @@ export async function POST(req: NextRequest) {
       },
       body: JSON.stringify({
         ref: 'main',
-        inputs: {
-          sources: manual ? 'linkedin' : sources.join(' '),
-          // "|" ולא פסיק: "Director QA" הוא תפקיד אחד עם רווח.
-          roles: manual ? MANUAL_ROLES.join('|') : '',
-          manual: manual ? 'true' : 'false',
-        },
+        inputs: { sources: sources.join(' ') },
       }),
     }
   );

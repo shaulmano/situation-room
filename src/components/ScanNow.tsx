@@ -69,7 +69,7 @@ export default function ScanNow({
     return () => { if (timer.current) clearTimeout(timer.current); };
   }, [active, run?.done, poll]);
 
-  async function startScan(sources: string[] = [], manual = false) {
+  async function startScan(sources: string[] = []) {
     setErr('');
     setWaiting(true);
     startedAt.current = Date.now();
@@ -78,7 +78,7 @@ export default function ScanNow({
     const res = await fetch('/api/scan', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ sources, manual }),
+      body: JSON.stringify({ sources }),
     }).catch(() => null);
     const body = await res?.json().catch(() => null);
     if (!res?.ok) {
@@ -100,16 +100,6 @@ export default function ScanNow({
     <div className="scanbar">
       <button type="button" className="scanbtn" onClick={() => startScan()} disabled={active}>
         {running ? 'סורק…' : waiting ? 'ממתין ל-GitHub…' : 'סרוק הכל'}
-      </button>
-
-      {/* 10.11.2026: חיפוש ידני בלינקדאין על חמשת התפקידים ששאול מחפש דרך
-          קבע. הרשימה עצמה יושבת בשרת, ב-api/scan, ולא כאן. */}
-      <button
-        type="button" className="scanbtn retry"
-        onClick={() => startScan([], true)} disabled={active}
-        title="לינקדאין בלבד: Director QA, Project Manager, Program Manager, QA Team Lead, Release Manager"
-      >
-        חיפוש ידני בלינקדאין
       </button>
 
       {failed.length > 0 && (

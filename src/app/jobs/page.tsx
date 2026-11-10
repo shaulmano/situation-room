@@ -24,6 +24,16 @@ export default async function Jobs({
   // 10.11.2026: שאול חיפש "טאב ידני". המקור נשאר מה שהוא, ולכן זה סינון
   // נפרד ולא עוד שבב ברשימת המקורות.
   const onlyManual = searchParams.manual === '1';
+
+  // חמשת התפקידים ששאול נתן ב-10.11.2026, בשמות שהסורק באמת מחפש בהם.
+  // "Director QA" הוא "QA Director" ברשימת הסריקה, ו-"QA Team Lead" הוא
+  // "QA Team Leader". בלי המיפוי הזה הסינון היה מחזיר אפס ונראה שבור.
+  const CORE_ROLES = [
+    'QA Director', 'Project Manager', 'Program Manager',
+    'QA Team Leader', 'Release Manager',
+  ];
+  const isCore = (m: any) =>
+    m.copies.some((c: any) => CORE_ROLES.includes(c.jobs.found_for));
   // Keep the family selection when the time window changes, and vice versa.
   const roleQ = (role ? `&role=${role}` : '') + (source ? `&source=${encodeURIComponent(source)}` : '');
   // Today by default: the feed is for acting on, and a week's backlog on open
@@ -40,7 +50,7 @@ export default async function Jobs({
     .from('matches')
     .select(
       'score, cv_id, reasons, red_flags, ' +
-      'jobs!inner(id, title, company, source, location, url, first_seen, posted, on_target, dismissed_at, manual)'
+      'jobs!inner(id, title, company, source, location, url, first_seen, posted, on_target, dismissed_at, manual, found_for)'
     )
     // Newest first. The score still picks which CV fits and produces the match
     // reasons, but it does not order the feed: with no job descriptions every
@@ -121,8 +131,13 @@ export default async function Jobs({
   }, {});
   const SOURCES = Object.entries(sourceCounts).sort((a, b) => b[1] - a[1]);
 
-  const manualCount = picked.filter((m) => m.copies.some((c: any) => c.jobs.manual)).length;
-  if (onlyManual) picked = picked.filter((m) => m.copies.some((c: any) => c.jobs.manual));
+  // 10.11.2026: "ידני" לא מתאר כלום אחרי ששאול ביקש שזה ירוץ לבד. מה
+  // שהוא רצה להבדיל הוא חמשת התפקידים שלו מול כל השאר, ולכן השבב מסנן
+  // לפיהם. הדגל manual נשאר על משרות ישנות ונספר גם הוא, כדי שלא ייעלמו.
+  const coreCount = picked.filter((m) => isCore(m) || m.copies.some((c: any) => c.jobs.manual)).length;
+  if (onlyManual) {
+    picked = picked.filter((m) => isCore(m) || m.copies.some((c: any) => c.jobs.manual));
+  }
   if (source) picked = picked.filter((m) => sourcesOf(m).includes(source));
   // No cut. A day is a day; truncating it just hides the tail.
   const rows = picked;
@@ -213,7 +228,7 @@ export default async function Jobs({
           when one board is responsible for the whole screen. */}
       {SOURCES.length > 0 && (
         <div className="filters">
-          {(SOURCES.length > 1 || manualCount > 0) && (
+          {(SOURCES.length > 1 || coreCount > 0) && (
             <a href={sourceBase} className={'filter' + (source || onlyManual ? '' : ' on')}>
               כל המקורות
               <span className="n">{Object.values(sourceCounts).reduce((a, b) => a + b, 0)}</span>
@@ -221,13 +236,13 @@ export default async function Jobs({
           )}
           {/* החיפוש הידני. נפרד מהמקורות, כי משרה שנמצאה בו עדיין שייכת
               ללוח שממנו הגיעה. */}
-          {manualCount > 0 && (
+          {coreCount > 0 && (
             <a
               href={onlyManual ? sourceBase : `${sourceBase}&manual=1`}
               className={'filter' + (onlyManual ? ' on' : '')}
             >
               ידני
-              <span className="n">{manualCount}</span>
+              <span className="n">{coreCount}</span>
             </a>
           )}
           {SOURCES.map(([src, n]) => (
@@ -290,9 +305,20 @@ export default async function Jobs({
                       {/* 10.11.2026: משרה שהחיפוש הידני מצא מסומנת ככזאת,
                           לפי בקשת שאול. הדגל נוסף על המקור ולא מחליף אותו:
                           היא באמת הגיעה מלינקדאין. */}
-                      {m.copies.some((c: any) => c.jobs.manual) && (
-                        <span className="chip ok">ידני</span>
-                      )}
+                      {/* התפקיד שהחיפוש שלו הביא את המשרה. שאול ביקש
+                          להבדיל בין מה שהוא מחפש לבין מה שהמערכת גוררת. */}
+                      {(() => {
+                        const found = m.copies
+                          .map((c: any) => c.jobs.found_for)
+                          .find(Boolean);
+                        if (isCore(m)) {
+                          return <span className="chip ok">{found}</span>;
+                        }
+                        if (m.copies.some((c: any) => c.jobs.manual)) {
+                          return <span className="chip ok">ידני</span>;
+                        }
+                        return found ? <span className="chip mute">{found}</span> : null;
+                      })()}
                       {[...new Set(m.copies.map((c: any) => c.jobs.source))].map((src) => (
                         <span className="chip src" key={src as string}>{src as string}</span>
                       ))}

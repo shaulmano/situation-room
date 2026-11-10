@@ -75,12 +75,13 @@ def save_jobs(jobs, manual=False):
     for i in range(0, len(jobs), 100):
         chunk = jobs[i:i + 100]
         vals = ",".join(
-            "(%s,%s,%s,%s,%s,%s,%s,now(),now(),true,%s)"
+            "(%s,%s,%s,%s,%s,%s,%s,now(),now(),true,%s,%s)"
             % (q(job_id(j["url"])), q(j["title"][:200]), q(j.get("company") or None),
                q(j.get("source") or "unknown"), q(j["url"]),
                q((j.get("location") or "")[:120] or None),
                q((j.get("description") or "")[:3000] or None),
-               "true" if manual else "false")
+               "true" if manual else "false",
+               q(j.get("found_for") or None))
             for j in chunk
         )
         sql(
@@ -88,7 +89,7 @@ def save_jobs(jobs, manual=False):
             # posting two different ids, which is how 108 duplicates appeared.
             "insert into jobs "
             "(id,title,company,source,url,location,description,first_seen,last_seen,"
-            "on_target,manual) "
+            "on_target,manual,found_for) "
             "values %s on conflict (url) do update set "
             "title=excluded.title, company=excluded.company, "
             "location=excluded.location, "
@@ -97,7 +98,8 @@ def save_jobs(jobs, manual=False):
             # בחיפוש הידני היא משרה שהחיפוש הידני מצא, וזה מה שהוא ביקש
             # לראות. כיבוי שלו היה מוחק את הסימון בסריקה האוטומטית הבאה.
             "last_seen=now(), on_target=true, "
-            "manual=(jobs.manual or excluded.manual);" % vals
+            "manual=(jobs.manual or excluded.manual), "
+            "found_for=coalesce(jobs.found_for, excluded.found_for);" % vals
         )
 
 
@@ -133,6 +135,7 @@ def scan_one(js, au, src, roles=None):
                 continue
             if any(k in low for k in au._NONTECH):
                 continue
+            j.setdefault("found_for", role)
             on_target[url] = j
 
     if raw == 0 and not failed:

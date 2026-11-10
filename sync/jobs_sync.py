@@ -87,6 +87,9 @@ def rows(path):
                 # הוא נזרק לפני הכתיבה לקובץ. בלי תיאור הניקוד עובד לפי הכותרת
                 # בלבד, ושאול נדרש להדביק את המודעה ידנית כדי לקבל קורות חיים.
                 "description": (j.get("description") or "")[:3000] or None,
+                # התפקיד שהחיפוש שלו החזיר את המשרה. 10.11.2026: בלי זה אין
+                # דרך להבדיל בין התפקידים ששאול באמת מחפש לבין כל השאר.
+                "found_for": (j.get("found_for") or "")[:80] or None,
             }
 
 
@@ -102,10 +105,11 @@ def main():
     for i in range(0, len(all_rows), BATCH):
         chunk = all_rows[i:i + BATCH]
         vals = ",".join(
-            "(%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)"
+            "(%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)"
             % (q(r["id"]), q(r["title"]), q(r["company"]), q(r["source"]), q(r["url"]),
                q(r["location"]), q(r["posted"]), q(r["first_seen"]), q(r["last_seen"]),
-               "true" if r["on_target"] else "false", q(r["description"]))
+               "true" if r["on_target"] else "false", q(r["description"]),
+               q(r["found_for"]))
             for r in chunk
         )
         sql(
@@ -113,14 +117,17 @@ def main():
             # the same posting different ids, and the url is what identifies it.
             "insert into jobs "
             "(id,title,company,source,url,location,posted,first_seen,last_seen,on_target,"
-            "description) "
+            "description,found_for) "
             "values %s on conflict (url) do update set title=excluded.title, "
             "company=excluded.company, location=excluded.location, "
             "posted=excluded.posted, last_seen=excluded.last_seen, "
             "on_target=excluded.on_target, "
             # coalesce ולא השמה: שאול מדביק תיאורים ידנית, וריצה שבה הבוט לא
             # הביא תיאור היתה מוחקת את מה שהוא כתב.
-            "description=coalesce(excluded.description, jobs.description);" % vals
+            "description=coalesce(excluded.description, jobs.description), "
+            # coalesce גם כאן: ריצה שבה התפקיד לא ידוע לא מוחקת את מה שכבר
+            # נרשם. משרה שכמה חיפושים מצאו נשארת עם הראשון שרשם אותה.
+            "found_for=coalesce(jobs.found_for, excluded.found_for);" % vals
         )
         total += len(chunk)
         print("  upserted %d/%d" % (total, len(all_rows)))
