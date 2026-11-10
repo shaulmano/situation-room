@@ -72,6 +72,8 @@ def save_jobs(jobs, manual=False):
     """
     if not jobs:
         return
+    dup_clause = ("(case when true and not jobs.manual then true "
+                  "else jobs.manual_dup end)") if manual else "jobs.manual_dup"
     for i in range(0, len(jobs), 100):
         chunk = jobs[i:i + 100]
         vals = ",".join(
@@ -84,7 +86,10 @@ def save_jobs(jobs, manual=False):
                q(j.get("found_for") or None))
             for j in chunk
         )
-        sql(
+        # השאילתה נבנית כמחרוזת אחת ומעוצבת פעם אחת. 10.11.2026: ניסיון
+        # להדביק את ביטוי הכפילות עם + שבר את הריצה, כי % נקשר חזק יותר
+        # מ-+ ולכן הוא התייחס רק למחרוזת האחרונה בשרשרת.
+        stmt = (
             # on the url, not the id: the bot's file and this scan give the same
             # posting two different ids, which is how 108 duplicates appeared.
             "insert into jobs "
@@ -100,13 +105,13 @@ def save_jobs(jobs, manual=False):
             "last_seen=now(), on_target=true, "
             "manual=(jobs.manual or excluded.manual), "
             # כפילות. שאול, 10.11.2026: "אם יש כפילות תסמן אותה ככפולה".
-            # הענף הזה רץ רק על שורה שכבר הייתה קיימת, כלומר בדיוק כשהחיפוש
+            # הענף רץ רק על שורה שכבר הייתה קיימת, כלומר בדיוק כשהחיפוש
             # הידני מצא משרה שהסריקה הרגילה כבר הביאה. התנאי על jobs.manual
             # מונע מריצה ידנית לסמן ככפולות את התוצאות של קודמתה.
-            "manual_dup=(case when " + ("true" if manual else "false") +
-            " and not jobs.manual then true else jobs.manual_dup end), "
-            "found_for=coalesce(jobs.found_for, excluded.found_for);" % vals
+            f"manual_dup={dup_clause}, "
+            "found_for=coalesce(jobs.found_for, excluded.found_for);"
         )
+        sql(stmt % vals)
 
 
 def scan_one(js, au, src, roles=None):
