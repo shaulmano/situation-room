@@ -19,7 +19,7 @@ on:
   workflow_dispatch:
     inputs:
       mode:
-        description: 'fetch, render, audit, dismissals, migrate or query'
+        description: 'fetch, render, audit, dismissals, migrate, query or checkapi'
         required: true
         default: 'fetch'
       migration:
@@ -102,6 +102,15 @@ jobs:
           SUPABASE_PROJECT_REF: ${{ secrets.SUPABASE_PROJECT_REF }}
           QUERY: ${{ inputs.query }}
         run: python sync/query.py "$QUERY"
+
+      # בודק מה PostgREST מחזיר לאתר, ולא מה שיש במסד. שאילתה ישירה
+      # עוקפת אותו, ולכן היא לא יכולה לתפוס מטמון סכימה ישן.
+      - name: Check what the API layer returns
+        if: inputs.mode == 'checkapi'
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+          SUPABASE_PROJECT_REF: ${{ secrets.SUPABASE_PROJECT_REF }}
+        run: python sync/check_api.py
 
       - name: Fetch the next pending request
         if: inputs.mode == 'fetch'
