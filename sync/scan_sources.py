@@ -99,6 +99,12 @@ def save_jobs(jobs, manual=False):
             # לראות. כיבוי שלו היה מוחק את הסימון בסריקה האוטומטית הבאה.
             "last_seen=now(), on_target=true, "
             "manual=(jobs.manual or excluded.manual), "
+            # כפילות. שאול, 10.11.2026: "אם יש כפילות תסמן אותה ככפולה".
+            # הענף הזה רץ רק על שורה שכבר הייתה קיימת, כלומר בדיוק כשהחיפוש
+            # הידני מצא משרה שהסריקה הרגילה כבר הביאה. התנאי על jobs.manual
+            # מונע מריצה ידנית לסמן ככפולות את התוצאות של קודמתה.
+            "manual_dup=(case when " + ("true" if manual else "false") +
+            " and not jobs.manual then true else jobs.manual_dup end), "
             "found_for=coalesce(jobs.found_for, excluded.found_for);" % vals
         )
 

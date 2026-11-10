@@ -64,7 +64,7 @@ export default async function Dashboard({
       .from('matches')
       .select(
         'score, cv_id, reasons, ' +
-        'jobs!inner(id, title, company, source, location, url, first_seen, posted, on_target, dismissed_at, found_for, manual)'
+        'jobs!inner(id, title, company, source, location, url, first_seen, posted, on_target, dismissed_at, found_for, manual, manual_dup)'
       )
       .eq('jobs.on_target', true)
       .is('jobs.dismissed_at', null)
@@ -345,6 +345,11 @@ export default async function Dashboard({
                         שהוא עצמו ביקש. */}
                     {m.copies.some((c: any) => c.jobs.manual) && (
                       <span className="chip warn">ידני</span>
+                    )}
+                    {/* "אם יש כפילות תסמן אותה ככפולה", שאול 10.11.2026:
+                        החיפוש הידני מצא אותה, אבל היא כבר הייתה כאן. */}
+                    {m.copies.some((c: any) => c.jobs.manual_dup) && (
+                      <span className="chip mute">כפול</span>
                     )}
                     {(() => {
                       const found = m.copies
