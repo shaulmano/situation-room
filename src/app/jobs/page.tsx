@@ -15,12 +15,15 @@ export const dynamic = 'force-dynamic';
 export default async function Jobs({
   searchParams,
 }: {
-  searchParams: { days?: string; all?: string; role?: string; source?: string };
+  searchParams: { days?: string; all?: string; role?: string; source?: string; manual?: string };
 }) {
   const sb = serverClient();
   const showAll = searchParams.all === '1';
   const role = searchParams.role ?? '';
   const source = searchParams.source ?? '';
+  // 10.11.2026: שאול חיפש "טאב ידני". המקור נשאר מה שהוא, ולכן זה סינון
+  // נפרד ולא עוד שבב ברשימת המקורות.
+  const onlyManual = searchParams.manual === '1';
   // Keep the family selection when the time window changes, and vice versa.
   const roleQ = (role ? `&role=${role}` : '') + (source ? `&source=${encodeURIComponent(source)}` : '');
   // Today by default: the feed is for acting on, and a week's backlog on open
@@ -118,6 +121,8 @@ export default async function Jobs({
   }, {});
   const SOURCES = Object.entries(sourceCounts).sort((a, b) => b[1] - a[1]);
 
+  const manualCount = picked.filter((m) => m.copies.some((c: any) => c.jobs.manual)).length;
+  if (onlyManual) picked = picked.filter((m) => m.copies.some((c: any) => c.jobs.manual));
   if (source) picked = picked.filter((m) => sourcesOf(m).includes(source));
   // No cut. A day is a day; truncating it just hides the tail.
   const rows = picked;
@@ -208,10 +213,21 @@ export default async function Jobs({
           when one board is responsible for the whole screen. */}
       {SOURCES.length > 0 && (
         <div className="filters">
-          {SOURCES.length > 1 && (
-            <a href={sourceBase} className={'filter' + (source ? '' : ' on')}>
+          {(SOURCES.length > 1 || manualCount > 0) && (
+            <a href={sourceBase} className={'filter' + (source || onlyManual ? '' : ' on')}>
               כל המקורות
               <span className="n">{Object.values(sourceCounts).reduce((a, b) => a + b, 0)}</span>
+            </a>
+          )}
+          {/* החיפוש הידני. נפרד מהמקורות, כי משרה שנמצאה בו עדיין שייכת
+              ללוח שממנו הגיעה. */}
+          {manualCount > 0 && (
+            <a
+              href={onlyManual ? sourceBase : `${sourceBase}&manual=1`}
+              className={'filter' + (onlyManual ? ' on' : '')}
+            >
+              ידני
+              <span className="n">{manualCount}</span>
             </a>
           )}
           {SOURCES.map(([src, n]) => (

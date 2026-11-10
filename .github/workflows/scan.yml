@@ -66,6 +66,16 @@ jobs:
           if [ "$SCAN_MANUAL" = "true" ]; then set -- "$@" --manual; fi
           python sync/scan_sources.py "$@"
 
+      # 10.11.2026: בלי זה המשרות נכנסות ל-jobs ונשארות בלתי נראות.
+      # כל המסכים קוראים מ-matches עם jobs!inner, ו-scan_sources כותב רק
+      # ל-jobs. החיפוש הידני הכניס 15 משרות ושאול לא ראה אף אחת. זאת אותה
+      # מלכודת שתועדה ב-2.11 אחרי ה-KeyError בניקוד.
+      - name: Score what came in
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+          SUPABASE_PROJECT_REF: ${{ secrets.SUPABASE_PROJECT_REF }}
+        run: python sync/score.py
+
       - name: Announce what arrived
         env:
           SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
