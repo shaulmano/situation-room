@@ -28,9 +28,14 @@ export default async function Jobs({
   // חמשת התפקידים ששאול נתן ב-10.11.2026, בשמות שהסורק באמת מחפש בהם.
   // "Director QA" הוא "QA Director" ברשימת הסריקה, ו-"QA Team Lead" הוא
   // "QA Team Leader". בלי המיפוי הזה הסינון היה מחזיר אפס ונראה שבור.
+  // 10.11.2026, אחרי מדידה: שני תפקידי ה-QA ששאול נתן החזירו אפס, בזמן
+  // ש"QA Manager", שלא היה ברשימתו, החזיר 47 ו-"Head of QA" אחת. השוק
+  // בישראל מפרסם מנהל איכות בכיר כ-QA Manager. בלי שניהם הסינון היה מראה
+  // 70 משרות Release Manager ומסתיר 47 משרות QA, כלומר ההפך מהכוונה.
+  // שאול אישר להוסיף. אלה לא מרחיבים את הסריקה, רק את מה שהסינון מראה.
   const CORE_ROLES = [
-    'QA Director', 'Project Manager', 'Program Manager',
-    'QA Team Leader', 'Release Manager',
+    'QA Director', 'QA Manager', 'Head of QA', 'QA Team Leader',
+    'Project Manager', 'Program Manager', 'Release Manager',
   ];
   const isCore = (m: any) =>
     m.copies.some((c: any) => CORE_ROLES.includes(c.jobs.found_for));
