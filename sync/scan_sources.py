@@ -135,6 +135,17 @@ def scan_one(js, au, src, roles=None):
                 continue
             if any(k in low for k in au._NONTECH):
                 continue
+            # 10.11.2026: שני השערים האלה היו בנתיב של הבוט בלבד, ולא כאן.
+            # הסריקה הזאת כותבת ישירות ל-jobs, ולכן היא הכניסה משרות
+            # שהבוט היה פוסל: "מנהל/ת פרויקטים בתחום החשמל" נפסל אצלו
+            # ועבר כאן. שאול ראה אותן ושאל למה.
+            #
+            # אותה מחלה כמו הניקוד שלא רץ כאן: נתיב כתיבה שני שלא עבר את
+            # אותם שערים. כל שער חדש חייב להופיע בשני המקומות.
+            if js._off_domain(j):
+                continue
+            if not js._within_age(j):
+                continue
             j.setdefault("found_for", role)
             on_target[url] = j
 
