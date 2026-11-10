@@ -64,34 +64,44 @@ def job_id(url):
     return "sc-" + hashlib.sha1(url.encode("utf-8")).hexdigest()[:14]
 
 
-def save_jobs(jobs):
-    """Upsert the on-target postings themselves — counting them is not enough."""
+def save_jobs(jobs, manual=False):
+    """Upsert the on-target postings themselves — counting them is not enough.
+
+    manual: נמצאו בחיפוש שהפעיל שאול בעצמו. דגל ולא מקור, כי המשרה באמת
+    הגיעה מלינקדאין והחלפת ה-source הייתה משקרת למסך המקורות.
+    """
     if not jobs:
         return
     for i in range(0, len(jobs), 100):
         chunk = jobs[i:i + 100]
         vals = ",".join(
-            "(%s,%s,%s,%s,%s,%s,%s,now(),now(),true)"
+            "(%s,%s,%s,%s,%s,%s,%s,now(),now(),true,%s)"
             % (q(job_id(j["url"])), q(j["title"][:200]), q(j.get("company") or None),
                q(j.get("source") or "unknown"), q(j["url"]),
                q((j.get("location") or "")[:120] or None),
-               q((j.get("description") or "")[:3000] or None))
+               q((j.get("description") or "")[:3000] or None),
+               "true" if manual else "false")
             for j in chunk
         )
         sql(
             # on the url, not the id: the bot's file and this scan give the same
             # posting two different ids, which is how 108 duplicates appeared.
             "insert into jobs "
-            "(id,title,company,source,url,location,description,first_seen,last_seen,on_target) "
+            "(id,title,company,source,url,location,description,first_seen,last_seen,"
+            "on_target,manual) "
             "values %s on conflict (url) do update set "
             "title=excluded.title, company=excluded.company, "
             "location=excluded.location, "
             "description=coalesce(excluded.description, jobs.description), "
-            "last_seen=now(), on_target=true;" % vals
+            # הדגל רק נדלק: משרה שכבר הגיעה מהסריקה הרגילה ונמצאה גם
+            # בחיפוש הידני היא משרה שהחיפוש הידני מצא, וזה מה שהוא ביקש
+            # לראות. כיבוי שלו היה מוחק את הסימון בסריקה האוטומטית הבאה.
+            "last_seen=now(), on_target=true, "
+            "manual=(jobs.manual or excluded.manual);" % vals
         )
 
 
-def scan_one(js, au, src):
+def scan_one(js, au, src, roles=None):
     """Returns (raw, on_target_jobs, unique, failed, reason)."""
     fn = js.SCRAPERS.get(src)
     if not fn:
@@ -101,7 +111,7 @@ def scan_one(js, au, src):
     on_target = {}
     failed, reason = False, None
 
-    for role in js.SCHEDULED_ROLES:
+    for role in (roles or js.SCHEDULED_ROLES):
         try:
             found = fn(role) or []
         except Exception as e:
@@ -134,8 +144,25 @@ def scan_one(js, au, src):
 
 def main():
     js, au = load()
-    only = [a for a in sys.argv[1:] if not a.startswith("-")] or js.SCHEDULED_SOURCES
+    only = [a for a in sys.argv[1:] if a and not a.startswith("-")] or js.SCHEDULED_SOURCES
+
+    # 10.11.2026: החיפוש הידני. שאול מפעיל אותו בעצמו, על חמשת התפקידים
+    # שהוא מחפש דרך קבע, והתוצאות מסומנות manual ומוצגות כ"ידני".
+    #
+    #   python sync/scan_sources.py linkedin --roles="Director QA|Project Manager" --manual
+    #
+    # מפריד "|" ולא פסיק או רווח, כי "Director QA" הוא תפקיד אחד עם רווח.
+    roles = None
+    for arg in sys.argv[1:]:
+        if arg.startswith("--roles="):
+            roles = [r.strip() for r in arg[len("--roles="):].split("|") if r.strip()]
+    manual = "--manual" in sys.argv
+
     print("sources: %s" % ", ".join(only), flush=True)
+    if roles:
+        print("roles: %s" % ", ".join(roles), flush=True)
+    if manual:
+        print("these results will be flagged as found by hand", flush=True)
 
     run_id = start_run(len(only))
     print("run %s" % run_id, flush=True)
@@ -144,8 +171,8 @@ def main():
     try:
         for src in only:
             t0 = time.time()
-            raw, found, uniq, failed, reason = scan_one(js, au, src)
-            save_jobs(found)
+            raw, found, uniq, failed, reason = scan_one(js, au, src, roles)
+            save_jobs(found, manual)
             done += 1
             record(run_id, src, raw, len(found), uniq, failed, reason, done)
             print("  %-12s raw=%-6d on_target=%-4d unique=%-5d %ds %s"

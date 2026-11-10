@@ -37,7 +37,7 @@ export default async function Jobs({
     .from('matches')
     .select(
       'score, cv_id, reasons, red_flags, ' +
-      'jobs!inner(id, title, company, source, location, url, first_seen, posted, on_target, dismissed_at)'
+      'jobs!inner(id, title, company, source, location, url, first_seen, posted, on_target, dismissed_at, manual)'
     )
     // Newest first. The score still picks which CV fits and produces the match
     // reasons, but it does not order the feed: with no job descriptions every
@@ -271,6 +271,12 @@ export default async function Jobs({
                   </span>
                   {(
                     <span className="why">
+                      {/* 10.11.2026: משרה שהחיפוש הידני מצא מסומנת ככזאת,
+                          לפי בקשת שאול. הדגל נוסף על המקור ולא מחליף אותו:
+                          היא באמת הגיעה מלינקדאין. */}
+                      {m.copies.some((c: any) => c.jobs.manual) && (
+                        <span className="chip ok">ידני</span>
+                      )}
                       {[...new Set(m.copies.map((c: any) => c.jobs.source))].map((src) => (
                         <span className="chip src" key={src as string}>{src as string}</span>
                       ))}
