@@ -21,7 +21,12 @@ export default function Dismiss({ id, ids }: { id: string; ids?: string[] }) {
   async function hide(e: React.MouseEvent<HTMLButtonElement>) {
     const row = (e.currentTarget as HTMLElement).closest('.row');
     setGone(true);
-    if (row instanceof HTMLElement) row.hidden = true;
+    if (row instanceof HTMLElement) {
+      row.hidden = true;
+      // גם בשורה, ולא רק בגיליון: הטלפון של שאול עשוי להחזיק גרסה ישנה
+      // של ה-CSS במטמון, וסגנון על האלמנט עצמו לא תלוי בה.
+      row.style.display = 'none';
+    }
 
     const res = await fetch('/api/jobs/dismiss', {
       method: 'POST',
@@ -32,7 +37,10 @@ export default function Dismiss({ id, ids }: { id: string; ids?: string[] }) {
     // Put it back if the write never landed. A job hidden on screen but still
     // in the feed is worse than one that visibly refused to go.
     if (!res || !res.ok) {
-      if (row instanceof HTMLElement) row.hidden = false;
+      if (row instanceof HTMLElement) {
+        row.hidden = false;
+        row.style.display = '';
+      }
       setGone(false);
       return;
     }

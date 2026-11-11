@@ -92,6 +92,14 @@ h2:first-child{margin-top:0}
 .kpi.hero .kpi-v{color:var(--accent);font-size:2.6rem}
 .kpi.hero .kpi-l{color:var(--accent);font-weight:600}
 
+/* 11.11.2026: התכונה hidden של הדפדפן נותנת display:none מגיליון ברירת
+   המחדל, וכל כלל מחלקה של האתר גובר עליה. .row מגדיר display:flex, ולכן
+   row.hidden=true בכפתור ה-X לא הסתיר שום דבר, והשורה נעלמה רק כשהרענון
+   המלא הסתיים, כחמש שניות אחרי הלחיצה.
+   הכלל הזה גלובלי בכוונה: כל מקום בקוד שמסתיר אלמנט עם hidden סמך על
+   התנהגות שלא קיימת. */
+[hidden]{display:none !important}
+
 .rows{display:flex;flex-direction:column;gap:6px;margin-top:12px}
 .row{
   display:flex;align-items:center;gap:9px;flex-wrap:wrap;

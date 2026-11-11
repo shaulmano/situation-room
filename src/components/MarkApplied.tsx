@@ -23,7 +23,12 @@ export default function MarkApplied({ id, cvId }: { id: string; cvId?: string })
       setDone(false);
       return;
     }
-    if (row instanceof HTMLElement) row.hidden = true;
+    // 11.11.2026: hidden לבד לא הסתיר כלום, כי .row מגדיר display:flex
+    // וכלל מחלקה גובר על התכונה. השורה נעלמה רק כשהרענון הסתיים.
+    if (row instanceof HTMLElement) {
+      row.hidden = true;
+      row.style.display = 'none';
+    }
     start(() => router.refresh());
   }
 
