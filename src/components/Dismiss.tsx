@@ -1,15 +1,23 @@
 'use client';
-import { useState, useTransition } from 'react';
+import { useState } from 'react';
 import { useRouter } from 'next/navigation';
+
+// רענון אחד לכל סדרת סגירות, לא אחד לכל לחיצה.
+//
+// 11.11.2026, שאול: "כל עדכון של פסילת משרה נורא איטי, לחיצה על X לוקחת
+// המון זמן". השורה אמנם נעלמה מיד, אבל כל לחיצה קראה ל-router.refresh,
+// שמריץ מחדש את כל השאילתות של המסך מול השרת, ובתוכנית Hobby גם מעיר
+// פונקציה קרה. חמש סגירות ברצף היו חמישה רענונים מלאים, זה אחר זה,
+// וכל אחד מהם משאיר את הכפתורים במצב ממתין.
+//
+// הטיימר משותף לכל השורות בעמוד בכוונה: סגירה שנייה מבטלת את הרענון של
+// הראשונה, והמסך מתרענן פעם אחת כשהפסיקו ללחוץ.
+let refreshTimer: ReturnType<typeof setTimeout> | null = null;
 
 export default function Dismiss({ id, ids }: { id: string; ids?: string[] }) {
   const router = useRouter();
   const [gone, setGone] = useState(false);
-  const [pending, start] = useTransition();
 
-  // The write and the refetch take about a second, and the row used to sit
-  // there unchanged for all of it — so on a phone the tap read as ignored.
-  // Drop the row on click and let the refetch confirm it.
   async function hide(e: React.MouseEvent<HTMLButtonElement>) {
     const row = (e.currentTarget as HTMLElement).closest('.row');
     setGone(true);
@@ -28,13 +36,20 @@ export default function Dismiss({ id, ids }: { id: string; ids?: string[] }) {
       setGone(false);
       return;
     }
-    start(() => router.refresh());
+
+    // הכתיבה הצליחה והשורה כבר לא על המסך. הרענון נועד רק לעדכן את
+    // המונים למעלה, ואין שום סיבה שהוא יחסום את הלחיצה הבאה.
+    if (refreshTimer) clearTimeout(refreshTimer);
+    refreshTimer = setTimeout(() => {
+      refreshTimer = null;
+      router.refresh();
+    }, 2500);
   }
 
   return (
     <button
       type="button" className="dismiss" onClick={hide}
-      disabled={gone || pending} title="הסתר — לא רלוונטית"
+      disabled={gone} title="הסתר — לא רלוונטית"
       aria-label="הסתר משרה"
     >
       ✕
