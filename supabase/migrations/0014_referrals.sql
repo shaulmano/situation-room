@@ -11,6 +11,11 @@
 --   linkedin ההודעה מוכנה להעתקה, והשליחה ידנית. אוטומציה בלינקדאין
 --            עוברת דרך החשבון שלו ומסכנת חסימה, וזה הנכס שאסור לאבד.
 --
+-- השם: קיימת כבר טבלה בשם outreach מהסכימה המקורית (0001), למעקב שיחות
+-- עם חברות השמה: org, contact, role, called_at, outcome. אין אליה שום
+-- קוד, אבל create table if not exists עליה לא עושה כלום בשקט, וזה בדיוק
+-- מה שקרה בניסיון הראשון כאן. לא נוגעים בה.
+--
 -- מצבי הסטטוס, ובסדר הזה:
 --   pending   שאול סימן. עוד לא נשלח כלום.
 --   test_sent עותק בדיקה נשלח אליו עצמו. הוא קורא ומאשר.
@@ -22,7 +27,7 @@
 -- שום שורה לא עוברת מ-test_sent ל-sent בלי אישור מפורש שלו. זה הכלל
 -- שהוא חזר עליו יותר מכל כלל אחר: שליחה יוצאת רק אחרי שהוא אישר.
 
-create table if not exists outreach (
+create table if not exists referrals (
   id          bigint generated always as identity primary key,
   contact_id  uuid not null references contacts(id) on delete cascade,
   job_id      text not null references jobs(id) on delete cascade,
@@ -42,14 +47,14 @@ create table if not exists outreach (
 );
 
 -- אותו איש קשר לאותה משרה לא נכנס לתור פעמיים.
-create unique index if not exists outreach_once
-  on outreach(contact_id, job_id);
+create unique index if not exists referrals_once
+  on referrals(contact_id, job_id);
 
-create index if not exists outreach_status_idx on outreach(status);
+create index if not exists referrals_status_idx on referrals(status);
 
-alter table outreach enable row level security;
-drop policy if exists owner_only on outreach;
-create policy owner_only on outreach
+alter table referrals enable row level security;
+drop policy if exists owner_only on referrals;
+create policy owner_only on referrals
   for all
   using (auth.jwt() ->> 'email' = 'shaul.mano@gmail.com')
   with check (auth.jwt() ->> 'email' = 'shaul.mano@gmail.com');

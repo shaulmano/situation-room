@@ -30,7 +30,7 @@ export async function POST(req: NextRequest) {
       // יכול לדלג על הבדיקה, וזה בדיוק מה שהכלל בא למנוע.
       ? { status: 'approved', approved_at: new Date().toISOString() }
       : { status: 'canceled' };
-    let q = sb.from('outreach').update(patch).in('id', ids);
+    let q = sb.from('referrals').update(patch).in('id', ids);
     if (action === 'approve') q = q.eq('status', 'test_sent');
     const { data, error } = await q.select('id');
     if (error) return NextResponse.json({ error: error.message }, { status: 500 });
@@ -64,7 +64,7 @@ export async function POST(req: NextRequest) {
   // אותו איש קשר לאותה משרה לא נכנס פעמיים, וסימון חוזר לא דורס שורה
   // שכבר נשלחה.
   const { data, error } = await sb
-    .from('outreach')
+    .from('referrals')
     .upsert(rows, { onConflict: 'contact_id,job_id', ignoreDuplicates: true })
     .select('id');
 

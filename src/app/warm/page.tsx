@@ -98,7 +98,7 @@ export default async function Warm({
 
   // התור: מה שכבר סומן לשליחה, כדי שהמסך ידע מה מצבו ולא יציע אותו שוב.
   const { data: queued } = await sb
-    .from('outreach')
+    .from('referrals')
     .select('id, contact_id, job_id, status');
   const queuedBy = new Map<string, { id: number; status: string }>();
   for (const q of (queued ?? []) as any[]) {
