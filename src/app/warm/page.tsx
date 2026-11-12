@@ -7,6 +7,7 @@ import { postingKey } from '@/lib/dedupe';
 import Dismiss from '@/components/Dismiss';
 import JobContacts from '@/components/JobContacts';
 import MarkApplied from '@/components/MarkApplied';
+import Refresh from '@/components/Refresh';
 import WarmPicker, { type Pick } from '@/components/WarmPicker';
 
 export const dynamic = 'force-dynamic';
@@ -170,6 +171,8 @@ export default async function Warm({
         מכיר בהן מישהו אישית, ולכן הן לא עוד הגשה בערימה. הפנייה נכתבת כאן,
         ההודעה מוכנה להעתקה, והשליחה היא שלך.
       </p>
+
+      <Refresh />
 
       <WarmPicker picks={picks} />
 
