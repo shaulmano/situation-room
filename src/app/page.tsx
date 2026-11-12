@@ -33,7 +33,7 @@ export default async function Dashboard({
   // ידני, והוא מסתכל כאן. שניהם היו קיימים רק במסך המשרות.
   const onlyManual = searchParams?.manual === '1';
 
-  const [convos, weekApps, needsReply, silent, lastSent, applied, lastImport, upcoming] = await Promise.all([
+  const [convos, weekApps, needsReply, silent, lastSent, applied, lastImport, upcoming, warmPeople] = await Promise.all([
     // 9.11.2026: קודם נספר הסטטוס הנוכחי בלבד, ולכן דחייה אחרי ראיון מחקה
     // את הראיון מהמניין והאריח נשאר אפס גם אחרי ששאול סימן. stage מחזיק את
     // השלב הרחוק ביותר שההגשה הגיעה אליו, והוא לא נמחק.
@@ -45,6 +45,11 @@ export default async function Dashboard({
     sb.from('applications').select('sent_at').order('sent_at', { ascending: false }).limit(1),
     sb.from('applications').select('job_id'),
     sb.from('contacts').select('imported_at').order('imported_at', { ascending: false }).limit(1),
+    // 12.11.2026: המספר שהוביל לבניית מסך /warm. 540 הגשות קרות הביאו
+    // שתי שיחות, ובאותו זמן מחצית מהמשרות הפתוחות הן בחברה ששאול מכיר
+    // בה מישהו. זה האריח שאמור להזיז אותו לשם.
+    sb.from('contacts').select('company_key', { count: 'exact', head: false })
+      .is('contacted_at', null).limit(5000),
     // שיחות וראיונות שנקבעו. מה שהיה אתמול נשאר יום אחד נוסף, כדי שראיון
     // שהתקיים הבוקר לא ייעלם מהמסך לפני שנרשם מה קרה בו.
     sb.from('applications')
@@ -130,6 +135,15 @@ export default async function Dashboard({
   if (source) picked = picked.filter((m) => sourcesOf(m).includes(source));
   const rows = picked;
 
+  // כמה מהמשרות שעל המסך הן בחברה שיש בה איש קשר שעוד לא פנית אליו.
+  // נספר מתוך מה שכבר נטען, בלי שאילתה נוספת.
+  const warmKeys = new Set(
+    ((warmPeople.data ?? []) as any[]).map((c) => c.company_key).filter(Boolean)
+  );
+  const warmHere = rows.filter((m: any) =>
+    warmKeys.has(companyKey(m.jobs.company))
+  ).length;
+
   // Every copy of every row on screen, so closing the set closes the duplicates
   // too instead of leaving them to come back tomorrow under another board.
   const allIds = rows.flatMap((m) => m.copies.map((c: any) => c.jobs.id as string));
@@ -185,6 +199,28 @@ export default async function Dashboard({
           a number you have to take on faith. */}
       {/* מה שנקבע בא לפני מה שנספר. שאול ביקש שכל מה שהוא צריך לעשות יהיה
           מול העיניים ולא בפעמון, ומשהו להיום הוא משימה רגילה ולא אדומה. */}
+      {/* 12.11.2026: המספר שמוביל למסך הפניות דרך מכרים. הוא יושב כאן, מעל
+          הכל, כי הוא הערוץ שהמדידה אמרה שהוא היחיד שמניב, ולא עוד אריח. */}
+      {warmHere > 0 && (
+        <Link
+          className="row"
+          href="/warm"
+          style={{
+            background: 'var(--good-soft)', borderColor: 'var(--good)',
+            marginBottom: 12,
+          }}
+        >
+          <span className="chip ok">דרך מכר</span>
+          <span className="grow">
+            {warmHere} מהמשרות כאן הן בחברה שאתה מכיר בה מישהו
+            <span className="sub">
+              פנייה אישית במקום הגשה קרה. ההודעה מוכנה שם להעתקה.
+            </span>
+          </span>
+          <span className="apply">פתח</span>
+        </Link>
+      )}
+
       {(upcoming.data ?? []).length > 0 && (
         <div className="rows" style={{ marginBottom: 14 }}>
           {(upcoming.data as any[]).map((u) => {

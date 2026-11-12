@@ -41,7 +41,10 @@ const CVS: [string, string][] = [
   ['delivery', 'Delivery'],
 ];
 
-export default function JobContacts({ contacts, job }: { contacts: WarmContact[]; job: JobRef }) {
+export default function JobContacts(
+  { contacts, job, open = false }:
+  { contacts: WarmContact[]; job: JobRef; open?: boolean },
+) {
   const [rows, setRows] = useState(contacts);
   if (rows.length === 0) return null;
 
@@ -51,6 +54,9 @@ export default function JobContacts({ contacts, job }: { contacts: WarmContact[]
 
   return (
     <details
+      // 12.11.2026: במסך "דרך מישהו שאתה מכיר" הבלוק הזה הוא כל התוכן,
+      // ולכן הוא נפתח לבד. בפיד הרגיל הוא נשאר מקופל.
+      open={open}
       style={{
         flex: '1 1 100%',
         marginTop: 8,

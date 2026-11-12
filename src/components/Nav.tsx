@@ -4,11 +4,15 @@ import { usePathname } from 'next/navigation';
 import RefreshOnFocus from './RefreshOnFocus';
 import ClearBadge from './ClearBadge';
 
-const ITEMS = [
+const ITEMS: { href: string; label: string; icon: string; wide?: boolean }[] = [
   { href: '/',             label: 'חדר המצב', icon: '◉' },
   { href: '/jobs',         label: 'משרות',    icon: '▤' },
   { href: '/applications', label: 'הגשות',    icon: '↗' },
   { href: '/replies',      label: 'תשובות',   icon: '✉' },
+  // 12.11.2026: פניות דרך מכרים. נוסף לניווט העליון בלבד, כי שבעה פריטים
+  // בשורה התחתונה בטלפון חותכים את "חדר המצב". בטלפון מגיעים לשם מהבאנר
+  // שבראש חדר המצב, שהוא ממילא המסך שמולו שאול יושב.
+  { href: '/warm',         label: 'מכרים',    icon: '◈', wide: true },
   { href: '/sources',      label: 'מקורות',   icon: '▦' },
   { href: '/settings',     label: 'הגדרות',   icon: '⚙' },
 ];
@@ -30,7 +34,7 @@ export default function Nav() {
         ))}
       </nav>
       <nav className="bnav">
-        {ITEMS.map((i) => (
+        {ITEMS.filter((i) => !i.wide).map((i) => (
           <Link key={i.href} href={i.href} className={on(i.href) ? 'on' : ''}>
             <span className="ic" aria-hidden="true">{i.icon}</span>
             {i.label}
