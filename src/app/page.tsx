@@ -45,11 +45,6 @@ export default async function Dashboard({
     sb.from('applications').select('sent_at').order('sent_at', { ascending: false }).limit(1),
     sb.from('applications').select('job_id'),
     sb.from('contacts').select('imported_at').order('imported_at', { ascending: false }).limit(1),
-    // 12.11.2026: המספר שהוביל לבניית מסך /warm. 540 הגשות קרות הביאו
-    // שתי שיחות, ובאותו זמן מחצית מהמשרות הפתוחות הן בחברה ששאול מכיר
-    // בה מישהו. זה האריח שאמור להזיז אותו לשם.
-    sb.from('contacts').select('company_key', { count: 'exact', head: false })
-      .is('contacted_at', null).limit(5000),
     // שיחות וראיונות שנקבעו. מה שהיה אתמול נשאר יום אחד נוסף, כדי שראיון
     // שהתקיים הבוקר לא ייעלם מהמסך לפני שנרשם מה קרה בו.
     sb.from('applications')
@@ -58,6 +53,16 @@ export default async function Dashboard({
       .gte('next_at', ago(1))
       .order('next_at', { ascending: true })
       .limit(5),
+    // 12.11.2026: המספר שהוביל לבניית מסך /warm. 540 הגשות קרות הביאו
+    // שתי שיחות, ובאותו זמן מחצית מהמשרות הפתוחות הן בחברה ששאול מכיר
+    // בה מישהו. זה האריח שאמור להזיז אותו לשם.
+    //
+    // **הסדר כאן חייב להתאים לסדר הפירוק למעלה, אחד לאחד.** 12.11.2026:
+    // השאילתה הזאת נשתלה באמצע הרשימה ופורקה בסוף, וכל התוצאות מאותה
+    // נקודה זזו במקום אחד. הבאנר של השיחות הציג את אנשי הקשר כראיונות
+    // מתוזמנים, עם "Invalid Date" על כל שורה, בדיוק במסך הבית.
+    sb.from('contacts').select('company_key', { count: 'exact', head: false })
+      .is('contacted_at', null).limit(5000),
   ]);
 
   const appliedIds = new Set((applied.data ?? []).map((a: any) => a.job_id).filter(Boolean));
