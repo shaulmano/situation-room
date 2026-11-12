@@ -69,5 +69,25 @@ export async function POST(req: NextRequest) {
     .select('id');
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
-  return NextResponse.json({ ok: true, queued: (data ?? []).length });
+
+  // קורות החיים לפי המשרה מיוצרים בצינור שכבר קיים, cv_requests, ולא
+  // במחולל שני. בלי זה הפנייה הייתה יוצאת עם קובץ גנרי, ושאול ביקש קובץ
+  // לפי המשרה. אם כבר יש בקשה למשרה הזאת, לא נפתחת עוד אחת.
+  const jobIds = [...new Set(items.map((it) => it.job_id))];
+  const { data: existing } = await sb
+    .from('cv_requests')
+    .select('job_id')
+    .in('job_id', jobIds);
+  const have = new Set((existing ?? []).map((r: any) => r.job_id));
+  const missing = items
+    .filter((it) => !have.has(it.job_id))
+    .map((it) => ({ job_id: it.job_id, base_cv_id: it.cv_id ?? null, status: 'pending' }))
+    .filter((r, i, all) => all.findIndex((x) => x.job_id === r.job_id) === i);
+  if (missing.length) await sb.from('cv_requests').insert(missing);
+
+  return NextResponse.json({
+    ok: true,
+    queued: (data ?? []).length,
+    cvs_requested: missing.length,
+  });
 }
