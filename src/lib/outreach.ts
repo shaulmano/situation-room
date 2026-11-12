@@ -18,18 +18,6 @@ const CV_FILE: Record<string, string> = {
   'project-release-manager': 'Shaul_Mano_Project_Release_Manager.pdf',
 };
 
-// Written to follow "I have spent the last 15 years", as one sentence rather
-// than a colon and a list. The colon was what made the earlier version read
-// like a CV instead of a message between two people who know each other.
-const PITCH: Record<string, string> = {
-  qa: 'leading QA in enterprise SaaS, most recently as Head of QA at Qmarkets',
-  program: 'in program and release management in enterprise SaaS, most recently at Qmarkets',
-  delivery: 'leading delivery and professional services in enterprise SaaS, most recently at Qmarkets',
-  release: 'owning release management in enterprise SaaS, most recently at Qmarkets',
-  'project-release-manager':
-    'running projects and releases in enterprise SaaS, most recently at Qmarkets',
-};
-
 export function cvUrl(cvId?: string | null): string {
   const file = CV_FILE[cvId ?? ''] ?? CV_FILE.qa;
   const base = process.env.NEXT_PUBLIC_SUPABASE_URL ?? '';
@@ -62,13 +50,27 @@ export function referralMessage(opts: {
   // הקישור.
   attached?: boolean;
 }): string {
-  const pitch = PITCH[opts.cvId ?? ''] ?? PITCH.qa;
-  const close = opts.attached
-    ? 'Would you be open to referring me internally? My CV is attached.'
-    : `Would you be open to referring me internally? My CV: ${cvUrl(opts.cvId)}`;
+  // 12.11.2026, שאול הכתיב את המבנה מילה במילה אחרי שקרא את הנוסח הקודם:
+  // "הי שם, ראיתי שאתה עובד בחברת שם החברה, אני מצרף את הקורות חיים שלי
+  // למשרת שם המשרה ואשמח באם תוכל להעביר אותם פנימית למגייסים הרלוונטיים.
+  // המון תודה, שאול."
+  //
+  // מה שירד: המשפט "I have spent the last 15 years". זה פתיח של קורות
+  // חיים ולא של הודעה בין שני אנשים שמכירים, והוא מה שגרם לנוסח הקודם
+  // להישמע כמו פנייה קרה. הקורות חיים מצורפים ממילא, ומי שיפתח אותם יראה
+  // שם את הניסיון. לכן גם המפה PITCH נמחקה ולא הוחלפה.
+  //
+  // ללא קו מפריד ארוך ובלי ניסוח שנשמע כמו טקסט שנכתב במכונה.
+  const title = shortTitle(opts.jobTitle);
+  const cv = opts.attached
+    ? "I'm attaching my CV for the " + title + ' position'
+    : "I'm sending my CV for the " + title + ' position: ' + cvUrl(opts.cvId);
   return [
-    `Hi ${firstName(opts.contactName)}, hope you are doing well.`,
-    `I noticed ${opts.company} is hiring a ${shortTitle(opts.jobTitle)}. I have spent the last 15 years ${pitch}.`,
-    close,
+    `Hi ${firstName(opts.contactName)},`,
+    `I saw that you work at ${opts.company}.`,
+    `${cv}, and I would be glad if you could pass it on internally to the relevant recruiters.`,
+    '',
+    'Thanks a lot,',
+    'Shaul',
   ].join('\n');
 }
