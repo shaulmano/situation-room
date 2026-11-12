@@ -168,8 +168,35 @@ def main():
     if not cvs:
         print("no CVs seeded")
         return
-    jobs = sql("select id, title, company, location, posted, description from jobs")
-    print("scoring %d jobs against %d CVs" % (len(jobs), len(cvs)))
+    # ‏12.11.2026. עד היום השורה הזאת הייתה select בלי שום תנאי, כלומר כל
+    # ריצה ניקדה מחדש את כל הטבלה: 3,642 משרות כפול חמש גרסאות, כ-18,000
+    # שורות שנכתבו מחדש, כמה פעמים ביום, כל יום. רובן המוחלט אותה משרה מול
+    # אותה גרסה עם אותו ציון בדיוק.
+    #
+    # זה מה שכילה את תקציב ה-Disk IO של הפרויקט ב-12.11.2026 והשאיר את
+    # המסכים ריקים בלי שום שגיאה. שאול: "לא הגיוני לרוץ על הכל".
+    #
+    # שלושה מצבים:
+    #   (ברירת מחדל)  רק צמדים שחסרה להם שורת התאמה. משרה חדשה, או גרסת
+    #                 קורות חיים חדשה שעוד לא נוקדה מול כלום.
+    #   open          כל המשרות הפתוחות שעל המטרה ולא נפסלו. זה מה שמריצים
+    #                 כשתוכן של גרסה קיימת השתנה.
+    #   all           הכל. בנייה מחדש, ידנית בלבד.
+    mode = sys.argv[1] if len(sys.argv) > 1 else "missing"
+    cols = "id, title, company, location, posted, description"
+    if mode == "all":
+        jobs = sql("select %s from jobs" % cols)
+    elif mode == "open":
+        jobs = sql("select %s from jobs where on_target and dismissed_at is null" % cols)
+    else:
+        mode = "missing"
+        jobs = sql(
+            "select %s from jobs j where (select count(*) from matches m "
+            "where m.job_id = j.id) < %d" % (cols.replace("id,", "j.id,"), len(cvs)))
+    print("mode=%s: scoring %d jobs against %d CVs" % (mode, len(jobs), len(cvs)))
+    if not jobs:
+        print("nothing to score")
+        return
 
     # שגיאה על צמד אחד לא מפילה את כל המעבר.
     #
@@ -218,6 +245,10 @@ def main():
             "red_flags=excluded.red_flags, scored_at=now();" % vals)
         print("  %d/%d" % (min(i + BATCH, len(rows)), len(rows)))
 
+    # הדוח הזה מצרף את כל טבלת ההתאמות וממיין אותה. בריצה רגילה, שמנקדת
+    # כמה משרות חדשות, אין בו שום ערך והוא רק עוד קריאה.
+    if mode == "missing":
+        return
     top = sql("select m.score, m.cv_id, j.title, j.company, j.location from matches m "
               "join jobs j on j.id=m.job_id order by m.score desc limit 12")
     print("\ntop matches:")

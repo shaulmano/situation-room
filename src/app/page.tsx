@@ -2,7 +2,7 @@ import Link from 'next/link';
 import { serverClient } from '@/lib/server';
 import { applyTarget, directLinks } from '@/lib/apply';
 import { jobAge } from '@/lib/age';
-import { companyKey, type WarmContact } from '@/lib/contacts';
+import { companyKey, type WarmContact, contactsByCompanyKeys } from '@/lib/contacts';
 import { postingKey } from '@/lib/dedupe';
 import Dismiss from '@/components/Dismiss';
 import DismissAll from '@/components/DismissAll';
@@ -175,12 +175,10 @@ export default async function Dashboard({
   const warm = new Map<string, WarmContact[]>();
   if (keys.length > 0) {
     const select = 'id, full_name, title, linkedin_url, email, phone, contacted_at, company_key';
-    const { data: contacts } = keys.length > 120
-      ? await sb.from('contacts').select(select).limit(5000)
-      : await sb.from('contacts').select(select).in('company_key', keys);
+    const contacts = await contactsByCompanyKeys(sb, keys, select);
 
     const wanted = new Set(keys);
-    for (const c of (contacts ?? []) as any[]) {
+    for (const c of contacts as any[]) {
       if (!c.company_key || !wanted.has(c.company_key)) continue;
       const list = warm.get(c.company_key) ?? [];
       list.push(c);

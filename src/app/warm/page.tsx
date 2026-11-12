@@ -2,7 +2,7 @@ import Link from 'next/link';
 import { serverClient } from '@/lib/server';
 import { applyTarget } from '@/lib/apply';
 import { jobAge } from '@/lib/age';
-import { companyKey, type WarmContact } from '@/lib/contacts';
+import { companyKey, contactsByCompanyKeys, type WarmContact } from '@/lib/contacts';
 import { postingKey } from '@/lib/dedupe';
 import Dismiss from '@/components/Dismiss';
 import JobContacts from '@/components/JobContacts';
@@ -81,16 +81,14 @@ export default async function Warm({
   // ו-"Qmarkets" הן שתי חברות.
   const keys = [...new Set(postings.map((m) => companyKey(m.jobs.company)).filter(Boolean))];
   const select = 'id, full_name, title, company_key, linkedin_url, email, phone, contacted_at';
-  const { data: contacts } = keys.length > 120
-    ? await sb.from('contacts').select(select).limit(5000)
-    : await sb.from('contacts').select(select).in('company_key', keys);
+  const contacts = await contactsByCompanyKeys(sb, keys, select);
 
   // 12.11.2026. מפתח ריק אינו התאמה. 81 משרות פתוחות הגיעו בלי שם חברה,
   // ול-4 אנשי קשר אין שם חברה בייבוא, ושני הצדדים נורמלו לאותה מחרוזת
   // ריקה. התוצאה: ארבעת האנשים הותאמו לכל 81 המשרות, וזה היה רוב הרשימה
   // על המסך. מי שאין לו שם חברה לא מתאים לאף אחד, בשני הכיוונים.
   const warm = new Map<string, WarmContact[]>();
-  for (const c of (contacts ?? []) as any[]) {
+  for (const c of contacts as any[]) {
     const k = (c.company_key ?? '').trim();
     if (!k) continue;
     const list = warm.get(k) ?? [];

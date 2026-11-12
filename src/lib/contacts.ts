@@ -32,3 +32,31 @@ export function mutualsHref(linkedinUrl?: string | null): string | null {
     encodeURIComponent(handle[1])
   );
 }
+
+// שליפת אנשי קשר לפי מפתחות חברה, במנות.
+//
+// 12.11.2026. הקוד הקודם עשה או `in` עם כל המפתחות, או, כשהיו יותר
+// מ-120, משך את כל טבלת אנשי הקשר, 5,000 שורות, בכל טעינת מסך. שלושה
+// מסכים עשו את זה, בלי מטמון, בכל רענון. זה היה אחד משלושת הדברים
+// שכילו את תקציב ה-Disk IO של הפרויקט באותו יום.
+//
+// מנה של 100 מפתחות נכנסת בנוחות לאורך כתובת, ושלוש מנות הן שלוש
+// שאילתות קטנות עם אינדקס, במקום סריקה של טבלה שלמה.
+export async function contactsByCompanyKeys(
+  sb: any,
+  keys: string[],
+  select: string,
+): Promise<any[]> {
+  const clean = [...new Set(keys.filter(Boolean))];
+  if (!clean.length) return [];
+  const CHUNK = 100;
+  const out: any[] = [];
+  for (let i = 0; i < clean.length; i += CHUNK) {
+    const { data } = await sb
+      .from('contacts')
+      .select(select)
+      .in('company_key', clean.slice(i, i + CHUNK));
+    if (data) out.push(...data);
+  }
+  return out;
+}
