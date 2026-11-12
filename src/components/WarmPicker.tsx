@@ -20,6 +20,8 @@ export type Pick = {
   contact: WarmContact;
   job: { id: string; title: string; company: string; cvId: string | null };
   queued: { id: number; status: string } | null;
+  // הניקוד של ההתאמה. משמש רק לבחירת המשרה שתוצג לאיש הקשר הזה, בעמוד.
+  score: number;
 };
 
 const STATUS_LABEL: Record<string, string> = {
@@ -127,9 +129,10 @@ export default function WarmPicker({ picks }: { picks: Pick[] }) {
         שליחה אוטומטית במייל
       </div>
       <p className="screen-note" style={{ margin: '0 0 10px' }}>
-        מתוך אנשי הקשר כאן, ל-{mailable.length} יש כתובת מייל. סמן את מי שתרצה,
-        וקורות החיים לפי המשרה יישלחו מהמייל שלך כקובץ מצורף. עותק בדיקה מגיע
-        אליך קודם, ושום דבר לא יוצא לפני שתאשר.
+        ‏{mailable.length} מאנשי הקשר כאן יש להם כתובת מייל. שורה אחת לאדם, על
+        המשרה שהכי מתאימה לך אצלו: גם אם פתוחות אצלו כמה, הוא מקבל ממך מייל אחד.
+        סמן את מי שתרצה, וקורות החיים לפי אותה משרה יישלחו מהמייל שלך כקובץ
+        מצורף. עותק בדיקה מגיע אליך קודם, ושום דבר לא יוצא לפני שתאשר.
       </p>
 
       {mailable.length === 0 ? (

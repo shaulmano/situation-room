@@ -114,16 +114,34 @@ export default async function Warm({
     queuedBy.set(`${q.contact_id}|${q.job_id}`, { id: q.id, status: q.status });
   }
 
-  const picks: Pick[] = withContacts.flatMap(({ m, people }) =>
-    people.map((c) => ({
-      contact: c,
-      job: {
-        id: m.jobs.id, title: m.jobs.title,
-        company: m.jobs.company, cvId: m.cv_id ?? null,
-      },
-      queued: queuedBy.get(`${c.id}|${m.jobs.id}`) ?? null,
-    }))
-  );
+  // שורה אחת לאדם, לא שורה לכל צמד איש־משרה.
+  //
+  // 12.11.2026. מאחורי עשרים הפניות שהמסך הציע עמדו חמישה אנשים: כל אחד
+  // הופיע על שלוש־ארבע משרות באותה חברה. "סמן הכל" היה שולח לאותו אדם
+  // ארבעה מיילים נפרדים בתוך כמה שעות, וזה מה שהורג ערוץ חם. שאול בחר
+  // מייל אחד לאדם, על המשרה שקיבלה את הניקוד הגבוה ביותר אצלו.
+  //
+  // שורה שכבר בתור גוברת על הבחירה הזאת, אחרת סימון שכבר יצא היה נעלם
+  // מהמסך ברגע שמשרה חדשה יותר נכנסה לאותה חברה.
+  const byContact = new Map<string, Pick>();
+  for (const { m, people } of withContacts) {
+    for (const c of people) {
+      const pick: Pick = {
+        contact: c,
+        job: {
+          id: m.jobs.id, title: m.jobs.title,
+          company: m.jobs.company, cvId: m.cv_id ?? null,
+        },
+        queued: queuedBy.get(`${c.id}|${m.jobs.id}`) ?? null,
+        score: m.score ?? 0,
+      };
+      const prev = byContact.get(c.id);
+      if (!prev) { byContact.set(c.id, pick); continue; }
+      if (prev.queued) continue;
+      if (pick.queued || pick.score > prev.score) byContact.set(c.id, pick);
+    }
+  }
+  const picks: Pick[] = [...byContact.values()];
 
   const freshCount = withContacts.filter(
     (r) => !r.people.every((p) => p.contacted_at)
