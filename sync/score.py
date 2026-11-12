@@ -160,7 +160,11 @@ def score_one(job, cv_id, cv_text):
 
 
 def main():
-    cvs = {r["id"]: (r["content"] or "").lower() for r in sql("select id, content from cvs")}
+    # גרסה לא פעילה נשארת במסד כהיסטוריה של ההגשות שיצאו איתה, אבל לא
+    # מנקדת יותר. בלי התנאי הזה "הורדת גרסה" הייתה מחיקה של המידע
+    # איזה קורות חיים נשלחו לכל חברה.
+    cvs = {r["id"]: (r["content"] or "").lower()
+           for r in sql("select id, content from cvs where active")}
     if not cvs:
         print("no CVs seeded")
         return

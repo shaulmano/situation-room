@@ -92,8 +92,15 @@ on conflict (id) do update
       content = excluded.content,
       updated_at = now();
 
-update cv_requests set base_cv_id = null where base_cv_id = 'rnd-program-manager';
-update outreach set cv_id = null where cv_id = 'rnd-program-manager';
-update referrals set cv_id = null where cv_id = 'rnd-program-manager';
+-- לא delete. שש הגשות שכבר יצאו מצביעות על הגרסה הזאת, ומחיקה הייתה
+-- מאפסת להן את cv_id, כלומר מוחקת את המידע איזה קורות חיים נשלחו לשש
+-- החברות האלה. הגרסה יוצאת משימוש ונשארת כהיסטוריה.
+alter table cvs add column if not exists active boolean not null default true;
 
-delete from cvs where id = 'rnd-program-manager';
+update cvs set active = false where id = 'rnd-program-manager';
+
+-- שורות ההתאמה שלה נמחקות: הן מה שהציף את הלוח. score.py מדלג עליה מעכשיו
+-- ולא ייצר אותן מחדש.
+delete from matches where cv_id = 'rnd-program-manager';
+
+notify pgrst, 'reload schema';
