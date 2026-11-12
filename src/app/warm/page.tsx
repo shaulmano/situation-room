@@ -85,15 +85,24 @@ export default async function Warm({
     ? await sb.from('contacts').select(select).limit(5000)
     : await sb.from('contacts').select(select).in('company_key', keys);
 
+  // 12.11.2026. מפתח ריק אינו התאמה. 81 משרות פתוחות הגיעו בלי שם חברה,
+  // ול-4 אנשי קשר אין שם חברה בייבוא, ושני הצדדים נורמלו לאותה מחרוזת
+  // ריקה. התוצאה: ארבעת האנשים הותאמו לכל 81 המשרות, וזה היה רוב הרשימה
+  // על המסך. מי שאין לו שם חברה לא מתאים לאף אחד, בשני הכיוונים.
   const warm = new Map<string, WarmContact[]>();
   for (const c of (contacts ?? []) as any[]) {
-    const list = warm.get(c.company_key) ?? [];
+    const k = (c.company_key ?? '').trim();
+    if (!k) continue;
+    const list = warm.get(k) ?? [];
     list.push(c);
-    warm.set(c.company_key, list);
+    warm.set(k, list);
   }
 
   const withContacts = postings
-    .map((m) => ({ m, people: warm.get(companyKey(m.jobs.company)) ?? [] }))
+    .map((m) => {
+      const k = companyKey(m.jobs.company);
+      return { m, people: k ? warm.get(k) ?? [] : [] };
+    })
     .filter((r) => r.people.length > 0);
 
   // התור: מה שכבר סומן לשליחה, כדי שהמסך ידע מה מצבו ולא יציע אותו שוב.
