@@ -213,14 +213,24 @@ export default function WarmPicker({ picks }: { picks: Pick[] }) {
                 borderRadius: 7, padding: 10, marginBottom: 8,
               }}
             >
+              {/* 12.11.2026: שתי עובדות שונות ישבו כאן באותה שורה בלי תווית,
+                  התפקיד של איש הקשר ושם המשרה שהפנייה עליה. שאול קרא
+                  "Doron Cohen" ומתחתיו "Director of QA" והבין שזה התפקיד
+                  שלו, בזמן שהוא Senior QA Engineer. "תסביר לי את הקונפליקט
+                  שאני מרגיש". עכשיו כל שדה אומר מה הוא. */}
               <div style={{ fontWeight: 700, fontSize: '.86rem' }}>
                 {p.contact.full_name}
-                <span style={{ color: 'var(--muted)', fontWeight: 400 }}>
-                  {' · '}{p.job.company}
-                </span>
               </div>
+              {p.contact.title && (
+                <div style={{ color: 'var(--muted)', fontSize: '.74rem' }}>
+                  {p.contact.title}
+                </div>
+              )}
               <div style={{ color: 'var(--muted)', fontSize: '.74rem', marginBottom: 6 }}>
-                {p.contact.email} · {p.job.title}
+                {p.contact.email}
+              </div>
+              <div style={{ fontSize: '.78rem', marginBottom: 4 }}>
+                <b>המשרה:</b> {p.job.title} · {p.job.company}
               </div>
 
               {p.queued?.subject && (
