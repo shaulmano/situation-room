@@ -104,12 +104,18 @@ export default async function Warm({
     .filter((r) => r.people.length > 0);
 
   // התור: מה שכבר סומן לשליחה, כדי שהמסך ידע מה מצבו ולא יציע אותו שוב.
+  // 12.11.2026: גם הנוסח וגם מצב הקובץ, כי הבדיקה עברה מהמייל למסך.
+  // pdf_base64 עצמו לא נשלף: הוא מאות אלפי תווים, והמסך צריך רק לדעת
+  // אם הוא קיים. הקובץ עצמו נמשך לפי דרישה מ-/api/outreach/cv.
   const { data: queued } = await sb
     .from('referrals')
-    .select('id, contact_id, job_id, status');
-  const queuedBy = new Map<string, { id: number; status: string }>();
+    .select('id, contact_id, job_id, status, subject, body, filename, pdf_base64');
+  const queuedBy = new Map<string, any>();
   for (const q of (queued ?? []) as any[]) {
-    queuedBy.set(`${q.contact_id}|${q.job_id}`, { id: q.id, status: q.status });
+    queuedBy.set(`${q.contact_id}|${q.job_id}`, {
+      id: q.id, status: q.status, subject: q.subject, body: q.body,
+      filename: q.filename, cvReady: !!q.pdf_base64,
+    });
   }
 
   // שורה אחת לאדם, לא שורה לכל צמד איש־משרה.

@@ -26,12 +26,19 @@ export async function POST(req: NextRequest) {
     const ids: number[] = Array.isArray(body.ids) ? body.ids : [];
     if (!ids.length) return NextResponse.json({ error: 'no ids' }, { status: 400 });
     const patch = action === 'approve'
-      // אישור חל רק על שורה שכבר נשלח עליה עותק בדיקה. אחרת "אשר" היה
-      // יכול לדלג על הבדיקה, וזה בדיוק מה שהכלל בא למנוע.
       ? { status: 'approved', approved_at: new Date().toISOString() }
       : { status: 'canceled' };
     let q = sb.from('referrals').update(patch).in('id', ids);
-    if (action === 'approve') q = q.eq('status', 'test_sent');
+    // 12.11.2026: הבדיקה עברה מהמייל למסך. עד היום אישור חל רק על שורה
+    // שכבר נשלח עליה עותק בדיקה, כי המסך לא הציג את ההודעה ואת הקובץ
+    // ולא היה מה לבדוק בו. עכשיו הוא מציג את שניהם, ולכן שאול מאשר משם.
+    //
+    // מה שלא השתנה: הדף הזה עדיין לא שולח כלום. הוא מסמן approved,
+    // והשליחה יוצאת מהמשימה המתוזמנת. אל תוסיף כאן שליחה.
+    //
+    // והתנאי נשאר: אישור חל רק על שורה שממתינה. שורה שכבר נשלחה או
+    // בוטלה לא חוזרת לחיים בלחיצה.
+    if (action === 'approve') q = q.in('status', ['pending', 'test_sent']);
     const { data, error } = await q.select('id');
     if (error) return NextResponse.json({ error: error.message }, { status: 500 });
     return NextResponse.json({ ok: true, changed: (data ?? []).length });

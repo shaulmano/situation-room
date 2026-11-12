@@ -2,6 +2,7 @@
 import { useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { type WarmContact } from '@/lib/contacts';
+import { deliverPdf } from '@/lib/deliver';
 
 // בחירת אנשי קשר לפנייה, ושליחה לתור.
 //
@@ -19,13 +20,20 @@ import { type WarmContact } from '@/lib/contacts';
 export type Pick = {
   contact: WarmContact;
   job: { id: string; title: string; company: string; cvId: string | null };
-  queued: { id: number; status: string } | null;
+  queued: {
+    id: number;
+    status: string;
+    subject: string | null;
+    body: string | null;
+    filename: string | null;
+    cvReady: boolean;
+  } | null;
   // הניקוד של ההתאמה. משמש רק לבחירת המשרה שתוצג לאיש הקשר הזה, בעמוד.
   score: number;
 };
 
 const STATUS_LABEL: Record<string, string> = {
-  pending: 'בתור, עותק בדיקה בדרך',
+  pending: 'מחכה לקורות החיים',
   test_sent: 'עותק בדיקה נשלח אליך',
   approved: 'אושר, יוצא בריצה הבאה',
   sent: 'נשלח',
@@ -85,7 +93,7 @@ export default function WarmPicker({ picks }: { picks: Pick[] }) {
       return;
     }
     const out = await res.json().catch(() => ({ queued: items.length }));
-    setMsg(`${out.queued ?? items.length} נכנסו לתור. עותק בדיקה יגיע אליך.`);
+    setMsg(`${out.queued ?? items.length} נכנסו לתור. קורות החיים נוצרים, ואז תוכל לקרוא ולשלוח כאן.`);
     setChosen(new Set());
     router.refresh();
   }
@@ -100,14 +108,18 @@ export default function WarmPicker({ picks }: { picks: Pick[] }) {
     }).catch(() => null);
     setBusy(false);
     if (res?.ok) {
-      setMsg(action === 'approve' ? 'אושר. יוצא בריצה הבאה.' : 'בוטל.');
+      setMsg(action === 'approve' ? 'נשלח לאישור. יוצא בריצה הקרובה.' : 'בוטל.');
       router.refresh();
     } else {
       setMsg('לא נשמר, נסה שוב');
     }
   }
 
-  const waiting = picks.filter((p) => p.queued?.status === 'test_sent');
+  // מה שממתין לקריאה ולשליחה. עד 12.11.2026 זה היה רק test_sent, כלומר
+  // שורה שכבר יצא עליה מייל בדיקה. שאול ביקש לראות את ההודעה ואת הקובץ
+  // במסך במקום במייל, ולכן גם pending נכנס לכאן.
+  const toReview = picks.filter(
+    (p) => p.queued && (p.queued.status === 'pending' || p.queued.status === 'test_sent'));
 
   const btn: React.CSSProperties = {
     width: 'auto', flex: 'none', padding: '.5em 1em',
@@ -131,8 +143,8 @@ export default function WarmPicker({ picks }: { picks: Pick[] }) {
       <p className="screen-note" style={{ margin: '0 0 10px' }}>
         ‏{mailable.length} מאנשי הקשר כאן יש להם כתובת מייל. שורה אחת לאדם, על
         המשרה שהכי מתאימה לך אצלו: גם אם פתוחות אצלו כמה, הוא מקבל ממך מייל אחד.
-        סמן את מי שתרצה, וקורות החיים לפי אותה משרה יישלחו מהמייל שלך כקובץ
-        מצורף. עותק בדיקה מגיע אליך קודם, ושום דבר לא יוצא לפני שתאשר.
+        סמן את מי שתרצה. קורות החיים לפי אותה משרה ייוצרו, ואז ההודעה והקובץ
+        יופיעו כאן לקריאה. שום דבר לא יוצא לפני שתלחץ שלח.
       </p>
 
       {mailable.length === 0 ? (
@@ -182,41 +194,102 @@ export default function WarmPicker({ picks }: { picks: Pick[] }) {
         </>
       )}
 
-      {waiting.length > 0 && (
+      {toReview.length > 0 && (
         <div style={{ marginTop: 12, borderTop: '1px solid var(--hair)', paddingTop: 10 }}>
           <div style={{ fontWeight: 700, marginBottom: 6, fontSize: '.86rem' }}>
-            מחכות לאישור שלך ({waiting.length})
+            מוכנות לשליחה ({toReview.length})
           </div>
           <p className="screen-note" style={{ margin: '0 0 8px' }}>
-            עותק בדיקה נשלח אליך. תקרא אותו במייל, ואם הוא בסדר אשר כאן.
+            זאת ההודעה המדויקת שתצא, ואלה קורות החיים שיצורפו אליה. תקרא, ואם
+            זה בסדר שלח. שום דבר לא יוצא בלי הלחיצה הזאת.
           </p>
-          {waiting.map((p) => (
-            <div key={key(p)} style={{ fontSize: '.82rem', padding: '3px 0' }}>
-              {p.contact.full_name}
-              <span style={{ color: 'var(--muted)' }}> · {p.job.company}</span>
+
+          {toReview.map((p) => (
+            <div
+              key={key(p)}
+              style={{
+                background: 'var(--raised)', border: '1px solid var(--hair)',
+                borderRadius: 7, padding: 10, marginBottom: 8,
+              }}
+            >
+              <div style={{ fontWeight: 700, fontSize: '.86rem' }}>
+                {p.contact.full_name}
+                <span style={{ color: 'var(--muted)', fontWeight: 400 }}>
+                  {' · '}{p.job.company}
+                </span>
+              </div>
+              <div style={{ color: 'var(--muted)', fontSize: '.74rem', marginBottom: 6 }}>
+                {p.contact.email} · {p.job.title}
+              </div>
+
+              {p.queued?.subject && (
+                <div style={{ fontSize: '.78rem', marginBottom: 4 }}>
+                  <b>נושא:</b> {p.queued.subject}
+                </div>
+              )}
+
+              {/* ההודעה עצמה, כמו שהיא. pre-wrap כדי שהשורות יישארו כפי
+                  שנכתבו, ו-break-word כדי שכתובת ארוכה לא תמתח את המסך. */}
+              <div
+                style={{
+                  whiteSpace: 'pre-wrap', overflowWrap: 'anywhere',
+                  fontSize: '.8rem', lineHeight: 1.55,
+                  background: 'var(--surface)', border: '1px solid var(--hair)',
+                  borderRadius: 6, padding: '8px 9px', margin: '4px 0 8px',
+                }}
+              >
+                {p.queued?.body || 'אין נוסח'}
+              </div>
+
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, alignItems: 'center' }}>
+                {p.queued?.cvReady ? (
+                  <button
+                    type="button" style={quiet}
+                    onClick={async () => {
+                      setMsg('מוריד…');
+                      setMsg(await deliverPdf(
+                        `/api/outreach/cv?id=${p.queued!.id}`,
+                        p.queued!.filename || 'cv.pdf'));
+                    }}
+                  >
+                    קורות החיים
+                  </button>
+                ) : (
+                  <span className="chip mute">קורות החיים עוד נוצרים</span>
+                )}
+                <button
+                  type="button" style={btn}
+                  disabled={busy || !p.queued?.cvReady}
+                  onClick={() => act('approve', [p.queued!.id])}
+                >
+                  שלח
+                </button>
+                <button
+                  type="button" style={quiet} disabled={busy}
+                  onClick={() => act('cancel', [p.queued!.id])}
+                >
+                  בטל
+                </button>
+              </div>
             </div>
           ))}
-          <div style={{ display: 'flex', gap: 6, marginTop: 8 }}>
+
+          {toReview.filter((p) => p.queued?.cvReady).length > 1 && (
             <button
               type="button" style={btn} disabled={busy}
-              onClick={() => act('approve', waiting.map((p) => p.queued!.id))}
+              onClick={() => act('approve',
+                toReview.filter((p) => p.queued?.cvReady).map((p) => p.queued!.id))}
             >
-              אשר ושלח
+              שלח את כולן ({toReview.filter((p) => p.queued?.cvReady).length})
             </button>
-            <button
-              type="button" style={quiet} disabled={busy}
-              onClick={() => act('cancel', waiting.map((p) => p.queued!.id))}
-            >
-              בטל
-            </button>
-          </div>
+          )}
         </div>
       )}
 
-      {picks.some((p) => p.queued && p.queued.status !== 'test_sent') && (
+      {picks.some((p) => p.queued && !['pending', 'test_sent'].includes(p.queued.status)) && (
         <div style={{ marginTop: 10, display: 'flex', flexWrap: 'wrap', gap: 5 }}>
           {picks
-            .filter((p) => p.queued && p.queued.status !== 'test_sent')
+            .filter((p) => p.queued && !['pending', 'test_sent'].includes(p.queued!.status))
             .map((p) => (
               <span key={key(p)} className="chip mute" style={{ fontSize: '.72rem' }}>
                 {p.contact.full_name}: {STATUS_LABEL[p.queued!.status] ?? p.queued!.status}

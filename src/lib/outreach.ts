@@ -12,6 +12,10 @@ const CV_FILE: Record<string, string> = {
   qa: 'Shaul_Mano_QA_Manager.pdf',
   program: 'Shaul_Mano_Program_Manager.pdf',
   delivery: 'Shaul_Mano_Delivery_Manager.pdf',
+  // 12.11.2026: שתי גרסאות חדשות. בלעדיהן הן נפלו לברירת המחדל, qa,
+  // ופנייה על משרת Release Manager הציגה אותו כמנהל QA.
+  release: 'Shaul_Mano_Release_Manager.pdf',
+  'project-release-manager': 'Shaul_Mano_Project_Release_Manager.pdf',
 };
 
 // Written to follow "I have spent the last 15 years", as one sentence rather
@@ -21,6 +25,9 @@ const PITCH: Record<string, string> = {
   qa: 'leading QA in enterprise SaaS, most recently as Head of QA at Qmarkets',
   program: 'in program and release management in enterprise SaaS, most recently at Qmarkets',
   delivery: 'leading delivery and professional services in enterprise SaaS, most recently at Qmarkets',
+  release: 'owning release management in enterprise SaaS, most recently at Qmarkets',
+  'project-release-manager':
+    'running projects and releases in enterprise SaaS, most recently at Qmarkets',
 };
 
 export function cvUrl(cvId?: string | null): string {
