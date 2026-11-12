@@ -7,6 +7,7 @@ import { postingKey } from '@/lib/dedupe';
 import Dismiss from '@/components/Dismiss';
 import JobContacts from '@/components/JobContacts';
 import MarkApplied from '@/components/MarkApplied';
+import WarmPicker, { type Pick } from '@/components/WarmPicker';
 
 export const dynamic = 'force-dynamic';
 
@@ -95,6 +96,26 @@ export default async function Warm({
     .map((m) => ({ m, people: warm.get(companyKey(m.jobs.company)) ?? [] }))
     .filter((r) => r.people.length > 0);
 
+  // התור: מה שכבר סומן לשליחה, כדי שהמסך ידע מה מצבו ולא יציע אותו שוב.
+  const { data: queued } = await sb
+    .from('outreach')
+    .select('id, contact_id, job_id, status');
+  const queuedBy = new Map<string, { id: number; status: string }>();
+  for (const q of (queued ?? []) as any[]) {
+    queuedBy.set(`${q.contact_id}|${q.job_id}`, { id: q.id, status: q.status });
+  }
+
+  const picks: Pick[] = withContacts.flatMap(({ m, people }) =>
+    people.map((c) => ({
+      contact: c,
+      job: {
+        id: m.jobs.id, title: m.jobs.title,
+        company: m.jobs.company, cvId: m.cv_id ?? null,
+      },
+      queued: queuedBy.get(`${c.id}|${m.jobs.id}`) ?? null,
+    }))
+  );
+
   const freshCount = withContacts.filter(
     (r) => !r.people.every((p) => p.contacted_at)
   ).length;
@@ -118,6 +139,8 @@ export default async function Warm({
         מכיר בהן מישהו אישית, ולכן הן לא עוד הגשה בערימה. הפנייה נכתבת כאן,
         ההודעה מוכנה להעתקה, והשליחה היא שלך.
       </p>
+
+      <WarmPicker picks={picks} />
 
       <div className="filters">
         <Link href="/warm" className={'filter' + (showAll ? '' : ' on')}>

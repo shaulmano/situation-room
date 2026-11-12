@@ -50,11 +50,18 @@ export function referralMessage(opts: {
   company: string;
   jobTitle: string;
   cvId?: string | null;
+  // 12.11.2026: במייל קורות החיים מצורפים כקובץ, ושאול ביקש קובץ פיזי ולא
+  // קישור. בלינקדאין אי אפשר לצרף קובץ מהודעה שנכתבת כאן, ולכן שם נשאר
+  // הקישור.
+  attached?: boolean;
 }): string {
   const pitch = PITCH[opts.cvId ?? ''] ?? PITCH.qa;
+  const close = opts.attached
+    ? 'Would you be open to referring me internally? My CV is attached.'
+    : `Would you be open to referring me internally? My CV: ${cvUrl(opts.cvId)}`;
   return [
     `Hi ${firstName(opts.contactName)}, hope you are doing well.`,
     `I noticed ${opts.company} is hiring a ${shortTitle(opts.jobTitle)}. I have spent the last 15 years ${pitch}.`,
-    `Would you be open to referring me internally? My CV: ${cvUrl(opts.cvId)}`,
+    close,
   ].join('\n');
 }
