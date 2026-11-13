@@ -25,7 +25,7 @@ export default function LinkedinQueue({ picks }: { picks: Pick[] }) {
   // כי ברגע שסימנת השורה יורדת לסוף רשימה בת 177 ונעלמת מהעין. כל
   // אחד עשר היו שמורים. הלשוניות הן גם הסטטיסטיקה שהוא ביקש וגם הדרך
   // לראות מה כבר עשית.
-  const [tab, setTab] = useState<'open' | 'sent' | 'replied'>('open');
+  const [tab, setTab] = useState<'open' | 'sent' | 'replied' | 'skipped'>('open');
   // 13.11.2026, שאול: "אני רוצה פה פילטרים לפי מגייסים או אחרים".
   // שני סוגי פנייה שונים לגמרי: למגייסת מבקשים להסתכל, ולעובד מבקשים
   // להעביר הלאה. הוא רוצה לעבוד על קבוצה אחת ברצף ולא לקפוץ ביניהן.
@@ -44,6 +44,7 @@ export default function LinkedinQueue({ picks }: { picks: Pick[] }) {
   // שנשלחה ולא נשמרה פירושה שאול שלא פונה לאדם הזה אף פעם.
   const [localSent, setLocalSent] = useState<Record<string, string>>({});
   const [localReplied, setLocalReplied] = useState<Record<string, string>>({});
+  const [localSkipped, setLocalSkipped] = useState<Record<string, boolean>>({});
 
   // מי שאין לו מייל. מי שיש לו מטופל בבלוק שמעל, בשליחה אוטומטית.
   // המיון מחושב פעם אחת מהנתונים שהגיעו מהשרת, ולא מהמצב המקומי: אחרת
@@ -60,21 +61,43 @@ export default function LinkedinQueue({ picks }: { picks: Pick[] }) {
 
   const byWho = (p: Pick) => who === 'all'
     || (who === 'recruiters') === isRecruiter(p.contact.title);
+  const isSkipped = (p: Pick) => (p.contact.id in localSkipped)
+    ? localSkipped[p.contact.id]
+    : !!p.contact.skipped_at;
   const sentAt = (p: Pick) => p.contact.contacted_at || localSent[p.contact.id] || null;
   const repliedAt = (p: Pick) => p.contact.replied_at || localReplied[p.contact.id] || null;
 
   // הספירה בלשוניות היא תמיד בתוך הפילוח שנבחר, אחרת "בתור 155" בזמן
   // שמוצגות שבע שורות הוא מספר שמשקר.
   const inScope = all.filter(byWho);
-  const open = inScope.filter((p) => !sentAt(p));
-  const sent = inScope.filter((p) => sentAt(p));
-  const replied = inScope.filter((p) => repliedAt(p));
+  const skipped = inScope.filter(isSkipped);
+  // מי שוויתרת עליו יוצא מכל השאר, וגם מאחוז המענה: הוא לא נשלח.
+  const live = inScope.filter((p) => !isSkipped(p));
+  const open = live.filter((p) => !sentAt(p));
+  const sent = live.filter((p) => sentAt(p));
+  const replied = live.filter((p) => repliedAt(p));
   const recruiters = all.filter((p) => isRecruiter(p.contact.title));
   // אחוז מענה. פחות מעשר פניות הוא לא מדגם, ולכן הוא לא מוצג כאחוז.
   const rate = sent.length >= 10
     ? Math.round((replied.length / sent.length) * 100) : null;
-  const view = tab === 'open' ? open : tab === 'sent' ? sent : replied;
+  const view = tab === 'open' ? open
+    : tab === 'sent' ? sent
+    : tab === 'skipped' ? skipped
+    : replied;
   const list = view.slice(0, shown);
+
+  async function skip(contactId: string, undo = false) {
+    setLocalSkipped((cur) => ({ ...cur, [contactId]: !undo }));
+    const res = await fetch('/api/outreach', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'skipped', ids: [contactId], undo }),
+    }).catch(() => null);
+    if (!res || !res.ok) {
+      setLocalSkipped((cur) => ({ ...cur, [contactId]: undo }));
+      setMsg('לא נשמר, נסה שוב');
+    }
+  }
 
   async function mark(contactId: string, action: 'contacted' | 'replied') {
     const now = new Date().toISOString();
@@ -146,6 +169,7 @@ export default function LinkedinQueue({ picks }: { picks: Pick[] }) {
           ['open', 'בתור', open.length],
           ['sent', 'נשלחו', sent.length],
           ['replied', 'ענו', replied.length],
+          ['skipped', 'ויתרתי', skipped.length],
         ] as const).map(([key, label, n]) => (
           <button
             key={key}
@@ -197,6 +221,7 @@ export default function LinkedinQueue({ picks }: { picks: Pick[] }) {
         <p className="screen-note" style={{ margin: 0 }}>
           {tab === 'open' ? 'פנית לכולם בתור.'
             : tab === 'sent' ? 'עוד לא סימנת אף פנייה כנשלחה.'
+            : tab === 'skipped' ? 'לא ויתרת על אף אחד.'
             : 'עוד לא ענו. סמן "ענה לי" על מי שחזר אליך.'}
         </p>
       )}
@@ -283,6 +308,18 @@ export default function LinkedinQueue({ picks }: { picks: Pick[] }) {
               )}
               {repliedAt(p) && (
                 <span className="chip ok">✓ ענה לי</span>
+              )}
+              {/* ויתור. מופיע רק על מי שעוד לא פנית אליו, כי אין טעם
+                  לוותר על משהו שכבר יצא. בלשונית "ויתרתי" הוא הופך
+                  להחזרה, כדי שלחיצה בטעות לא תהיה סופית. */}
+              {tab === 'skipped' ? (
+                <button type="button" style={quiet} onClick={() => skip(p.contact.id, true)}>
+                  החזר לתור
+                </button>
+              ) : !sentAt(p) && (
+                <button type="button" style={quiet} onClick={() => skip(p.contact.id)}>
+                  מוותר
+                </button>
               )}
             </div>
           </div>

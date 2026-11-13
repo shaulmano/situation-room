@@ -18,6 +18,7 @@ export type WarmContact = {
   email: string | null;
   phone: string | null;
   replied_at?: string | null;
+  skipped_at?: string | null;
   contacted_at: string | null;
 };
 

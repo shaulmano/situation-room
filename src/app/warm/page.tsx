@@ -82,7 +82,7 @@ export default async function Warm({
   // אנשי הקשר, לפי אותו מפתח חברה שמשמש בייבוא. בלעדיו "Qmarkets Ltd."
   // ו-"Qmarkets" הן שתי חברות.
   const keys = [...new Set(postings.map((m) => companyKey(m.jobs.company)).filter(Boolean))];
-  const select = 'id, full_name, title, company_key, linkedin_url, email, phone, contacted_at, replied_at';
+  const select = 'id, full_name, title, company_key, linkedin_url, email, phone, contacted_at, replied_at, skipped_at';
   const contacts = await contactsByCompanyKeys(sb, keys, select);
 
   // 12.11.2026. מפתח ריק אינו התאמה. 81 משרות פתוחות הגיעו בלי שם חברה,
