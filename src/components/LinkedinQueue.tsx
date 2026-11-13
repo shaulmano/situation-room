@@ -29,7 +29,7 @@ export default function LinkedinQueue({ picks }: { picks: Pick[] }) {
   // 13.11.2026: החיווי יושב על הכפתור ולא בראש הבלוק. שאול:
   // "לחיצה על העתק לא מראה סימן שלחצתי". בטלפון ראש הבלוק
   // כבר מחוץ למסך כשהוא לוחץ על שורה שביעית.
-  const [copied, setCopied] = useState<string>('');
+  const [copied, setCopied] = useState<Record<string, boolean>>({});
   const [msg, setMsg] = useState('');
   // 13.11.2026: הסימון חל מיד על המסך, והכתיבה למסד נמשכת ברקע. שאול:
   // "לחיצה על נשלח" לוקחת הרבה זמן. router.refresh מריץ מחדש את כל
@@ -97,8 +97,10 @@ export default function LinkedinQueue({ picks }: { picks: Pick[] }) {
     });
     try {
       await navigator.clipboard.writeText(text);
-      setCopied(p.contact.id);
-      setTimeout(() => setCopied((cur) => (cur === p.contact.id ? '' : cur)), 2000);
+      // 13.11.2026: הסימון נשאר, לא נעלם אחרי שתי שניות. שאול: "הכפתור
+      // העתק נעלם ההעתק אחרי שניה". בין ההעתקה לשליחה הוא עובר ללינקדאין,
+      // מדביק ומצרף קובץ, וכשהוא חוזר הוא צריך לדעת על מי כבר עבד.
+      setCopied((cur) => ({ ...cur, [p.contact.id]: true }));
     } catch {
       setMsg('ההעתקה נכשלה');
     }
@@ -196,15 +198,20 @@ export default function LinkedinQueue({ picks }: { picks: Pick[] }) {
               </span>
             </div>
 
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+            {/* alignItems על השורה ולא alignSelf על כל שבב: הכפתורים
+                גבוהים מהשבבים בגלל הריפוד, ובלי זה השבב נצמד לראש
+                השורה. "הכפתור של נשלח לא מיושר". */}
+            <div style={{
+              display: 'flex', flexWrap: 'wrap', gap: 6, alignItems: 'center',
+            }}>
               <button
                 type="button"
-                style={copied === p.contact.id
+                style={copied[p.contact.id]
                   ? { ...btn, background: 'var(--good)', color: '#fff' }
                   : btn}
                 onClick={() => copy(p)}
               >
-                {copied === p.contact.id ? '✓ הועתק' : 'העתק הודעה'}
+                {copied[p.contact.id] ? '✓ הועתק' : 'העתק הודעה'}
               </button>
               <a
                 className="apply" style={{ ...btn, textAlign: 'center' }}
@@ -225,10 +232,7 @@ export default function LinkedinQueue({ picks }: { picks: Pick[] }) {
                   {/* שבב ולא כפתור כבוי: "סמן כנשלח לא מעומד". כפתור
                       מושבת נראה כמו משהו שנכשל, ובשורה הזאת הוא דווקא
                       מה שהצליח. */}
-                  <span
-                    className="chip ok"
-                    style={{ alignSelf: 'center', whiteSpace: 'nowrap' }}
-                  >
+                  <span className="chip ok" style={{ whiteSpace: 'nowrap' }}>
                     ✓ נשלח
                   </span>
                   <button
@@ -240,9 +244,7 @@ export default function LinkedinQueue({ picks }: { picks: Pick[] }) {
                 </>
               )}
               {repliedAt(p) && (
-                <span className="chip ok" style={{ alignSelf: 'center' }}>
-                  ✓ ענה לי
-                </span>
+                <span className="chip ok">✓ ענה לי</span>
               )}
             </div>
           </div>
