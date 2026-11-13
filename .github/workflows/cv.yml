@@ -19,7 +19,7 @@ on:
   workflow_dispatch:
     inputs:
       mode:
-        description: 'fetch, render, audit, dismissals, migrate, query, checkapi, referrals, referral_pdf or referral_mark'
+        description: 'fetch, render, audit, dismissals, migrate, query, checkapi, referrals, referral_pdf, referral_mark, mail_selftest or mail_send'
         required: true
         default: 'fetch'
       migration:
@@ -128,6 +128,25 @@ jobs:
             referral_mark)  python sync/referrals.py mark "$REF_ID" "$REF_STATUS" "$REF_NOTE" ;;
             referral_pdf)   python sync/referrals.py pdf "$REF_ID" ;;
             *) echo "unknown referral mode"; exit 1 ;;
+          esac
+
+      # 13.11.2026: שליחה ישירה מהג'ימייל של שאול. עד היום הכפתור "שלח"
+      # רק סימן את השורה, והמייל יצא מהמשימה המתוזמנת עד שעה אחר כך.
+      #
+      # הסודות הם שלו ונוספו על ידו. הם לא מגיעים לשום מקום אחר, ושני
+      # המצבים כאן הם היחידים שנוגעים בהם.
+      - name: Send mail
+        if: startsWith(inputs.mode, 'mail_')
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+          SUPABASE_PROJECT_REF: ${{ secrets.SUPABASE_PROJECT_REF }}
+          GMAIL_ADDRESS: ${{ secrets.GMAIL_ADDRESS }}
+          GMAIL_APP_PASSWORD: ${{ secrets.GMAIL_APP_PASSWORD }}
+        run: |
+          case "${{ inputs.mode }}" in
+            mail_selftest) python sync/send_mail.py selftest ;;
+            mail_send)     python sync/send_mail.py referrals ;;
+            *) echo "unknown mail mode"; exit 1 ;;
           esac
 
       - name: Upload the attachment
