@@ -3,6 +3,7 @@ import { useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { type WarmContact } from '@/lib/contacts';
 import { deliverPdf } from '@/lib/deliver';
+import { cvFileName } from '@/lib/outreach';
 
 // בחירת אנשי קשר לפנייה, ושליחה לתור.
 //
@@ -242,6 +243,16 @@ export default function WarmPicker({ picks }: { picks: Pick[] }) {
                   <b>נושא:</b> {p.queued.subject}
                 </div>
               )}
+              {/* 13.11.2026: שם הקובץ שיצורף, כמו בתור הלינקדאין. שאול
+                  פתח גרסה מחוללת וכתב "זה נראה מקוצר מדי", ואז "אני צריך
+                  את הקורות חיים המקוריים ששלחתי לך". עכשיו מצורף קובץ
+                  הבסיס שלו, ושמו כתוב כאן כדי שיראה מראש מה יוצא. */}
+              <div style={{ fontSize: '.78rem', marginBottom: 4 }}>
+                <b>קובץ מצורף:</b>{' '}
+                <span style={{ fontFamily: 'ui-monospace, monospace', fontSize: '.74rem' }}>
+                  {cvFileName(p.job.cvId)}
+                </span>
+              </div>
 
               {/* ההודעה עצמה, כמו שהיא. pre-wrap כדי שהשורות יישארו כפי
                   שנכתבו, ו-break-word כדי שכתובת ארוכה לא תמתח את המסך. */}
@@ -264,7 +275,7 @@ export default function WarmPicker({ picks }: { picks: Pick[] }) {
                       setMsg('מוריד…');
                       setMsg(await deliverPdf(
                         `/api/outreach/cv?id=${p.queued!.id}`,
-                        p.queued!.filename || 'cv.pdf'));
+                        cvFileName(p.job.cvId)));
                     }}
                   >
                     קורות החיים

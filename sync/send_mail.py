@@ -117,10 +117,22 @@ def selftest():
 
 def referrals():
     addr, app = creds()
+    # 13.11.2026: הקובץ המצורף הוא קובץ הבסיס של שאול, כמו שהעלה אותו,
+    # לפי משפחת התפקידים. לא הגרסה שהמחולל כתב למשרה.
+    #
+    # שאול, אחרי שפתח גרסה מחוללת: "זה לא טוב, אני צריך את הקורות חיים
+    # המקוריים ששלחתי לך ואתה מצרף אותם לכל מייל לפי הדרישה". בפנייה
+    # למכר הקובץ עובר הלאה פנימית, ושם קורות חיים מלאים עדיפים על גרסה
+    # שנבחרה לדרישות של מודעה אחת.
     rows = sql(
-        "select r.id, r.subject, r.body, r.filename, r.pdf_base64, r.job_id, "
-        "       c.full_name, c.email "
-        "from referrals r join contacts c on c.id = r.contact_id "
+        "select r.id, r.subject, r.body, r.job_id, r.cv_id, "
+        "       c.full_name, c.email, "
+        "       coalesce(v.pdf_base64, qa.pdf_base64) as pdf_base64, "
+        "       coalesce(v.filename, qa.filename) as filename "
+        "from referrals r "
+        "join contacts c on c.id = r.contact_id "
+        "left join cvs v on v.id = r.cv_id "
+        "left join cvs qa on qa.id = 'qa' "
         "where r.status = 'approved' and r.channel = 'email' "
         "order by r.approved_at nulls last, r.id limit %d;" % MAX_PER_RUN)
 
@@ -134,13 +146,8 @@ def referrals():
 
         b64, name = r.get("pdf_base64"), r.get("filename")
         if not b64:
-            cv = sql("select pdf_base64, filename from cv_requests "
-                     "where job_id = %s and pdf_base64 is not null "
-                     "order by id desc limit 1;" % q(r["job_id"]))
-            if cv:
-                b64, name = cv[0]["pdf_base64"], cv[0]["filename"]
-        if not b64:
-            summary("  %d skipped: the CV is not ready" % r["id"])
+            summary("  %d skipped: no CV file stored for version %s"
+                    % (r["id"], r.get("cv_id") or "?"))
             continue
 
         try:
@@ -153,9 +160,10 @@ def referrals():
             summary("  %d FAILED: %s" % (r["id"], exc))
             continue
 
+        # שם הקובץ נשמר על השורה כתיעוד של מה שיצא בפועל. ה-base64 לא
+        # נשמר שוב: הוא כבר יושב ב-cvs והעתק לכל פנייה הוא בזבוז.
         sql("update referrals set status='sent', sent_at=now(), "
-            "pdf_base64=coalesce(pdf_base64,%s), filename=coalesce(filename,%s) "
-            "where id=%d;" % (q(b64), q(name or ""), r["id"]))
+            "filename=%s where id=%d;" % (q(name or ""), r["id"]))
         sql("update contacts set contacted_at=now() where id="
             "(select contact_id from referrals where id=%d);" % r["id"])
         summary("  %d SENT to %s (%s)" % (r["id"], r["full_name"], to_addr))
