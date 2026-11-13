@@ -7,6 +7,7 @@ import { postingKey } from '@/lib/dedupe';
 import Dismiss from '@/components/Dismiss';
 import JobContacts from '@/components/JobContacts';
 import MarkApplied from '@/components/MarkApplied';
+import LinkedinQueue from '@/components/LinkedinQueue';
 import Refresh from '@/components/Refresh';
 import WarmPicker, { type Pick } from '@/components/WarmPicker';
 
@@ -81,7 +82,7 @@ export default async function Warm({
   // אנשי הקשר, לפי אותו מפתח חברה שמשמש בייבוא. בלעדיו "Qmarkets Ltd."
   // ו-"Qmarkets" הן שתי חברות.
   const keys = [...new Set(postings.map((m) => companyKey(m.jobs.company)).filter(Boolean))];
-  const select = 'id, full_name, title, company_key, linkedin_url, email, phone, contacted_at';
+  const select = 'id, full_name, title, company_key, linkedin_url, email, phone, contacted_at, replied_at';
   const contacts = await contactsByCompanyKeys(sb, keys, select);
 
   // 12.11.2026. מפתח ריק אינו התאמה. 81 משרות פתוחות הגיעו בלי שם חברה,
@@ -192,6 +193,8 @@ export default async function Warm({
       <Refresh />
 
       <WarmPicker picks={picks} />
+
+      <LinkedinQueue picks={picks} />
 
       <div className="filters">
         <Link href="/warm" className={'filter' + (showAll ? '' : ' on')}>

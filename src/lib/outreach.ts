@@ -1,27 +1,33 @@
 // The referral message, assembled per job so that nothing has to be written
-// from scratch. Shaul messages people he already knows, on LinkedIn, and asks
-// them to refer him internally. Three short lines, in English: the names, the
+// from scratch. Shaul messages people he already knows, on LinkedIn or by
+// email, and asks them to refer him internally. In English: the names, the
 // companies and the job titles are all English anyway, and a Hebrew sentence
 // with an English title glued into it reads worse than either language alone.
 //
-// The CV lives in a public Supabase Storage bucket, one file per job family,
-// named after the same cv_id the matcher already assigns. No attachment is
-// possible inside a LinkedIn message written from here, and a link forwards
-// better anyway when someone passes it to their recruiter.
-const CV_FILE: Record<string, string> = {
+// 13.11.2026: the public Supabase bucket and cvUrl were removed. They pointed
+// at three files uploaded on 29.9, six weeks before the versions were updated,
+// and the two newest versions had no file there at all, so a Release Manager
+// referral would have linked to the QA CV. The CV is attached now, from the
+// row in cvs, and the only link in this file is gone.
+//
+// שם הקובץ שיש לשאול אצלו, בטלפון ובמחשב, לכל משפחת תפקידים.
+//
+// 13.11.2026, שאול: "את כל הקבצים יש לי גם בטלפון וגם במחשב, אתה לא
+// צריך לשים כלום, אולי על כל מייל או הודעה לכתוב לי איזה קובץ לצרף
+// בדיוק כמו שאנחנו עושים עם פייסבוק". זה מחליף גם את הקישור לדלי וגם
+// את הרעיון לשמור את הקבצים במסד.
+//
+// השמות הם כפי שהקבצים נקראים אצלו. שינוי שם אצלו מחייב שינוי כאן.
+const FILE_NAME: Record<string, string> = {
   qa: 'Shaul_Mano_QA_Manager.pdf',
-  program: 'Shaul_Mano_Program_Manager.pdf',
+  program: 'Shaul_Mano_Project_Manager.pdf',
   delivery: 'Shaul_Mano_Delivery_Manager.pdf',
-  // 12.11.2026: שתי גרסאות חדשות. בלעדיהן הן נפלו לברירת המחדל, qa,
-  // ופנייה על משרת Release Manager הציגה אותו כמנהל QA.
   release: 'Shaul_Mano_Release_Manager.pdf',
   'project-release-manager': 'Shaul_Mano_Project_Release_Manager.pdf',
 };
 
-export function cvUrl(cvId?: string | null): string {
-  const file = CV_FILE[cvId ?? ''] ?? CV_FILE.qa;
-  const base = process.env.NEXT_PUBLIC_SUPABASE_URL ?? '';
-  return `${base}/storage/v1/object/public/cv/${file}`;
+export function cvFileName(cvId?: string | null): string {
+  return FILE_NAME[cvId ?? ''] ?? FILE_NAME.qa;
 }
 
 // First name only. "Hi Yotam Cohen" reads like a form letter, which is the one
@@ -45,9 +51,6 @@ export function referralMessage(opts: {
   company: string;
   jobTitle: string;
   cvId?: string | null;
-  // 12.11.2026: במייל קורות החיים מצורפים כקובץ, ושאול ביקש קובץ פיזי ולא
-  // קישור. בלינקדאין אי אפשר לצרף קובץ מהודעה שנכתבת כאן, ולכן שם נשאר
-  // הקישור.
   attached?: boolean;
 }): string {
   // 12.11.2026, שאול הכתיב את המבנה מילה במילה אחרי שקרא את הנוסח הקודם:
@@ -55,20 +58,15 @@ export function referralMessage(opts: {
   // למשרת שם המשרה ואשמח באם תוכל להעביר אותם פנימית למגייסים הרלוונטיים.
   // המון תודה, שאול."
   //
-  // מה שירד: המשפט "I have spent the last 15 years". זה פתיח של קורות
-  // חיים ולא של הודעה בין שני אנשים שמכירים, והוא מה שגרם לנוסח הקודם
-  // להישמע כמו פנייה קרה. הקורות חיים מצורפים ממילא, ומי שיפתח אותם יראה
-  // שם את הניסיון. לכן גם המפה PITCH נמחקה ולא הוחלפה.
-  //
-  // ללא קו מפריד ארוך ובלי ניסוח שנשמע כמו טקסט שנכתב במכונה.
+  // 13.11.2026: הקישור ירד גם מהנוסח של לינקדאין. שאול: "אני פוחד שאנשים
+  // לא יפתחו אותו". לינקדאין מוריד חשיפה להודעות עם קישור חיצוני, וקישור
+  // מצביע על קובץ שיכול להתיישן, מה שקרה בפועל. בלינקדאין שאול מצרף את
+  // הקובץ ידנית מהכפתור שבתור, ולכן שתי הגרסאות אומרות attaching.
   const title = shortTitle(opts.jobTitle);
-  const cv = opts.attached
-    ? "I'm attaching my CV for the " + title + ' position'
-    : "I'm sending my CV for the " + title + ' position: ' + cvUrl(opts.cvId);
   return [
     `Hi ${firstName(opts.contactName)},`,
     `I saw that you work at ${opts.company}.`,
-    `${cv}, and I would be glad if you could pass it on internally to the relevant recruiters.`,
+    `I'm attaching my CV for the ${title} position, and I would be glad if you could pass it on internally to the relevant recruiters.`,
     '',
     'Thanks a lot,',
     'Shaul',

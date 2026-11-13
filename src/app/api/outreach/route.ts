@@ -11,7 +11,7 @@ import { referralMessage } from '@/lib/outreach';
 //
 // הדף הזה לא שולח כלום בעצמו, ולכן אין בו שום דרך לשלוח בטעות.
 
-const ACTIONS = new Set(['queue', 'approve', 'cancel']);
+const ACTIONS = new Set(['queue', 'approve', 'cancel', 'contacted', 'replied']);
 
 export async function POST(req: NextRequest) {
   const body = await req.json().catch(() => ({}));
@@ -21,6 +21,34 @@ export async function POST(req: NextRequest) {
   }
 
   const sb = serverClient();
+
+  // 13.11.2026: סימון שפנית למישהו בלינקדאין. 291 אנשי קשר יושבים על
+  // משרה פתוחה ואין להם כתובת מייל, ובלעדי הסימון הזה אין דרך לדעת
+  // למי כבר פנית, והתור חוזר על עצמו כל יום מחדש.
+  if (action === 'replied') {
+    const ids: string[] = Array.isArray(body.ids) ? body.ids : [];
+    if (!ids.length) return NextResponse.json({ error: 'no ids' }, { status: 400 });
+    const { data, error } = await sb
+      .from('contacts')
+      .update({ replied_at: new Date().toISOString() })
+      .in('id', ids)
+      .select('id');
+    if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+    return NextResponse.json({ ok: true, changed: (data ?? []).length });
+  }
+
+  if (action === 'contacted') {
+    const ids: string[] = Array.isArray(body.ids) ? body.ids : [];
+    if (!ids.length) return NextResponse.json({ error: 'no ids' }, { status: 400 });
+    const { data, error } = await sb
+      .from('contacts')
+      .update({ contacted_at: new Date().toISOString() })
+      .in('id', ids)
+      .is('contacted_at', null)
+      .select('id');
+    if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+    return NextResponse.json({ ok: true, changed: (data ?? []).length });
+  }
 
   if (action === 'approve' || action === 'cancel') {
     const ids: number[] = Array.isArray(body.ids) ? body.ids : [];

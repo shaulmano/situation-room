@@ -17,6 +17,7 @@ export type WarmContact = {
   linkedin_url: string | null;
   email: string | null;
   phone: string | null;
+  replied_at?: string | null;
   contacted_at: string | null;
 };
 

@@ -33,7 +33,10 @@ export default async function Dashboard({
   // ידני, והוא מסתכל כאן. שניהם היו קיימים רק במסך המשרות.
   const onlyManual = searchParams?.manual === '1';
 
-  const [convos, weekApps, needsReply, silent, lastSent, applied, lastImport, upcoming, warmPeople] = await Promise.all([
+  // 13.11.2026: שאילתת אנשי הקשר ירדה מכאן יחד עם הבאנר. היא רצה בכל
+  // טעינה של דף הבית ושימשה רק לספירה שעל הבאנר, ודף הבית הוא המסך
+  // שנטען הכי הרבה. המסך "מכרים" שואל אותה בעצמו.
+  const [convos, weekApps, needsReply, silent, lastSent, applied, lastImport, upcoming] = await Promise.all([
     // 9.11.2026: קודם נספר הסטטוס הנוכחי בלבד, ולכן דחייה אחרי ראיון מחקה
     // את הראיון מהמניין והאריח נשאר אפס גם אחרי ששאול סימן. stage מחזיק את
     // השלב הרחוק ביותר שההגשה הגיעה אליו, והוא לא נמחק.
@@ -142,12 +145,6 @@ export default async function Dashboard({
 
   // כמה מהמשרות שעל המסך הן בחברה שיש בה איש קשר שעוד לא פנית אליו.
   // נספר מתוך מה שכבר נטען, בלי שאילתה נוספת.
-  const warmKeys = new Set(
-    ((warmPeople.data ?? []) as any[]).map((c) => c.company_key).filter(Boolean)
-  );
-  const warmHere = rows.filter((m: any) =>
-    warmKeys.has(companyKey(m.jobs.company))
-  ).length;
 
   // Every copy of every row on screen, so closing the set closes the duplicates
   // too instead of leaving them to come back tomorrow under another board.
@@ -204,31 +201,10 @@ export default async function Dashboard({
           מול העיניים ולא בפעמון, ומשהו להיום הוא משימה רגילה ולא אדומה. */}
       {/* 12.11.2026: המספר שמוביל למסך הפניות דרך מכרים. הוא יושב כאן, מעל
           הכל, כי הוא הערוץ שהמדידה אמרה שהוא היחיד שמניב, ולא עוד אריח. */}
-      {/* 12.11.2026: הבאנר היה מותנה ב-warmHere, שנספר מתוך משרות היום
-          בלבד, ולכן ביום בלי משרות חדשות הוא נעלם. הערוץ הזה לא תלוי
-          בסריקה של היום: המשרות הפתוחות בחברות שהוא מכיר בהן מישהו
-          ממשיכות להיות שם. לכן הבאנר מוצג כל עוד יש בכלל אנשי קשר. */}
-      {(warmHere > 0 || warmKeys.size > 0) && (
-        <Link
-          className="row"
-          href="/warm"
-          style={{
-            background: 'var(--good-soft)', borderColor: 'var(--good)',
-            marginBottom: 12,
-          }}
-        >
-          <span className="chip ok">דרך מכר</span>
-          <span className="grow">
-            {warmHere > 0
-              ? `${warmHere} מהמשרות כאן הן בחברה שאתה מכיר בה מישהו`
-              : 'משרות פתוחות בחברות שאתה מכיר בהן מישהו'}
-            <span className="sub">
-              פנייה אישית במקום הגשה קרה. ההודעה מוכנה שם להעתקה.
-            </span>
-          </span>
-          <span className="apply">פתח</span>
-        </Link>
-      )}
+      {/* 13.11.2026: הבאנר ירד מכאן. שאול: "אני רוצה את הטאב הזה כולל
+          הבאנר שעשית במקום אחד, ולא על דף הבית, אני רוצה טאב יעודי
+          בשבילו". הכל יושב עכשיו במסך "מכרים", שיש לו לשונית משלו
+          בשורה התחתונה. */}
 
       {(upcoming.data ?? []).length > 0 && (
         <div className="rows" style={{ marginBottom: 14 }}>
