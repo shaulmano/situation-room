@@ -283,9 +283,24 @@ export default function PosterQueue({ rows }: { rows: PosterRow[] }) {
                   <button type="button" style={quiet} onClick={() => mark(r, 'replied')}>
                     ענה לי
                   </button>
+                  {/* תיקון של סימון שגוי, 13.11.2026. שאול סימן "נשלח" על
+                      בקשות חברות כשזה היה הכפתור היחיד, ואני ניסיתי לנחש
+                      פעמיים מי מהן באמת יצאה. אין דרך לדעת את זה מהמסד,
+                      והוא כן יודע. הכפתור הזה נותן לו לתקן בעצמו. */}
+                  <button
+                    type="button" style={quiet}
+                    onClick={() => { mark(r, 'sent', true); mark(r, 'request'); }}
+                  >
+                    זאת הייתה בקשה
+                  </button>
                 </>
               )}
               {at(r, 'repliedAt') && <span className="chip ok">✓ ענה לי</span>}
+              {at(r, 'requestAt') && !at(r, 'sentAt') && (
+                <button type="button" style={quiet} onClick={() => mark(r, 'request', true)}>
+                  לא שלחתי בקשה
+                </button>
+              )}
               {tab === 'skipped' ? (
                 <button type="button" style={quiet} onClick={() => mark(r, 'skipped', true)}>
                   החזר לתור
