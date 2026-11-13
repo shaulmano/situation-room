@@ -125,7 +125,7 @@ export default function PosterQueue({ rows }: { rows: PosterRow[] }) {
       }}
     >
       <div style={{ fontWeight: 700, marginBottom: 2 }}>
-        שלח לאלו שפרסמת אצלם
+        שלח לאלו שפרסמת
       </div>
       <div style={{ color: 'var(--muted)', fontSize: '.76rem', marginBottom: 8 }}>
         בסך הכל נשלחו {live.filter((r) => at(r, 'sentAt')).length} · ענו {replied.length}
@@ -158,7 +158,8 @@ export default function PosterQueue({ rows }: { rows: PosterRow[] }) {
 
       <p className="screen-note" style={{ margin: '0 0 10px' }}>
         משרות שסימנת כהוגשו, ושלינקדאין מציגה מי פרסם אותן. ההגשה כבר בערימה
-        של המגייס, וההודעה הזאת היא מה שמוציא אותה משם.
+        של המגייס, וההודעה הזאת היא מה שמוציא אותה משם. הרשימה נצברת ולא
+        מתאפסת בכל יום, ולכן גם מה שהגשת אתמול ועוד לא פנית עליו נשאר כאן.
       </p>
 
       {msg && <div className="chip mute" style={{ marginBottom: 8 }}>{msg}</div>}
@@ -197,7 +198,9 @@ export default function PosterQueue({ rows }: { rows: PosterRow[] }) {
                 בדיוק מה שגורם לו להתעלם. */}
             {r.alsoTitles.length > 0 && (
               <div style={{ color: 'var(--muted)', fontSize: '.74rem', marginBottom: 2 }}>
-                הגשת אצלו גם ל: {r.alsoTitles.join(' · ')}
+                {/* בלי "אצלו": רוב המפרסמים בלוחות כאן הן נשים, ושורה
+                    שמניחה מין היא בדיוק מה שהוא ביקש לא לעשות. */}
+                הגשת גם ל: {r.alsoTitles.join(' · ')}
               </div>
             )}
             {/* שורת הקובץ מוצגת רק כשאפשר לצרף. בבקשת חברות אין כפתור
