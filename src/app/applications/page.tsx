@@ -1,6 +1,8 @@
 import Link from 'next/link';
 import { serverClient } from '@/lib/server';
 import AppStep from '@/components/AppStep';
+import JobContacts from '@/components/JobContacts';
+import { companyKey, contactsByCompanyKeys, type WarmContact } from '@/lib/contacts';
 
 export const dynamic = 'force-dynamic';
 
@@ -33,7 +35,8 @@ export default async function Applications({
 
   const { data } = await serverClient()
     .from('applications')
-    .select('id, company, role, recipient, cv_id, channel, sent_at, status, next_at, next_kind, note, stage')
+    .select('id, job_id, company, role, recipient, cv_id, channel, sent_at, status, '
+            + 'next_at, next_kind, note, stage, jobs(url, found_for)')
     .order('sent_at', { ascending: false });
 
   const all = (data ?? []) as any[];
@@ -67,6 +70,22 @@ export default async function Applications({
   const monthName = month
     ? `${MONTHS_FULL[Number(month.split('-')[1])]} ${month.split('-')[0]}`
     : '';
+  // רק מה שמוצג על המסך. שליפת אנשי קשר לכל 535 ההגשות בכל רינדור היא
+  // בדיוק מה שרוקן את תקציב ה-IO ב-12.11.
+  const visible = rows.slice(0, filtered ? 300 : 25);
+  const warmKeys = [...new Set(visible.map((a) => companyKey(a.company)).filter(Boolean))];
+  const warmRows = warmKeys.length
+    ? await contactsByCompanyKeys(
+        serverClient(), warmKeys,
+        'id, full_name, title, linkedin_url, email, phone, contacted_at, company_key')
+    : [];
+  const warm = new Map<string, WarmContact[]>();
+  for (const c of warmRows as any[]) {
+    const k = c.company_key as string;
+    if (!k) continue;
+    warm.set(k, [...(warm.get(k) ?? []), c as WarmContact]);
+  }
+
   const filterName = [
     status ? FILTER_LABEL[status] ?? status : '',
     monthName,
@@ -245,7 +264,7 @@ export default async function Applications({
       </form>
 
       <div className="rows">
-        {rows.slice(0, filtered ? 300 : 25).map((a) => {
+        {visible.map((a) => {
           const [txt, cls] = LABEL[a.status] ?? [a.status, 'mute'];
           const days = Math.floor((Date.now() - new Date(a.sent_at).getTime()) / 864e5);
           return (
@@ -264,6 +283,22 @@ export default async function Applications({
               <AppStep id={a.id} status={a.status} stage={a.stage}
                         nextAt={a.next_at} nextKind={a.next_kind} />
               {a.note && <span className="sub" style={{ width: '100%' }}>{a.note}</span>}
+              {/* 13.11.2026. שאול הגיש ל-Aidoc, ובאותה שנייה בלוק "אתה מכיר
+                  שם 2 אנשים" נעלם מהמסך: משרה שהוגשה מסוננת החוצה גם מהפיד
+                  וגם ממסך מכרים, כי היא "היסטוריה ולא ליד". בלשונו: "הוא
+                  איננו כי נעלם ברגע שלוחצים פורסם".
+
+                  זה היה הפוך מהכוונה. ההגשה היא הסיבה לפנות למכר, לא הסיבה
+                  להסתיר אותו: 540 הגשות קרות הביאו שתי שיחות, והפנייה
+                  הפנימית היא מה שמוציא את ההגשה מהערימה. לכן המשרה יורדת
+                  מרשימת הלידים, אבל הדרך פנימה נשארת, כאן. */}
+              <JobContacts
+                contacts={warm.get(companyKey(a.company)) ?? []}
+                job={{
+                  company: a.company ?? '', title: a.role ?? '', cvId: a.cv_id,
+                  url: a.jobs?.url ?? null, foundFor: a.jobs?.found_for ?? null,
+                }}
+              />
             </div>
           );
         })}
