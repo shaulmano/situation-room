@@ -21,7 +21,7 @@ Stdlib only, deliberately, same as unsee.py: this has to run on a bare runner.
 Run: python sync/poster.py            # applications from the last 7 days
      python sync/poster.py <job_id>   # one job, right after he marks it
 """
-import os, re, sys, urllib.request
+import os, re, sys, time, urllib.request
 from html.parser import HTMLParser
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
@@ -111,7 +111,12 @@ def main():
     rows = targets(job_id) or []
     print("looking up %d job(s)" % len(rows))
     found = 0
-    for r in rows:
+    for i, r in enumerate(rows):
+        # 13.11.2026: בריצה הראשונה שתיים מתוך 25 חזרו 429. שתי שניות בין
+        # בקשות עולות פחות מדקה לריצה שלמה, והן ההבדל בין "אין מפרסם" לבין
+        # "לינקדאין חסמה", שתי מסקנות הפוכות שנראות אותו דבר על המסך.
+        if i:
+            time.sleep(2)
         name, url = fetch(r["url"])
         if not name:
             print("  no poster: %s" % (r["title"] or r["id"])[:60])
