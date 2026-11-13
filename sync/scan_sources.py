@@ -77,13 +77,18 @@ def save_jobs(jobs, manual=False):
     for i in range(0, len(jobs), 100):
         chunk = jobs[i:i + 100]
         vals = ",".join(
-            "(%s,%s,%s,%s,%s,%s,%s,now(),now(),true,%s,%s)"
+            "(%s,%s,%s,%s,%s,%s,%s,now(),now(),true,%s,%s,%s,%s)"
             % (q(job_id(j["url"])), q(j["title"][:200]), q(j.get("company") or None),
                q(j.get("source") or "unknown"), q(j["url"]),
                q((j.get("location") or "")[:120] or None),
                q((j.get("description") or "")[:3000] or None),
                "true" if manual else "false",
-               q(j.get("found_for") or None))
+               q(j.get("found_for") or None),
+               # מי שפרסם את המודעה. 13.11.2026, באישור שאול. שני נתיבי
+               # הכתיבה ל-jobs חייבים לכתוב אותו, אחרת סריקה מכאן תדרוס
+               # שורה שהבוט הביא עם מפרסם.
+               q((j.get("recruiter_name") or "")[:120] or None),
+               q((j.get("recruiter_url") or "")[:300] or None))
             for j in chunk
         )
         # השאילתה נבנית כמחרוזת אחת ומעוצבת פעם אחת. 10.11.2026: ניסיון
@@ -94,7 +99,7 @@ def save_jobs(jobs, manual=False):
             # posting two different ids, which is how 108 duplicates appeared.
             "insert into jobs "
             "(id,title,company,source,url,location,description,first_seen,last_seen,"
-            "on_target,manual,found_for) "
+            "on_target,manual,found_for,recruiter_name,recruiter_url) "
             "values %s on conflict (url) do update set "
             "title=excluded.title, company=excluded.company, "
             "location=excluded.location, "
@@ -109,7 +114,9 @@ def save_jobs(jobs, manual=False):
             # הידני מצא משרה שהסריקה הרגילה כבר הביאה. התנאי על jobs.manual
             # מונע מריצה ידנית לסמן ככפולות את התוצאות של קודמתה.
             f"manual_dup={dup_clause}, "
-            "found_for=coalesce(jobs.found_for, excluded.found_for);"
+            "found_for=coalesce(jobs.found_for, excluded.found_for), "
+            "recruiter_name=coalesce(jobs.recruiter_name, excluded.recruiter_name), "
+            "recruiter_url=coalesce(jobs.recruiter_url, excluded.recruiter_url);"
         )
         sql(stmt % vals)
 

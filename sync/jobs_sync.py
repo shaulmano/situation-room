@@ -9,9 +9,12 @@ It also means the Supabase token stays out of the public repo.
 
 The bot writes every reported job to jobs.jsonl in the (public) job-search repo.
 That file is market data - what exists out there - so it is safe to mirror here.
-What is NOT mirrored: recruiter names and urls. Those name real people who never
-agreed to be catalogued, and they stay out of this database exactly as they are
-being taken out of the public repo.
+
+13.11.2026: the poster's name and profile url ARE mirrored now, by Shaul's
+explicit approval. Scope: whoever LinkedIn credits on the posting itself, which
+is the person he writes to after applying. That is not the same thing as the
+standing rule "third-party recruiters are not stored" - that rule is about
+harvesting people off the network, and it still holds.
 
 Run: python sync/jobs_sync.py [path-to-jobs.jsonl]
 """
@@ -90,6 +93,10 @@ def rows(path):
                 # התפקיד שהחיפוש שלו החזיר את המשרה. 10.11.2026: בלי זה אין
                 # דרך להבדיל בין התפקידים ששאול באמת מחפש לבין כל השאר.
                 "found_for": (j.get("found_for") or "")[:80] or None,
+                # מי שפרסם את המודעה. 13.11.2026, באישור שאול. נשלף בסריקה
+                # מאז ומתמיד ונזרק כאן, בדיוק כמו התיאור ו-found_for לפניו.
+                "recruiter_name": (j.get("recruiter_name") or "")[:120] or None,
+                "recruiter_url": (j.get("recruiter_url") or "")[:300] or None,
             }
 
 
@@ -105,11 +112,11 @@ def main():
     for i in range(0, len(all_rows), BATCH):
         chunk = all_rows[i:i + BATCH]
         vals = ",".join(
-            "(%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)"
+            "(%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)"
             % (q(r["id"]), q(r["title"]), q(r["company"]), q(r["source"]), q(r["url"]),
                q(r["location"]), q(r["posted"]), q(r["first_seen"]), q(r["last_seen"]),
                "true" if r["on_target"] else "false", q(r["description"]),
-               q(r["found_for"]))
+               q(r["found_for"]), q(r["recruiter_name"]), q(r["recruiter_url"]))
             for r in chunk
         )
         sql(
@@ -117,7 +124,7 @@ def main():
             # the same posting different ids, and the url is what identifies it.
             "insert into jobs "
             "(id,title,company,source,url,location,posted,first_seen,last_seen,on_target,"
-            "description,found_for) "
+            "description,found_for,recruiter_name,recruiter_url) "
             "values %s on conflict (url) do update set title=excluded.title, "
             "company=excluded.company, location=excluded.location, "
             "posted=excluded.posted, last_seen=excluded.last_seen, "
@@ -127,7 +134,13 @@ def main():
             "description=coalesce(excluded.description, jobs.description), "
             # coalesce גם כאן: ריצה שבה התפקיד לא ידוע לא מוחקת את מה שכבר
             # נרשם. משרה שכמה חיפושים מצאו נשארת עם הראשון שרשם אותה.
-            "found_for=coalesce(jobs.found_for, excluded.found_for);" % vals
+            "found_for=coalesce(jobs.found_for, excluded.found_for), "
+            # coalesce ולא השמה, מאותה סיבה: הבוט מושך את המפרסם רק ממשרות
+            # לינקדאין, ורק מחלקן. ריצה שלא החזירה מפרסם לא מוחקת מפרסם
+            # שכבר נרשם, אחרת שורה בתור "שלח לאלו שפרסמת" הייתה מתרוקנת
+            # לבד בסנכרון הבא.
+            "recruiter_name=coalesce(jobs.recruiter_name, excluded.recruiter_name), "
+            "recruiter_url=coalesce(jobs.recruiter_url, excluded.recruiter_url);" % vals
         )
         total += len(chunk)
         print("  upserted %d/%d" % (total, len(all_rows)))
