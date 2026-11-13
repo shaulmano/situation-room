@@ -39,6 +39,8 @@ export type JobRef = {
   // משרה מדובר, ושם התפקיד לבדו לא הספיק להם.
   url?: string | null;
   foundFor?: string | null;
+  /** המשרה כבר הוגשה. משנה את ההודעה מ"יש משרה" ל"הגשתי למשרה". */
+  applied?: boolean;
 };
 
 // The three CVs, in the same ids the matcher uses.
@@ -135,6 +137,7 @@ function Contact({
       contactTitle: contact.title,
       jobUrl: job.url,
       foundFor: job.foundFor,
+      applied: job.applied,
     });
   }
 

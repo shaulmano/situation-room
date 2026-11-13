@@ -36,7 +36,7 @@ export default async function Warm({
   const showAll = searchParams.all === '1';
 
   const [{ data: appliedRows }, { data }] = await Promise.all([
-    sb.from('applications').select('job_id'),
+    sb.from('applications').select('job_id, sent_at'),
     sb
       .from('matches')
       .select(
@@ -51,6 +51,25 @@ export default async function Warm({
   ]);
 
   const appliedIds = new Set((appliedRows ?? []).map((a: any) => a.job_id));
+
+  // ── הגשה טרייה היא הסיבה לפנות, לא הסיבה להסתיר ────────────────────────
+  //
+  // 13.11.2026. שאול הגיש ל-Aidoc, ראה שבלוק אנשי הקשר נעלם, ואז: "למה
+  // זה לא מופיע במכרים?"
+  //
+  // כי גם המסך הזה סינן החוצה כל משרה שהוגשה. זה היה הפוך מהכוונה: "הגשתי
+  // היום למשרה הזאת אצלכם, תוכלי להעביר פנימה" היא הפנייה החזקה ביותר
+  // שיש, הרבה מעבר ל"יש אצלכם משרה פתוחה".
+  //
+  // שלושים יום ולא תמיד: 238 הגשות מספטמבר כבר לא רלוונטיות, והן היו
+  // מציפות את התור בפניות על משרות שמזמן נסגרו.
+  const FRESH_DAYS = 30;
+  const freshFrom = Date.now() - FRESH_DAYS * 864e5;
+  const freshlyApplied = new Set(
+    (appliedRows ?? [])
+      .filter((a: any) => a.sent_at && new Date(a.sent_at).getTime() >= freshFrom)
+      .map((a: any) => a.job_id)
+  );
 
   // ── מי שפרסם משרה שהגשת אליה ───────────────────────────────────────────
   //
@@ -150,7 +169,9 @@ export default async function Warm({
   }
 
   const postings = [...merged.values()]
-    .filter((list) => !list.some((m) => appliedIds.has(m.jobs.id)))
+    // הגשה ישנה יורדת, הגשה טרייה נשארת ונושאת איתה את הידיעה שהגשת.
+    .filter((list) => !list.some(
+      (m) => appliedIds.has(m.jobs.id) && !freshlyApplied.has(m.jobs.id)))
     .map((list) => {
       const order = [...list].sort((a, b) => {
         const indirect = (m: any) => (applyTarget(m.jobs)?.indirect ? 1 : 0);
@@ -238,6 +259,7 @@ export default async function Warm({
           company: m.jobs.company, cvId: m.cv_id ?? null,
           foundFor: m.jobs.found_for ?? null,
           url: m.jobs.url ?? null,
+          applied: appliedIds.has(m.jobs.id),
         },
         queued: queuedBy.get(`${c.id}|${m.jobs.id}`) ?? null,
         score: m.score ?? 0,
@@ -345,7 +367,8 @@ export default async function Warm({
                 <JobContacts
                   contacts={people}
                   job={{ company: j.company, title: j.title, cvId: m.cv_id,
-                         url: j.url, foundFor: j.found_for }}
+                         url: j.url, foundFor: j.found_for,
+                         applied: appliedIds.has(j.id) }}
                   open
                 />
               </div>

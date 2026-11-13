@@ -190,6 +190,8 @@ export function referralMessage(opts: {
   // הקישור למודעה עצמה.
   jobUrl?: string | null;
   attached?: boolean;
+  /** המשרה כבר הוגשה. מוסיף את העובדה הזאת, כי היא הקרס החזק ביותר. */
+  applied?: boolean;
 }): string {
   // 12.11.2026, שאול הכתיב את המבנה מילה במילה: "הי שם, ראיתי שאתה
   // עובד בחברת שם החברה, אני מצרף את הקורות חיים שלי למשרת שם המשרה
@@ -200,9 +202,17 @@ export function referralMessage(opts: {
   // מבנה, אותה פתיחה ואותה סגירה, רק הבקשה מתאימה למי שקורא אותה.
   const title = englishTitle(opts);
   const company = englishCompany(opts.company);
-  const ask = isRecruiter(opts.contactTitle)
-    ? `I'm attaching my CV for the ${title} position, and I would be glad if you could take a look.`
-    : `I'm attaching my CV for the ${title} position, and I would be glad if you could pass it on internally to the relevant recruiters.`;
+  // 13.11.2026. שאול הגיש ל-Aidoc, בלוק המכרים נעלם, והוא שאל "למה זה
+  // לא מופיע במכרים?". משרה שהוגשה הוסרה משני המסכים, וזה היה הפוך
+  // מהכוונה: מועמדות שכבר בתוך המערכת היא בדיוק מה שמכר יכול להרים.
+  // בלי המשפט הזה הוא לא יודע שיש מה להרים.
+  const ask = opts.applied
+    ? (isRecruiter(opts.contactTitle)
+        ? `I applied to the ${title} position and I'm attaching my CV, so you have it directly.`
+        : `I applied to the ${title} position, and I'm attaching my CV in case you can pass it on internally to the relevant recruiters.`)
+    : (isRecruiter(opts.contactTitle)
+        ? `I'm attaching my CV for the ${title} position, and I would be glad if you could take a look.`
+        : `I'm attaching my CV for the ${title} position, and I would be glad if you could pass it on internally to the relevant recruiters.`);
   // 13.11.2026: הקישור למודעה. שלושת האנשים הראשונים שענו שאלו את אותה
   // שאלה בדיוק, "על איזו משרה", ואחד מהם כתב במפורש "if you can attach
   // the specific role you are interested in that will help". שם התפקיד

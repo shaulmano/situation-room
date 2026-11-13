@@ -139,6 +139,7 @@ export default function LinkedinQueue({ picks }: { picks: Pick[] }) {
       foundFor: p.job.foundFor,
       jobUrl: p.job.url,
       attached: true,
+      applied: p.job.applied,
     });
     try {
       await navigator.clipboard.writeText(text);

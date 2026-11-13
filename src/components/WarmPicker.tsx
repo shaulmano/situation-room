@@ -22,6 +22,8 @@ export type Pick = {
   job: {
     id: string; title: string; company: string;
     cvId: string | null; foundFor: string | null; url: string | null;
+    /** המשרה כבר הוגשה. משנה את ההודעה מ"יש משרה" ל"הגשתי למשרה". */
+    applied?: boolean;
   };
   queued: {
     id: number;

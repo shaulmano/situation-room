@@ -297,6 +297,7 @@ export default async function Applications({
                 job={{
                   company: a.company ?? '', title: a.role ?? '', cvId: a.cv_id,
                   url: a.jobs?.url ?? null, foundFor: a.jobs?.found_for ?? null,
+                  applied: true,
                 }}
               />
             </div>
