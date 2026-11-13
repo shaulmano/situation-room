@@ -115,6 +115,43 @@ def selftest():
     summary("SELFTEST SENT, From header: %s" % msg["From"])
 
 
+def test(ref_id):
+    """שולח את ההודעה המדויקת לשאול עצמו, בלי לשנות את מצב השורה.
+
+    ‏13.11.2026, אחרי שההודעה שהמתינה בתור יצאה שבורה: "ואני רוצה
+    כפתור נוסף, שלח אלי לבדיקה, על כל מייל, עד שארגיש בטוח שזה עובד
+    טוב". זה הכלל שלו מההתחלה, ואני הורדתי אותו מוקדם מדי כשהעברתי
+    את הבדיקה למסך.
+
+    השורה נשארת pending. בדיקה אינה שליחה.
+    """
+    addr, app = creds()
+    rows = sql(
+        "select r.subject, r.body, r.cv_id, c.full_name, c.email, "
+        "       coalesce(v.pdf_base64, qa.pdf_base64) as pdf_base64, "
+        "       coalesce(v.filename, qa.filename) as filename "
+        "from referrals r "
+        "join contacts c on c.id = r.contact_id "
+        "left join cvs v on v.id = r.cv_id "
+        "left join cvs qa on qa.id = 'qa' "
+        "where r.id = %d;" % int(ref_id))
+    if not rows:
+        summary("referral %s not found" % ref_id)
+        raise SystemExit(1)
+    r = rows[0]
+
+    head = ("[בדיקה] ההודעה הזאת מיועדת ל-%s, %s.\n"
+            "היא לא נשלחה אליו. מתחת לשורה הזאת ההודעה המדויקת שתצא.\n"
+            "%s\n\n" % (r["full_name"], r.get("email") or "בלי כתובת", "-" * 40))
+
+    msg = build(OWNER, "[בדיקה] " + (r.get("subject") or ""),
+                head + (r.get("body") or ""),
+                r.get("pdf_base64"), r.get("filename"), sender=addr)
+    deliver(msg, addr, app)
+    summary("TEST COPY SENT for referral %s (%s), attachment: %s"
+            % (ref_id, r["full_name"], r.get("filename") or "none"))
+
+
 def referrals():
     addr, app = creds()
     # 13.11.2026: הקובץ המצורף הוא קובץ הבסיס של שאול, כמו שהעלה אותו,
@@ -173,7 +210,9 @@ if __name__ == "__main__":
     mode = sys.argv[1] if len(sys.argv) > 1 else "referrals"
     if mode == "selftest":
         selftest()
+    elif mode == "test":
+        test(sys.argv[2])
     elif mode == "referrals":
         referrals()
     else:
-        raise SystemExit("usage: send_mail.py selftest | referrals")
+        raise SystemExit("usage: send_mail.py selftest | test <id> | referrals")

@@ -21,7 +21,7 @@ import { englishCompany, englishTitle, referralMessage } from '@/lib/outreach';
 //
 // הכישלון כאן אינו כישלון של האישור: השורה כבר approved, והמשימה
 // המתוזמנת תתפוס אותה בריצה הבאה. לכן הוא מדווח ולא מבטל.
-async function wakeTheSender(): Promise<boolean> {
+async function dispatch(mode: string, requestId?: number): Promise<boolean> {
   const token = process.env.GITHUB_DISPATCH_TOKEN;
   if (!token) return false;
   const res = await fetch(
@@ -34,13 +34,18 @@ async function wakeTheSender(): Promise<boolean> {
         'X-GitHub-Api-Version': '2022-11-28',
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify({ ref: 'main', inputs: { mode: 'mail_send' } }),
+      body: JSON.stringify({
+        ref: 'main',
+        inputs: requestId
+          ? { mode, request_id: String(requestId) }
+          : { mode },
+      }),
     }
   ).catch(() => null);
   return !!res && res.ok;
 }
 
-const ACTIONS = new Set(['queue', 'approve', 'cancel', 'contacted', 'replied', 'skipped']);
+const ACTIONS = new Set(['queue', 'approve', 'cancel', 'contacted', 'replied', 'skipped', 'test']);
 
 export async function POST(req: NextRequest) {
   const body = await req.json().catch(() => ({}));
@@ -56,6 +61,15 @@ export async function POST(req: NextRequest) {
   // למי כבר פנית, והתור חוזר על עצמו כל יום מחדש.
   // 13.11.2026: ויתור. מסמן ולא מוחק, כדי שהוויתור יהיה הפיך ושהאדם
   // לא ייעלם מהמסד בגלל לחיצה אחת.
+  // 13.11.2026: עותק בדיקה לשאול, על פנייה אחת, בלי לשנות את מצבה.
+  // "שלח אלי לבדיקה, על כל מייל, עד שארגיש בטוח שזה עובד טוב".
+  if (action === 'test') {
+    const ids: number[] = Array.isArray(body.ids) ? body.ids : [];
+    if (!ids.length) return NextResponse.json({ error: 'no ids' }, { status: 400 });
+    const ok = await dispatch('mail_test', ids[0]);
+    return NextResponse.json({ ok, sent: ok });
+  }
+
   if (action === 'skipped') {
     const ids: string[] = Array.isArray(body.ids) ? body.ids : [];
     if (!ids.length) return NextResponse.json({ error: 'no ids' }, { status: 400 });
@@ -115,7 +129,7 @@ export async function POST(req: NextRequest) {
     if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 
     const changed = (data ?? []).length;
-    const woke = action === 'approve' && changed > 0 ? await wakeTheSender() : false;
+    const woke = action === 'approve' && changed > 0 ? await dispatch('mail_send') : false;
     return NextResponse.json({ ok: true, changed, woke });
   }
 

@@ -19,7 +19,7 @@ on:
   workflow_dispatch:
     inputs:
       mode:
-        description: 'fetch, render, audit, dismissals, migrate, query, checkapi, referrals, referral_pdf, referral_mark, mail_selftest or mail_send'
+        description: 'fetch, render, audit, dismissals, migrate, query, checkapi, referrals, referral_pdf, referral_mark, mail_selftest, mail_test or mail_send'
         required: true
         default: 'fetch'
       migration:
@@ -140,11 +140,13 @@ jobs:
         env:
           SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
           SUPABASE_PROJECT_REF: ${{ secrets.SUPABASE_PROJECT_REF }}
+          REF_ID: ${{ inputs.request_id }}
           GMAIL_ADDRESS: ${{ secrets.GMAIL_ADDRESS }}
           GMAIL_APP_PASSWORD: ${{ secrets.GMAIL_APP_PASSWORD }}
         run: |
           case "${{ inputs.mode }}" in
             mail_selftest) python sync/send_mail.py selftest ;;
+            mail_test)     python sync/send_mail.py test "$REF_ID" ;;
             mail_send)     python sync/send_mail.py referrals ;;
             *) echo "unknown mail mode"; exit 1 ;;
           esac

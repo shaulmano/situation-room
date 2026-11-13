@@ -280,6 +280,28 @@ export default function WarmPicker({ picks }: { picks: Pick[] }) {
 
                     הוא גם כבר לא נחוץ: הקובץ המצורף הוא קובץ הבסיס שלו,
                     שמו כתוב בשורה מעל, והוא נמצא אצלו בטלפון ובמחשב. */}
+                {/* 13.11.2026, שאול אחרי שההודעה שהמתינה בתור יצאה
+                    שבורה: "אני רוצה כפתור נוסף, שלח אלי לבדיקה, על כל
+                    מייל, עד שארגיש בטוח שזה עובד טוב". זה הכלל שלו
+                    מההתחלה, והורדתי אותו מוקדם מדי כשהעברתי את הבדיקה
+                    למסך. העותק הולך אליו בלבד והשורה לא משנה מצב. */}
+                <button
+                  type="button" style={quiet} disabled={busy}
+                  onClick={async () => {
+                    setBusy(true);
+                    const res = await fetch('/api/outreach', {
+                      method: 'POST',
+                      headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify({ action: 'test', ids: [p.queued!.id] }),
+                    }).catch(() => null);
+                    setBusy(false);
+                    setMsg(res?.ok
+                      ? 'עותק בדיקה בדרך אליך, תוך דקה או שתיים.'
+                      : 'לא נשלח, נסה שוב');
+                  }}
+                >
+                  שלח אלי לבדיקה
+                </button>
                 <button
                   type="button" style={btn}
                   disabled={busy || !p.queued?.cvReady}
