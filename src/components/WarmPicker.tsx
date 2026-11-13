@@ -109,7 +109,10 @@ export default function WarmPicker({ picks }: { picks: Pick[] }) {
     }).catch(() => null);
     setBusy(false);
     if (res?.ok) {
-      setMsg(action === 'approve' ? 'נשלח לאישור. יוצא בריצה הקרובה.' : 'בוטל.');
+      const out = await res.json().catch(() => ({}));
+      setMsg(action !== 'approve' ? 'בוטל.'
+        : out.woke ? 'יוצא עכשיו. תוך דקה או שתיים יופיע אצלך ב-Sent.'
+        : 'אושר. יוצא בריצה הקרובה.');
       router.refresh();
     } else {
       setMsg('לא נשמר, נסה שוב');

@@ -11,6 +11,35 @@ import { referralMessage } from '@/lib/outreach';
 //
 // הדף הזה לא שולח כלום בעצמו, ולכן אין בו שום דרך לשלוח בטעות.
 
+
+// 13.11.2026: "שלח" באמת שולח.
+//
+// האתר רץ ב-Vercel ואין לו גישה לג'ימייל, ולכן השליחה עצמה יוצאת
+// מוורקפלו שיש לו את סיסמת האפליקציה ששאול הכניס. הדף רק מעיר אותו.
+// בלי זה "שלח" היה מסמן את השורה והמייל היה יוצא עד שעה אחר כך,
+// ושאול: "הכפתור של שלח לא ממש עושה את העבודה".
+//
+// הכישלון כאן אינו כישלון של האישור: השורה כבר approved, והמשימה
+// המתוזמנת תתפוס אותה בריצה הבאה. לכן הוא מדווח ולא מבטל.
+async function wakeTheSender(): Promise<boolean> {
+  const token = process.env.GITHUB_DISPATCH_TOKEN;
+  if (!token) return false;
+  const res = await fetch(
+    'https://api.github.com/repos/shaulmano/situation-room/actions/workflows/cv.yml/dispatches',
+    {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${token}`,
+        Accept: 'application/vnd.github+json',
+        'X-GitHub-Api-Version': '2022-11-28',
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ ref: 'main', inputs: { mode: 'mail_send' } }),
+    }
+  ).catch(() => null);
+  return !!res && res.ok;
+}
+
 const ACTIONS = new Set(['queue', 'approve', 'cancel', 'contacted', 'replied', 'skipped']);
 
 export async function POST(req: NextRequest) {
@@ -84,7 +113,10 @@ export async function POST(req: NextRequest) {
     if (action === 'approve') q = q.in('status', ['pending', 'test_sent']);
     const { data, error } = await q.select('id');
     if (error) return NextResponse.json({ error: error.message }, { status: 500 });
-    return NextResponse.json({ ok: true, changed: (data ?? []).length });
+
+    const changed = (data ?? []).length;
+    const woke = action === 'approve' && changed > 0 ? await wakeTheSender() : false;
+    return NextResponse.json({ ok: true, changed, woke });
   }
 
   // queue
