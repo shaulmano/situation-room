@@ -48,12 +48,24 @@ def creds():
     if not addr or not app:
         summary("GMAIL_ADDRESS or GMAIL_APP_PASSWORD is missing")
         raise SystemExit(1)
+    # הכתובת עצמה היא סוד ולכן היומן מסתיר אותה. הדומיין לבדו מספיק
+    # כדי לדעת לאיזה חשבון התחברנו, והוא לא מוסתר.
+    summary("login domain: %s" % addr.rsplit("@", 1)[-1])
     return addr, app
 
 
 def build(to_addr, subject, body, pdf_b64=None, filename=None, sender=None):
+    # 13.11.2026: השולח הוא תמיד הכתובת הפרטית, ולא מה שב-GMAIL_ADDRESS.
+    #
+    # מייל הבדיקה הראשון הגיע מ-shaul@manomaticai.com למרות שסיסמת
+    # האפליקציה נוצרה בחשבון הפרטי. בג'ימייל הפרטי שלו מוגדרת כתובת
+    # שליחה נוספת על הדומיין העסקי, והיא ברירת המחדל, וג'ימייל שולח
+    # ממנה כשלא מבקשים ממנו אחרת.
+    #
+    # שאול ביקש במפורש שהפנייה תצא מהחשבון הפרטי: פנייה למכר שיוצאת
+    # מכתובת עסקית נקראת כמו שיווק.
     msg = EmailMessage()
-    msg["From"] = sender
+    msg["From"] = OWNER
     msg["To"] = to_addr
     msg["Subject"] = subject
     msg["Date"] = email.utils.formatdate(localtime=True)
@@ -100,7 +112,7 @@ def selftest():
             "the direct send path works.\n")
     msg = build(OWNER, "Situation room: send path self test", body, sender=addr)
     deliver(msg, addr, app)
-    summary("SELFTEST SENT from %s to %s" % (addr, OWNER))
+    summary("SELFTEST SENT, From header: %s" % msg["From"])
 
 
 def referrals():
