@@ -221,3 +221,65 @@ export function referralMessage(opts: {
   lines.push('', 'Thanks a lot,', 'Shaul');
   return lines.join('\n');
 }
+
+// ── פנייה למי שפרסם את המודעה ────────────────────────────────────────────────
+//
+// 13.11.2026, שאול: "על כל שליחה למשרה בלינקדאין אתה תמצא לי את המפרסם
+// ותכניס אותי לשליחת הודעה פרטית".
+//
+// שתי הודעות שונות, ולא אחת, כי לינקדאין מתנהגת אחרת בכל מקרה: למי שאתה
+// מחובר אליו אפשר לשלוח הודעה עם קובץ מצורף, ולמי שלא אפשר רק פתק בבקשת
+// חברות, בלי קובץ ובמגבלת 200 תווים.
+
+/** משווה שתי כתובות פרופיל: il.linkedin.com ו-www.linkedin.com הם אותו אדם. */
+export function sameProfile(a?: string | null, b?: string | null): boolean {
+  const norm = (u?: string | null) => (u ?? '')
+    .toLowerCase()
+    .replace(/^https?:\/\//, '')
+    .replace(/^[a-z]{2}\./, '')
+    .replace(/^www\./, '')
+    .split('?')[0]
+    .replace(/\/+$/, '');
+  const x = norm(a);
+  return !!x && x === norm(b);
+}
+
+/** פתק בבקשת חברות. לינקדאין חותכת ב-200 תווים, ואין אפשרות לצרף קובץ. */
+export function posterNote(opts: {
+  contactName: string;
+  company: string;
+  jobTitle: string;
+  foundFor?: string | null;
+  cvId?: string | null;
+}): string {
+  const title = englishTitle(opts);
+  const company = englishCompany(opts.company);
+  // בלי בקשה ובלי קובץ: הפתק הזה קונה רק את החיבור. הבקשה עצמה נשלחת
+  // בהודעה שאחריו, וכך היא לא נחתכת באמצע ולא נקראת כנדנוד.
+  const note = `Hi ${firstName(opts.contactName)}, I applied to the ${title} role you posted at ${company}. Connecting so I can share my background with you directly. Thanks, Shaul`;
+  return note.length <= 200 ? note
+    : `Hi ${firstName(opts.contactName)}, I applied to the ${title} role you posted. Connecting so I can share my background directly. Thanks, Shaul`.slice(0, 200);
+}
+
+/** הודעה מלאה, למי ששאול כבר מחובר אליו. כאן אפשר לצרף את הקובץ. */
+export function posterMessage(opts: {
+  contactName: string;
+  company: string;
+  jobTitle: string;
+  foundFor?: string | null;
+  cvId?: string | null;
+  jobUrl?: string | null;
+}): string {
+  const title = englishTitle(opts);
+  const company = englishCompany(opts.company);
+  const lines = [
+    `Hi ${firstName(opts.contactName)},`,
+    `I saw that you posted the ${title} position at ${company}, and I applied to it today.`,
+    // הבקשה למפרסם היא להסתכל, לא להעביר הלאה: הוא זה שמחזיק את המשרה.
+    `I'm attaching my CV, and I would be glad if you could take a look.`,
+  ];
+  const link = cleanJobUrl(opts.jobUrl);
+  if (link) lines.push('', `The role: ${link}`);
+  lines.push('', 'Thanks a lot,', 'Shaul');
+  return lines.join('\n');
+}

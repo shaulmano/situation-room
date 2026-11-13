@@ -8,6 +8,7 @@ import Dismiss from '@/components/Dismiss';
 import JobContacts from '@/components/JobContacts';
 import MarkApplied from '@/components/MarkApplied';
 import LinkedinQueue from '@/components/LinkedinQueue';
+import PosterQueue, { type PosterRow } from '@/components/PosterQueue';
 import Refresh from '@/components/Refresh';
 import WarmPicker, { type Pick } from '@/components/WarmPicker';
 
@@ -50,6 +51,60 @@ export default async function Warm({
   ]);
 
   const appliedIds = new Set((appliedRows ?? []).map((a: any) => a.job_id));
+
+  // ── מי שפרסם משרה שהגשת אליה ───────────────────────────────────────────
+  //
+  // 13.11.2026. שאול: "על כל שליחה למשרה בלינקדאין אתה תמצא לי את המפרסם
+  // ותכניס אותי לשליחת הודעה פרטית".
+  //
+  // רק הגשות, ורק משרות שיש להן מפרסם. אין מילוי אחורה: משרה שהוגשה לפני
+  // שהעמודות נוספו תקבל מפרסם רק אם poster.py יגיע אליה, והוא רץ על שבוע
+  // אחורה בלבד.
+  const { data: postedRows } = await sb
+    .from('applications')
+    .select(
+      'job_id, cv_id, sent_at, '
+      + 'jobs!inner(id, title, company, url, found_for, recruiter_name, recruiter_url, '
+      + 'poster_sent_at, poster_replied_at, poster_skipped_at)'
+    )
+    .not('jobs.recruiter_name', 'is', null)
+    .order('sent_at', { ascending: false })
+    .limit(200);
+
+  // האם שאול מחובר למפרסם. זה קובע איזו הודעה מוצגת: למחובר הודעה עם
+  // קובץ, ולמי שלא פתק בבקשת חברות בלי קובץ. נשאל רק על המפרסמים שעל
+  // המסך ולא על כל אנשי הקשר: משיכה של 2,657 שורות בכל רינדור היא בדיוק
+  // מה שרוקן את תקציב ה-IO ב-12.11.
+  const slugOf = (u?: string | null) =>
+    ((u ?? '').match(/\/in\/([A-Za-z0-9\-_%]+)/)?.[1] ?? '').toLowerCase();
+  const posterSlugs = [...new Set(
+    (postedRows ?? []).map((a: any) => slugOf(a.jobs?.recruiter_url)).filter(Boolean)
+  )];
+  const { data: knownPosters } = posterSlugs.length
+    ? await sb.from('contacts').select('linkedin_url')
+        .or(posterSlugs.map((s) => `linkedin_url.ilike.%/in/${s}%`).join(','))
+    : { data: [] as any[] };
+  const knownSlugs = new Set(
+    (knownPosters ?? []).map((c: any) => slugOf(c.linkedin_url)).filter(Boolean)
+  );
+
+  const posters: PosterRow[] = (postedRows ?? [])
+    .map((a: any) => ({
+      jobId: a.jobs.id,
+      title: a.jobs.title,
+      company: a.jobs.company ?? '',
+      cvId: a.cv_id ?? null,
+      foundFor: a.jobs.found_for ?? null,
+      url: a.jobs.url ?? null,
+      posterName: a.jobs.recruiter_name as string,
+      posterUrl: a.jobs.recruiter_url as string,
+      connected: knownSlugs.has(slugOf(a.jobs.recruiter_url)),
+      appliedAt: a.sent_at ?? null,
+      sentAt: a.jobs.poster_sent_at ?? null,
+      repliedAt: a.jobs.poster_replied_at ?? null,
+      skippedAt: a.jobs.poster_skipped_at ?? null,
+    }))
+    .filter((r: PosterRow) => r.posterUrl);
 
   // שורה אחת למשרה, הגרסה שקיבלה את הניקוד הגבוה ביותר.
   const best = new Map<string, any>();
@@ -198,6 +253,8 @@ export default async function Warm({
       <WarmPicker picks={picks} />
 
       <LinkedinQueue picks={picks} />
+
+      <PosterQueue rows={posters} />
 
       <div className="filters">
         <Link href="/warm" className={'filter' + (showAll ? '' : ' on')}>
