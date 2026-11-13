@@ -76,6 +76,17 @@ jobs:
           SUPABASE_PROJECT_REF: ${{ secrets.SUPABASE_PROJECT_REF }}
         run: python sync/score.py
 
+      # רשת ביטחון למפרסמים. הנתיב הרגיל הוא לחיצה על "הוגשה", שמפעילה
+      # את cv.yml מיד. הצעד הזה תופס את מה שההפעלה המיידית פספסה, למשל
+      # כששאול סימן בזמן שהרשת שלו נפלה, והוא מוגבל לשבוע אחורה ולעשרים
+      # וחמש משרות. continue-on-error: זאת לא הסיבה שהסריקה רצה.
+      - name: Fill in missing job posters
+        continue-on-error: true
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+          SUPABASE_PROJECT_REF: ${{ secrets.SUPABASE_PROJECT_REF }}
+        run: python sync/poster.py
+
       - name: Announce what arrived
         env:
           SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
