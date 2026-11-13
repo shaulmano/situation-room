@@ -77,6 +77,15 @@ export default function LinkedinQueue({ picks }: { picks: Pick[] }) {
   const sent = live.filter((p) => sentAt(p));
   const replied = live.filter((p) => repliedAt(p));
   const recruiters = all.filter((p) => isRecruiter(p.contact.title));
+
+  // 13.11.2026: הסיכום הכולל, תמיד, בלי קשר לפילוח. שאול ראה "נשלחו 26"
+  // בזמן ש"אחרים" היה מסומן וכתב "יש לך טעות בחישוב, שלחתי מעל 50".
+  // המספר היה נכון ל-26 שאינם מגייסים, ובסך הכל היו 38, אבל הוא ענה
+  // על שאלה אחרת מזו שהוא שאל. מספר מפולח שנראה כמו סך הכל הוא מלכודת.
+  const allLive = all.filter((p) => !isSkipped(p));
+  const totalSent = allLive.filter(sentAt).length;
+  const totalReplied = allLive.filter(repliedAt).length;
+  const scoped = who !== 'all';
   // אחוז מענה. פחות מעשר פניות הוא לא מדגם, ולכן הוא לא מוצג כאחוז.
   const rate = sent.length >= 10
     ? Math.round((replied.length / sent.length) * 100) : null;
@@ -158,8 +167,12 @@ export default function LinkedinQueue({ picks }: { picks: Pick[] }) {
         borderRadius: 7, padding: 12, marginBottom: 14,
       }}
     >
-      <div style={{ fontWeight: 700, marginBottom: 8 }}>
+      <div style={{ fontWeight: 700, marginBottom: 2 }}>
         פנייה בלינקדאין
+      </div>
+      <div style={{ color: 'var(--muted)', fontSize: '.76rem', marginBottom: 8 }}>
+        בסך הכל נשלחו {totalSent} · ענו {totalReplied}
+        {scoped && ' · המספרים למטה הם בתוך הפילוח שבחרת'}
       </div>
 
       {/* 13.11.2026: שאול ביקש מדידה. בלעדיה 291 פניות הן שלושה שבועות
