@@ -111,29 +111,30 @@ export default async function Warm({
   // אם הוא קיים. הקובץ עצמו נמשך לפי דרישה מ-/api/outreach/cv.
   const { data: queued } = await sb
     .from('referrals')
-    .select('id, contact_id, job_id, status, subject, body, filename, pdf_base64');
+    .select('id, contact_id, job_id, cv_id, status, subject, body');
 
   // 13.11.2026: הקובץ נקרא גם מ-cv_requests, ולא רק מההעתקה שבשורת
   // הפנייה. ההעתקה הזאת נעשית בתוך השולח, שרץ רק אחרי שהפנייה אושרה,
   // ולכן נוצר מעגל: הקובץ חיכה לאישור והאישור חיכה לקובץ. שלוש פניות
   // הציגו "קורות החיים עוד נוצרים" בזמן שהקובץ היה מוכן שעות קודם.
-  const jobIds = [...new Set((queued ?? []).map((q: any) => q.job_id))];
-  const { data: readyCvs } = jobIds.length
-    ? await sb.from('cv_requests')
-        .select('job_id, filename, pdf_base64')
-        .in('job_id', jobIds)
-        .not('pdf_base64', 'is', null)
-    : { data: [] as any[] };
-  const cvByJob = new Map<string, any>();
-  for (const c of (readyCvs ?? []) as any[]) cvByJob.set(c.job_id, c);
+  // 13.11.2026: הקובץ המצורף הוא קובץ הבסיס של שאול לפי משפחת
+  // התפקידים, ולא הגרסה שהמחולל כתב למשרה. לכן "מוכן לשליחה" נמדד מול
+  // טבלת הגרסאות, לא מול תור הייצור. קודם זה נמדד מול cv_requests,
+  // וזה היה חוסם שליחה כשקובץ הבסיס היה מוכן מזמן.
+  const { data: cvFiles } = await sb
+    .from('cvs')
+    .select('id, filename, pdf_base64')
+    .not('pdf_base64', 'is', null);
+  const haveFile = new Map<string, string>();
+  for (const c of (cvFiles ?? []) as any[]) haveFile.set(c.id, c.filename);
 
   const queuedBy = new Map<string, any>();
   for (const q of (queued ?? []) as any[]) {
-    const cv = cvByJob.get(q.job_id);
+    const name = haveFile.get(q.cv_id ?? 'qa') ?? haveFile.get('qa');
     queuedBy.set(`${q.contact_id}|${q.job_id}`, {
       id: q.id, status: q.status, subject: q.subject, body: q.body,
-      filename: q.filename || cv?.filename || null,
-      cvReady: !!q.pdf_base64 || !!cv,
+      filename: name ?? null,
+      cvReady: !!name,
     });
   }
 

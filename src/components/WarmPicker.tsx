@@ -2,7 +2,6 @@
 import { useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { type WarmContact } from '@/lib/contacts';
-import { deliverPdf } from '@/lib/deliver';
 import { cvFileName } from '@/lib/outreach';
 
 // בחירת אנשי קשר לפנייה, ושליחה לתור.
@@ -268,21 +267,14 @@ export default function WarmPicker({ picks }: { picks: Pick[] }) {
               </div>
 
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, alignItems: 'center' }}>
-                {p.queued?.cvReady ? (
-                  <button
-                    type="button" style={quiet}
-                    onClick={async () => {
-                      setMsg('מוריד…');
-                      setMsg(await deliverPdf(
-                        `/api/outreach/cv?id=${p.queued!.id}`,
-                        cvFileName(p.job.cvId)));
-                    }}
-                  >
-                    קורות החיים
-                  </button>
-                ) : (
-                  <span className="chip mute">קורות החיים עוד נוצרים</span>
-                )}
+                {/* 13.11.2026: כפתור "קורות החיים" הוסר. הוא נפל להורדה
+                    רגילה כשתפריט השיתוף לא היה זמין, ובאייפון הורדה כזאת
+                    מציגה את ה-PDF על כל המסך בלי שום דרך לסגור אותו.
+                    שאול: "אין שום אפשרות לסגור אותו מעבר ללהרוג את
+                    האפליקציה".
+
+                    הוא גם כבר לא נחוץ: הקובץ המצורף הוא קובץ הבסיס שלו,
+                    שמו כתוב בשורה מעל, והוא נמצא אצלו בטלפון ובמחשב. */}
                 <button
                   type="button" style={btn}
                   disabled={busy || !p.queued?.cvReady}
