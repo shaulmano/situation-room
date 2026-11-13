@@ -21,7 +21,8 @@
 const FILE_NAME: Record<string, string> = {
   qa: 'Shaul_Mano_QA_Manager.pdf',
   program: 'Shaul_Mano_Project_Manager.pdf',
-  delivery: 'Shaul_Mano_Delivery_Manager.pdf',
+  // 13.11.2026, שאול: "Project and release מחליף את Delivery".
+  delivery: 'Shaul_Mano_Project_Release_Manager.pdf',
   release: 'Shaul_Mano_Release_Manager.pdf',
   'project-release-manager': 'Shaul_Mano_Project_Release_Manager.pdf',
 };
