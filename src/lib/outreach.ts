@@ -31,6 +31,29 @@ export function cvFileName(cvId?: string | null): string {
   return FILE_NAME[cvId ?? ''] ?? FILE_NAME.qa;
 }
 
+// כתובת המודעה, בצורה שאפשר לשלוח.
+//
+// 13.11.2026. לוחות ישראליים מקודדים את הכותרת בעברית לתוך הכתובת,
+// והתוצאה היא עשר שורות של %D7%9E%D7%A0. שאול ראה את זה בהודעה
+// שהמתינה לשליחה: "אתה צוחק עלי? כזה מייל אתה רוצה שאשלח?"
+//
+// בלינקדאין יש צורה קנונית קצרה: המזהה המספרי בסוף הכתובת מספיק,
+// והיא נפתחת בדיוק לאותה מודעה. בלוחות אחרים מפענחים את הקידוד, מה
+// שמחזיר עברית קריאה במקום סימנים.
+export function cleanJobUrl(url?: string | null): string {
+  const raw = (url ?? '').trim();
+  if (!raw) return '';
+  const li = raw.match(/linkedin\.com\/jobs\/view\/(?:.*?-)?(\d{6,})/);
+  if (li) return `https://www.linkedin.com/jobs/view/${li[1]}`;
+  try {
+    const decoded = decodeURIComponent(raw);
+    if (decoded.length < raw.length) return decoded;
+  } catch {
+    // כתובת עם קידוד שבור נשארת כמו שהיא.
+  }
+  return raw;
+}
+
 // שם החברה באנגלית.
 //
 // 13.11.2026. לוחות ישראליים מפרסמים שם דו לשוני: "Clal Insurance &
@@ -193,7 +216,8 @@ export function referralMessage(opts: {
     `I saw that you work at ${company}.`,
     ask,
   ];
-  if (opts.jobUrl) lines.push('', `The role: ${opts.jobUrl}`);
+  const link = cleanJobUrl(opts.jobUrl);
+  if (link) lines.push('', `The role: ${link}`);
   lines.push('', 'Thanks a lot,', 'Shaul');
   return lines.join('\n');
 }
