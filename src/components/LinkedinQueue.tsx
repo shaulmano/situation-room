@@ -21,6 +21,11 @@ const BATCH = 15;
 
 export default function LinkedinQueue({ picks }: { picks: Pick[] }) {
   const [shown, setShown] = useState(BATCH);
+  // 13.11.2026: לשונית. שאול סימן אחד עשר אנשים וחשב שרק האחרון נשמר,
+  // כי ברגע שסימנת השורה יורדת לסוף רשימה בת 177 ונעלמת מהעין. כל
+  // אחד עשר היו שמורים. הלשוניות הן גם הסטטיסטיקה שהוא ביקש וגם הדרך
+  // לראות מה כבר עשית.
+  const [tab, setTab] = useState<'open' | 'sent' | 'replied'>('open');
   // 13.11.2026: החיווי יושב על הכפתור ולא בראש הבלוק. שאול:
   // "לחיצה על העתק לא מראה סימן שלחצתי". בטלפון ראש הבלוק
   // כבר מחוץ למסך כשהוא לוחץ על שורה שביעית.
@@ -58,7 +63,8 @@ export default function LinkedinQueue({ picks }: { picks: Pick[] }) {
   // אחוז מענה. פחות מעשר פניות הוא לא מדגם, ולכן הוא לא מוצג כאחוז.
   const rate = sent.length >= 10
     ? Math.round((replied.length / sent.length) * 100) : null;
-  const list = all.slice(0, shown);
+  const view = tab === 'open' ? open : tab === 'sent' ? sent : replied;
+  const list = view.slice(0, shown);
 
   async function mark(contactId: string, action: 'contacted' | 'replied') {
     const now = new Date().toISOString();
@@ -122,13 +128,27 @@ export default function LinkedinQueue({ picks }: { picks: Pick[] }) {
 
       {/* 13.11.2026: שאול ביקש מדידה. בלעדיה 291 פניות הן שלושה שבועות
           של עבודה שלו בלי לדעת אם הערוץ בכלל עובד. */}
-      <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 10 }}>
-        <span className="chip">בתור {open.length}</span>
-        <span className="chip ok">נשלחו {sent.length}</span>
-        <span className={'chip' + (replied.length ? ' ok' : ' mute')}>
-          ענו {replied.length}
-        </span>
-        {rate !== null && <span className="chip mute">{rate}% מענה</span>}
+      <div className="filters" style={{ marginBottom: 10 }}>
+        {([
+          ['open', 'בתור', open.length],
+          ['sent', 'נשלחו', sent.length],
+          ['replied', 'ענו', replied.length],
+        ] as const).map(([key, label, n]) => (
+          <button
+            key={key}
+            type="button"
+            className={'filter' + (tab === key ? ' on' : '')}
+            onClick={() => { setTab(key); setShown(BATCH); }}
+          >
+            {label}
+            <span className="n">{n}</span>
+          </button>
+        ))}
+        {rate !== null && (
+          <span className="chip mute" style={{ alignSelf: 'center' }}>
+            {rate}% מענה
+          </span>
+        )}
       </div>
       <p className="screen-note" style={{ margin: '0 0 10px' }}>
         לאנשים האלה אין כתובת מייל שמורה, אבל אתה מחובר אליהם בלינקדאין.
@@ -138,6 +158,14 @@ export default function LinkedinQueue({ picks }: { picks: Pick[] }) {
 
       {msg && <div className="chip mute" style={{ marginBottom: 8 }}>{msg}</div>}
 
+      {list.length === 0 && (
+        <p className="screen-note" style={{ margin: 0 }}>
+          {tab === 'open' ? 'פנית לכולם בתור.'
+            : tab === 'sent' ? 'עוד לא סימנת אף פנייה כנשלחה.'
+            : 'עוד לא ענו. סמן "ענה לי" על מי שחזר אליך.'}
+        </p>
+      )}
+
       <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
         {list.map((p) => (
           <div
@@ -145,7 +173,7 @@ export default function LinkedinQueue({ picks }: { picks: Pick[] }) {
             style={{
               background: 'var(--raised)', border: '1px solid var(--hair)',
               borderRadius: 7, padding: 10,
-              opacity: sentAt(p) && !repliedAt(p) ? 0.55 : 1,
+              opacity: tab === 'open' && sentAt(p) && !repliedAt(p) ? 0.55 : 1,
             }}
           >
             <div style={{ fontWeight: 700, fontSize: '.86rem' }}>
@@ -194,7 +222,15 @@ export default function LinkedinQueue({ picks }: { picks: Pick[] }) {
               )}
               {sentAt(p) && !repliedAt(p) && (
                 <>
-                  <span className="chip mute">נשלח</span>
+                  {/* שבב ולא כפתור כבוי: "סמן כנשלח לא מעומד". כפתור
+                      מושבת נראה כמו משהו שנכשל, ובשורה הזאת הוא דווקא
+                      מה שהצליח. */}
+                  <span
+                    className="chip ok"
+                    style={{ alignSelf: 'center', whiteSpace: 'nowrap' }}
+                  >
+                    ✓ נשלח
+                  </span>
                   <button
                     type="button" style={quiet}
                     onClick={() => mark(p.contact.id, 'replied')}
@@ -203,18 +239,22 @@ export default function LinkedinQueue({ picks }: { picks: Pick[] }) {
                   </button>
                 </>
               )}
-              {repliedAt(p) && <span className="chip ok">ענה</span>}
+              {repliedAt(p) && (
+                <span className="chip ok" style={{ alignSelf: 'center' }}>
+                  ✓ ענה לי
+                </span>
+              )}
             </div>
           </div>
         ))}
       </div>
 
-      {shown < all.length && (
+      {shown < view.length && (
         <button
           type="button" style={{ ...quiet, marginTop: 10 }}
           onClick={() => setShown(shown + BATCH)}
         >
-          עוד {Math.min(BATCH, all.length - shown)} מתוך {all.length - shown}
+          עוד {Math.min(BATCH, view.length - shown)} מתוך {view.length - shown}
         </button>
       )}
     </div>
