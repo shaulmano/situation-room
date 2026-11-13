@@ -33,6 +33,10 @@ export default function LinkedinQueue({ picks }: { picks: Pick[] }) {
   // 13.11.2026: החיווי יושב על הכפתור ולא בראש הבלוק. שאול:
   // "לחיצה על העתק לא מראה סימן שלחצתי". בטלפון ראש הבלוק
   // כבר מחוץ למסך כשהוא לוחץ על שורה שביעית.
+  // 13.11.2026. שאול ידע בדיוק למי הוא רוצה לכתוב, נעמי פרקש ב-Aidoc,
+  // ולא היה לו איך למצוא אותה בתוך 128 שורות. תור ארוך בלי חיפוש הוא
+  // תור שאפשר רק לגלול בו מההתחלה.
+  const [q, setQ] = useState('');
   const [copied, setCopied] = useState<Record<string, boolean>>({});
   const [msg, setMsg] = useState('');
   // 13.11.2026: הסימון חל מיד על המסך, והכתיבה למסד נמשכת ברקע. שאול:
@@ -89,11 +93,17 @@ export default function LinkedinQueue({ picks }: { picks: Pick[] }) {
   // אחוז מענה. פחות מעשר פניות הוא לא מדגם, ולכן הוא לא מוצג כאחוז.
   const rate = sent.length >= 10
     ? Math.round((replied.length / sent.length) * 100) : null;
+  const needle = q.trim().toLowerCase();
+  const matches = (p: Pick) => !needle || (
+    `${p.contact.full_name} ${p.contact.title ?? ''} ${p.job.company} ${p.job.title}`
+      .toLowerCase().includes(needle));
+
   const view = tab === 'open' ? open
     : tab === 'sent' ? sent
     : tab === 'skipped' ? skipped
     : replied;
-  const list = view.slice(0, shown);
+  const found = view.filter(matches);
+  const list = found.slice(0, shown);
 
   async function skip(contactId: string, undo = false) {
     setLocalSkipped((cur) => ({ ...cur, [contactId]: !undo }));
@@ -225,6 +235,26 @@ export default function LinkedinQueue({ picks }: { picks: Pick[] }) {
           </button>
         ))}
       </div>
+      {/* חיפוש לפי שם, תפקיד או חברה. 13.11.2026: שאול ידע בדיוק למי
+          הוא רוצה לכתוב ולא היה לו איך למצוא אותה בתוך 128 שורות. */}
+      <input
+        type="search"
+        value={q}
+        onChange={(e) => { setQ(e.target.value); setShown(BATCH); }}
+        placeholder="חפש שם, תפקיד או חברה"
+        style={{
+          width: '100%', marginBottom: 10, padding: '.5em .7em',
+          fontSize: '.85rem', borderRadius: 6,
+          border: '1px solid var(--hair)',
+          background: 'var(--raised)', color: 'inherit',
+        }}
+      />
+      {needle && (
+        <p className="screen-note" style={{ margin: '0 0 8px' }}>
+          {found.length} תוצאות בלשונית הזאת. נקה את החיפוש כדי לראות את כל התור.
+        </p>
+      )}
+
       <p className="screen-note" style={{ margin: '0 0 10px' }}>
         לאנשים האלה אין כתובת מייל שמורה, אבל אתה מחובר אליהם בלינקדאין.
         לכל אחד: העתק את ההודעה, צרף את הקובץ שרשום בשורה, ואז סמן שנשלח
@@ -233,7 +263,13 @@ export default function LinkedinQueue({ picks }: { picks: Pick[] }) {
 
       {msg && <div className="chip mute" style={{ marginBottom: 8 }}>{msg}</div>}
 
-      {list.length === 0 && (
+      {list.length === 0 && needle && (
+        <p className="screen-note" style={{ margin: 0 }}>
+          אין התאמה ל"{q}" בלשונית הזאת. נסה לשונית אחרת או שם אחר.
+        </p>
+      )}
+
+      {list.length === 0 && !needle && (
         <p className="screen-note" style={{ margin: 0 }}>
           {tab === 'open' ? 'פנית לכולם בתור.'
             : tab === 'sent' ? 'עוד לא סימנת אף פנייה כנשלחה.'
@@ -342,12 +378,12 @@ export default function LinkedinQueue({ picks }: { picks: Pick[] }) {
         ))}
       </div>
 
-      {shown < view.length && (
+      {shown < found.length && (
         <button
           type="button" style={{ ...quiet, marginTop: 10 }}
           onClick={() => setShown(shown + BATCH)}
         >
-          עוד {Math.min(BATCH, view.length - shown)} מתוך {view.length - shown}
+          עוד {Math.min(BATCH, found.length - shown)} מתוך {found.length - shown}
         </button>
       )}
     </div>
