@@ -184,7 +184,18 @@ export default async function Warm({
 
   // אנשי הקשר, לפי אותו מפתח חברה שמשמש בייבוא. בלעדיו "Qmarkets Ltd."
   // ו-"Qmarkets" הן שתי חברות.
-  const keys = [...new Set(postings.map((m) => companyKey(m.jobs.company)).filter(Boolean))];
+  // 13.11.2026: גם החברות שהוגשו היום, ולא רק המשרות שעל המטרה. ההגשה
+  // של Director of GenAI Operations ב-Aidoc לא נשאה אף אחת ממילות המפתח
+  // של on_target, ולכן החברה שלה לא נכנסה לרשימת המפתחות בכלל, והסקשן
+  // "הגשת היום" יצא ריק בזמן שיש שם שני אנשי קשר.
+  const todayStart = new Date();
+  todayStart.setHours(0, 0, 0, 0);
+  const todayRows = (appliedRows ?? []).filter(
+    (a: any) => a.sent_at && new Date(a.sent_at).getTime() >= todayStart.getTime());
+  const keys = [...new Set([
+    ...postings.map((m) => companyKey(m.jobs.company)),
+    ...todayRows.map((a: any) => companyKey(a.jobs?.company ?? a.company)),
+  ].filter(Boolean))];
   const select = 'id, full_name, title, company_key, linkedin_url, email, phone, contacted_at, replied_at, skipped_at';
   const contacts = await contactsByCompanyKeys(sb, keys, select);
 
@@ -208,11 +219,8 @@ export default async function Warm({
   // מה שהגשת היום ואתה מכיר שם מישהו הוא הדבר הדחוף ביותר על המסך הזה:
   // ההגשה טרייה בערימה, והפנייה הפנימית היא מה שמרים אותה משם. קבור
   // בתוך תור של 128 שורות הוא לא נמצא, וזה בדיוק מה שקרה עם Aidoc.
-  const startOfToday = new Date();
-  startOfToday.setHours(0, 0, 0, 0);
   const todaySeen = new Set<string>();
-  const todayApplied = (appliedRows ?? [])
-    .filter((a: any) => a.sent_at && new Date(a.sent_at).getTime() >= startOfToday.getTime())
+  const todayApplied = todayRows
     .map((a: any) => {
       const company = a.jobs?.company ?? a.company ?? '';
       return {
