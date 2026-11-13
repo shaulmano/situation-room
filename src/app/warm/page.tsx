@@ -111,11 +111,28 @@ export default async function Warm({
   const { data: queued } = await sb
     .from('referrals')
     .select('id, contact_id, job_id, status, subject, body, filename, pdf_base64');
+
+  // 13.11.2026: הקובץ נקרא גם מ-cv_requests, ולא רק מההעתקה שבשורת
+  // הפנייה. ההעתקה הזאת נעשית בתוך השולח, שרץ רק אחרי שהפנייה אושרה,
+  // ולכן נוצר מעגל: הקובץ חיכה לאישור והאישור חיכה לקובץ. שלוש פניות
+  // הציגו "קורות החיים עוד נוצרים" בזמן שהקובץ היה מוכן שעות קודם.
+  const jobIds = [...new Set((queued ?? []).map((q: any) => q.job_id))];
+  const { data: readyCvs } = jobIds.length
+    ? await sb.from('cv_requests')
+        .select('job_id, filename, pdf_base64')
+        .in('job_id', jobIds)
+        .not('pdf_base64', 'is', null)
+    : { data: [] as any[] };
+  const cvByJob = new Map<string, any>();
+  for (const c of (readyCvs ?? []) as any[]) cvByJob.set(c.job_id, c);
+
   const queuedBy = new Map<string, any>();
   for (const q of (queued ?? []) as any[]) {
+    const cv = cvByJob.get(q.job_id);
     queuedBy.set(`${q.contact_id}|${q.job_id}`, {
       id: q.id, status: q.status, subject: q.subject, body: q.body,
-      filename: q.filename, cvReady: !!q.pdf_base64,
+      filename: q.filename || cv?.filename || null,
+      cvReady: !!q.pdf_base64 || !!cv,
     });
   }
 

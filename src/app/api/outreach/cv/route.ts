@@ -11,19 +11,37 @@ export async function GET(req: NextRequest) {
   const id = req.nextUrl.searchParams.get('id');
   if (!id) return NextResponse.json({ error: 'missing id' }, { status: 400 });
 
-  const { data, error } = await serverClient()
+  const sb = serverClient();
+  const { data, error } = await sb
     .from('referrals')
-    .select('pdf_base64, filename')
+    .select('job_id, pdf_base64, filename')
     .eq('id', id)
     .maybeSingle();
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
-  if (!data?.pdf_base64) {
-    return NextResponse.json({ error: 'הקובץ עדיין לא מוכן' }, { status: 404 });
+  if (!data) return NextResponse.json({ error: 'לא נמצא' }, { status: 404 });
+
+  // ההעתקה לשורת הפנייה נעשית בתוך השולח, שרץ רק אחרי אישור. לכן אם
+  // היא עוד לא קרתה, הקובץ נלקח ישירות מהמקום שבו הוא נוצר.
+  let b64: string | null = data.pdf_base64 ?? null;
+  let fileName: string | null = data.filename ?? null;
+  if (!b64) {
+    const { data: cv } = await sb
+      .from('cv_requests')
+      .select('pdf_base64, filename')
+      .eq('job_id', data.job_id)
+      .not('pdf_base64', 'is', null)
+      .order('id', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    b64 = cv?.pdf_base64 ?? null;
+    fileName = fileName || cv?.filename || null;
   }
 
-  const bytes = Buffer.from(data.pdf_base64, 'base64');
-  const name = (data.filename || 'cv.pdf').replace(/[^\w.\-]/g, '_');
+  if (!b64) return NextResponse.json({ error: 'הקובץ עדיין לא מוכן' }, { status: 404 });
+
+  const bytes = Buffer.from(b64, 'base64');
+  const name = (fileName || 'cv.pdf').replace(/[^\w.\-]/g, '_');
   return new NextResponse(bytes, {
     headers: {
       'Content-Type': 'application/pdf',
