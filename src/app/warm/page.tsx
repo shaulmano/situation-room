@@ -252,7 +252,7 @@ export default async function Warm({
                   </a>
                 )}
                 <MarkApplied id={j.id} cvId={m.cv_id} />
-                <Dismiss id={j.id} ids={m.copies.map((c: any) => c.jobs.id)} />
+                <Dismiss id={j.id} ids={m.copies.map((c: any) => c.jobs.id)} noRefresh />
 
                 {/* פתוח כברירת מחדל: כל המסך הזה הוא בדיוק הבלוק הזה, ואין
                     שום סיבה שיצטרך עוד לחיצה כדי להיפתח. */}

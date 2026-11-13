@@ -14,7 +14,9 @@ import { useRouter } from 'next/navigation';
 // הראשונה, והמסך מתרענן פעם אחת כשהפסיקו ללחוץ.
 let refreshTimer: ReturnType<typeof setTimeout> | null = null;
 
-export default function Dismiss({ id, ids }: { id: string; ids?: string[] }) {
+export default function Dismiss(
+  { id, ids, noRefresh }: { id: string; ids?: string[]; noRefresh?: boolean },
+) {
   const router = useRouter();
   const [gone, setGone] = useState(false);
 
@@ -47,6 +49,13 @@ export default function Dismiss({ id, ids }: { id: string; ids?: string[] }) {
 
     // הכתיבה הצליחה והשורה כבר לא על המסך. הרענון נועד רק לעדכן את
     // המונים למעלה, ואין שום סיבה שהוא יחסום את הלחיצה הבאה.
+    //
+    // 13.11.2026: במסך "מכרים" מוותרים עליו לגמרי. שאול: "לחיצה על
+    // הדלי לוקחת הרבה זמן לרענון של הדף". המסך הזה מושך 3,000 שורות
+    // התאמה, את אנשי הקשר ואת התור, והרענון תופס אותו לכמה שניות.
+    // אין שם שום מונה שתלוי בשורה שנסגרה.
+    if (noRefresh) return;
+
     if (refreshTimer) clearTimeout(refreshTimer);
     refreshTimer = setTimeout(() => {
       refreshTimer = null;

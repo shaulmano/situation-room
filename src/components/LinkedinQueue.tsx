@@ -1,6 +1,5 @@
 'use client';
 import { useMemo, useState } from 'react';
-import { useRouter } from 'next/navigation';
 import { cvFileName, referralMessage } from '@/lib/outreach';
 import { type Pick } from './WarmPicker';
 
@@ -21,41 +20,65 @@ import { type Pick } from './WarmPicker';
 const BATCH = 15;
 
 export default function LinkedinQueue({ picks }: { picks: Pick[] }) {
-  const router = useRouter();
   const [shown, setShown] = useState(BATCH);
-  const [busy, setBusy] = useState<string>('');
+  // 13.11.2026: החיווי יושב על הכפתור ולא בראש הבלוק. שאול:
+  // "לחיצה על העתק לא מראה סימן שלחצתי". בטלפון ראש הבלוק
+  // כבר מחוץ למסך כשהוא לוחץ על שורה שביעית.
+  const [copied, setCopied] = useState<string>('');
   const [msg, setMsg] = useState('');
+  // 13.11.2026: הסימון חל מיד על המסך, והכתיבה למסד נמשכת ברקע. שאול:
+  // "לחיצה על נשלח" לוקחת הרבה זמן. router.refresh מריץ מחדש את כל
+  // השאילתות של המסך הכבד הזה, 3,000 שורות התאמה ואנשי הקשר והתור,
+  // רק כדי לשנות שורה אחת ומונה אחד.
+  //
+  // אם הכתיבה נכשלה הסימון מוסר והשורה חוזרת לתור, כי שורה שנראית
+  // שנשלחה ולא נשמרה פירושה שאול שלא פונה לאדם הזה אף פעם.
+  const [localSent, setLocalSent] = useState<Record<string, string>>({});
+  const [localReplied, setLocalReplied] = useState<Record<string, string>>({});
 
   // מי שאין לו מייל. מי שיש לו מטופל בבלוק שמעל, בשליחה אוטומטית.
+  // המיון מחושב פעם אחת מהנתונים שהגיעו מהשרת, ולא מהמצב המקומי: אחרת
+  // שורה שסומנה הייתה קופצת ממקומה תוך כדי שהוא עובד על הרשימה.
   const all = useMemo(
     () => picks
       .filter((p) => !p.contact.email && p.contact.linkedin_url)
       .sort((a, b) => {
-        // מי שעוד לא פנית אליו קודם, ואז לפי הניקוד של המשרה.
         const done = (p: Pick) => (p.contact.contacted_at ? 1 : 0);
         return done(a) - done(b) || b.score - a.score;
       }),
     [picks]
   );
 
-  const open = all.filter((p) => !p.contact.contacted_at);
-  const sent = all.filter((p) => p.contact.contacted_at);
-  const replied = all.filter((p) => p.contact.replied_at);
+  const sentAt = (p: Pick) => p.contact.contacted_at || localSent[p.contact.id] || null;
+  const repliedAt = (p: Pick) => p.contact.replied_at || localReplied[p.contact.id] || null;
+
+  const open = all.filter((p) => !sentAt(p));
+  const sent = all.filter((p) => sentAt(p));
+  const replied = all.filter((p) => repliedAt(p));
   // אחוז מענה. פחות מעשר פניות הוא לא מדגם, ולכן הוא לא מוצג כאחוז.
   const rate = sent.length >= 10
     ? Math.round((replied.length / sent.length) * 100) : null;
   const list = all.slice(0, shown);
 
   async function mark(contactId: string, action: 'contacted' | 'replied') {
-    setBusy(contactId);
+    const now = new Date().toISOString();
+    const set = action === 'contacted' ? setLocalSent : setLocalReplied;
+    set((cur) => ({ ...cur, [contactId]: now }));
+
     const res = await fetch('/api/outreach', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ action, ids: [contactId] }),
     }).catch(() => null);
-    setBusy('');
-    if (res?.ok) router.refresh();
-    else setMsg('לא נשמר, נסה שוב');
+
+    if (!res || !res.ok) {
+      set((cur) => {
+        const next = { ...cur };
+        delete next[contactId];
+        return next;
+      });
+      setMsg('לא נשמר, נסה שוב');
+    }
   }
 
   async function copy(p: Pick) {
@@ -68,7 +91,8 @@ export default function LinkedinQueue({ picks }: { picks: Pick[] }) {
     });
     try {
       await navigator.clipboard.writeText(text);
-      setMsg('הועתק. לצרף: ' + cvFileName(p.job.cvId));
+      setCopied(p.contact.id);
+      setTimeout(() => setCopied((cur) => (cur === p.contact.id ? '' : cur)), 2000);
     } catch {
       setMsg('ההעתקה נכשלה');
     }
@@ -121,7 +145,7 @@ export default function LinkedinQueue({ picks }: { picks: Pick[] }) {
             style={{
               background: 'var(--raised)', border: '1px solid var(--hair)',
               borderRadius: 7, padding: 10,
-              opacity: p.contact.contacted_at && !p.contact.replied_at ? 0.55 : 1,
+              opacity: sentAt(p) && !repliedAt(p) ? 0.55 : 1,
             }}
           >
             <div style={{ fontWeight: 700, fontSize: '.86rem' }}>
@@ -145,8 +169,14 @@ export default function LinkedinQueue({ picks }: { picks: Pick[] }) {
             </div>
 
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
-              <button type="button" style={btn} onClick={() => copy(p)}>
-                העתק הודעה
+              <button
+                type="button"
+                style={copied === p.contact.id
+                  ? { ...btn, background: 'var(--good)', color: '#fff' }
+                  : btn}
+                onClick={() => copy(p)}
+              >
+                {copied === p.contact.id ? '✓ הועתק' : 'העתק הודעה'}
               </button>
               <a
                 className="apply" style={{ ...btn, textAlign: 'center' }}
@@ -154,28 +184,26 @@ export default function LinkedinQueue({ picks }: { picks: Pick[] }) {
               >
                 פתח בלינקדאין
               </a>
-              {!p.contact.contacted_at && (
+              {!sentAt(p) && (
                 <button
                   type="button" style={quiet}
-                  disabled={busy === p.contact.id}
                   onClick={() => mark(p.contact.id, 'contacted')}
                 >
-                  {busy === p.contact.id ? '…' : 'סמן שנשלח'}
+                  סמן שנשלח
                 </button>
               )}
-              {p.contact.contacted_at && !p.contact.replied_at && (
+              {sentAt(p) && !repliedAt(p) && (
                 <>
                   <span className="chip mute">נשלח</span>
                   <button
                     type="button" style={quiet}
-                    disabled={busy === p.contact.id}
                     onClick={() => mark(p.contact.id, 'replied')}
                   >
                     ענה לי
                   </button>
                 </>
               )}
-              {p.contact.replied_at && <span className="chip ok">ענה</span>}
+              {repliedAt(p) && <span className="chip ok">ענה</span>}
             </div>
           </div>
         ))}
