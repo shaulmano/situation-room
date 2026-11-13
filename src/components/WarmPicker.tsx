@@ -72,6 +72,7 @@ export default function WarmPicker({ picks }: { picks: Pick[] }) {
       .map((p) => ({
         contact_id: p.contact.id,
         contact_name: p.contact.full_name,
+        contact_title: p.contact.title,
         email: p.contact.email,
         job_id: p.job.id,
         job_title: p.job.title,

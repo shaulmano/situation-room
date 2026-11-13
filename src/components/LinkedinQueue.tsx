@@ -1,6 +1,6 @@
 'use client';
 import { useMemo, useState } from 'react';
-import { cvFileName, referralMessage } from '@/lib/outreach';
+import { cvFileName, isRecruiter, referralMessage } from '@/lib/outreach';
 import { type Pick } from './WarmPicker';
 
 // התור של לינקדאין.
@@ -93,6 +93,7 @@ export default function LinkedinQueue({ picks }: { picks: Pick[] }) {
       company: p.job.company,
       jobTitle: p.job.title,
       cvId: p.job.cvId,
+      contactTitle: p.contact.title,
       attached: true,
     });
     try {
@@ -184,6 +185,11 @@ export default function LinkedinQueue({ picks }: { picks: Pick[] }) {
             {p.contact.title && (
               <div style={{ color: 'var(--muted)', fontSize: '.74rem' }}>
                 {p.contact.title}
+                {isRecruiter(p.contact.title) && (
+                  <span className="chip mute" style={{ marginInlineStart: 6 }}>
+                    מגייס, נוסח אחר
+                  </span>
+                )}
               </div>
             )}
             <div style={{ fontSize: '.78rem', margin: '4px 0 2px' }}>

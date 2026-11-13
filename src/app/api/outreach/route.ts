@@ -89,6 +89,7 @@ export async function POST(req: NextRequest) {
         company: it.company,
         jobTitle: it.job_title,
         cvId: it.cv_id,
+        contactTitle: it.contact_title,
         // בקובץ מצורף אין טעם בשורת הקישור. שאול ביקש קובץ פיזי.
         attached: channel === 'email',
       }),

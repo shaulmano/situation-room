@@ -30,6 +30,28 @@ export function cvFileName(cvId?: string | null): string {
   return FILE_NAME[cvId ?? ''] ?? FILE_NAME.qa;
 }
 
+// מי שהוא עצמו מגייס.
+//
+// 12.11.2026 בלילה, שאול: "תסביר לי את הקונפליקט שאני מרגיש". מתוך
+// ארבע הפניות שהיו בתור, שתיים היו לאנשים שהם עצמם מגייסים, וההודעה
+// ביקשה מהם להעביר את קורות החיים למגייסים. זה נשמע כאילו לא טרחת
+// לבדוק למי אתה כותב, וזה ההפך ממה שפנייה דרך מכר אמורה להשיג.
+//
+// למגייסת לא מבקשים להעביר הלאה. היא היעד, ומבקשים ממנה להסתכל.
+const RECRUITER_RE = new RegExp(
+  [
+    'talent acquisition', 'recruit', 'sourcer', 'sourcing',
+    'human resources', '\\bhr\\b', 'hrbp', 'people partner',
+    'people operations', 'staffing',
+    'גיוס', 'מגייס', 'מגייסת', 'משאבי אנוש',
+  ].join('|'),
+  'i',
+);
+
+export function isRecruiter(title?: string | null): boolean {
+  return RECRUITER_RE.test(title ?? '');
+}
+
 // First name only. "Hi Yotam Cohen" reads like a form letter, which is the one
 // thing this message cannot afford.
 function firstName(full: string): string {
@@ -51,22 +73,25 @@ export function referralMessage(opts: {
   company: string;
   jobTitle: string;
   cvId?: string | null;
+  // התפקיד של איש הקשר עצמו, לא של המשרה. הוא קובע איזו בקשה מתאימה.
+  contactTitle?: string | null;
   attached?: boolean;
 }): string {
-  // 12.11.2026, שאול הכתיב את המבנה מילה במילה אחרי שקרא את הנוסח הקודם:
-  // "הי שם, ראיתי שאתה עובד בחברת שם החברה, אני מצרף את הקורות חיים שלי
-  // למשרת שם המשרה ואשמח באם תוכל להעביר אותם פנימית למגייסים הרלוונטיים.
-  // המון תודה, שאול."
+  // 12.11.2026, שאול הכתיב את המבנה מילה במילה: "הי שם, ראיתי שאתה
+  // עובד בחברת שם החברה, אני מצרף את הקורות חיים שלי למשרת שם המשרה
+  // ואשמח באם תוכל להעביר אותם פנימית למגייסים הרלוונטיים. המון תודה,
+  // שאול."
   //
-  // 13.11.2026: הקישור ירד גם מהנוסח של לינקדאין. שאול: "אני פוחד שאנשים
-  // לא יפתחו אותו". לינקדאין מוריד חשיפה להודעות עם קישור חיצוני, וקישור
-  // מצביע על קובץ שיכול להתיישן, מה שקרה בפועל. בלינקדאין שאול מצרף את
-  // הקובץ ידנית מהכפתור שבתור, ולכן שתי הגרסאות אומרות attaching.
+  // 13.11.2026: המשפט השלישי משתנה כשאיש הקשר הוא עצמו מגייס. אותו
+  // מבנה, אותה פתיחה ואותה סגירה, רק הבקשה מתאימה למי שקורא אותה.
   const title = shortTitle(opts.jobTitle);
+  const ask = isRecruiter(opts.contactTitle)
+    ? `I'm attaching my CV for the ${title} position, and I would be glad if you could take a look.`
+    : `I'm attaching my CV for the ${title} position, and I would be glad if you could pass it on internally to the relevant recruiters.`;
   return [
     `Hi ${firstName(opts.contactName)},`,
     `I saw that you work at ${opts.company}.`,
-    `I'm attaching my CV for the ${title} position, and I would be glad if you could pass it on internally to the relevant recruiters.`,
+    ask,
     '',
     'Thanks a lot,',
     'Shaul',
