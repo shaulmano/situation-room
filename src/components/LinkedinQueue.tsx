@@ -26,6 +26,10 @@ export default function LinkedinQueue({ picks }: { picks: Pick[] }) {
   // אחד עשר היו שמורים. הלשוניות הן גם הסטטיסטיקה שהוא ביקש וגם הדרך
   // לראות מה כבר עשית.
   const [tab, setTab] = useState<'open' | 'sent' | 'replied'>('open');
+  // 13.11.2026, שאול: "אני רוצה פה פילטרים לפי מגייסים או אחרים".
+  // שני סוגי פנייה שונים לגמרי: למגייסת מבקשים להסתכל, ולעובד מבקשים
+  // להעביר הלאה. הוא רוצה לעבוד על קבוצה אחת ברצף ולא לקפוץ ביניהן.
+  const [who, setWho] = useState<'all' | 'recruiters' | 'others'>('all');
   // 13.11.2026: החיווי יושב על הכפתור ולא בראש הבלוק. שאול:
   // "לחיצה על העתק לא מראה סימן שלחצתי". בטלפון ראש הבלוק
   // כבר מחוץ למסך כשהוא לוחץ על שורה שביעית.
@@ -54,12 +58,18 @@ export default function LinkedinQueue({ picks }: { picks: Pick[] }) {
     [picks]
   );
 
+  const byWho = (p: Pick) => who === 'all'
+    || (who === 'recruiters') === isRecruiter(p.contact.title);
   const sentAt = (p: Pick) => p.contact.contacted_at || localSent[p.contact.id] || null;
   const repliedAt = (p: Pick) => p.contact.replied_at || localReplied[p.contact.id] || null;
 
-  const open = all.filter((p) => !sentAt(p));
-  const sent = all.filter((p) => sentAt(p));
-  const replied = all.filter((p) => repliedAt(p));
+  // הספירה בלשוניות היא תמיד בתוך הפילוח שנבחר, אחרת "בתור 155" בזמן
+  // שמוצגות שבע שורות הוא מספר שמשקר.
+  const inScope = all.filter(byWho);
+  const open = inScope.filter((p) => !sentAt(p));
+  const sent = inScope.filter((p) => sentAt(p));
+  const replied = inScope.filter((p) => repliedAt(p));
+  const recruiters = all.filter((p) => isRecruiter(p.contact.title));
   // אחוז מענה. פחות מעשר פניות הוא לא מדגם, ולכן הוא לא מוצג כאחוז.
   const rate = sent.length >= 10
     ? Math.round((replied.length / sent.length) * 100) : null;
@@ -141,6 +151,9 @@ export default function LinkedinQueue({ picks }: { picks: Pick[] }) {
             key={key}
             type="button"
             className={'filter' + (tab === key ? ' on' : '')}
+            // רוחב אוטומטי: כפתור במערכת הזאת תופס כברירת מחדל את כל
+            // הרוחב, ולכן שלוש הלשוניות נערמו אחת מתחת לשנייה.
+            style={{ width: 'auto', flex: 'none' }}
             onClick={() => { setTab(key); setShown(BATCH); }}
           >
             {label}
@@ -152,6 +165,25 @@ export default function LinkedinQueue({ picks }: { picks: Pick[] }) {
             {rate}% מענה
           </span>
         )}
+      </div>
+
+      <div className="filters" style={{ marginBottom: 10 }}>
+        {([
+          ['all', 'הכל', all.length],
+          ['recruiters', 'מגייסים', recruiters.length],
+          ['others', 'אחרים', all.length - recruiters.length],
+        ] as const).map(([key, label, n]) => (
+          <button
+            key={key}
+            type="button"
+            className={'filter' + (who === key ? ' on' : '')}
+            style={{ width: 'auto', flex: 'none' }}
+            onClick={() => { setWho(key); setShown(BATCH); }}
+          >
+            {label}
+            <span className="n">{n}</span>
+          </button>
+        ))}
       </div>
       <p className="screen-note" style={{ margin: '0 0 10px' }}>
         לאנשים האלה אין כתובת מייל שמורה, אבל אתה מחובר אליהם בלינקדאין.
