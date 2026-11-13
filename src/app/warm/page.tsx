@@ -36,7 +36,8 @@ export default async function Warm({
   const showAll = searchParams.all === '1';
 
   const [{ data: appliedRows }, { data }] = await Promise.all([
-    sb.from('applications').select('job_id, sent_at'),
+    sb.from('applications').select(
+      'job_id, sent_at, cv_id, company, role, jobs(id, title, company, url, found_for)'),
     sb
       .from('matches')
       .select(
@@ -200,6 +201,34 @@ export default async function Warm({
     warm.set(k, list);
   }
 
+  // ── הגשת היום ──────────────────────────────────────────────────────────
+  //
+  // 13.11.2026, שאול: "הוא צריך להופיע בסקשיין עליון. תחת הגשת היום."
+  //
+  // מה שהגשת היום ואתה מכיר שם מישהו הוא הדבר הדחוף ביותר על המסך הזה:
+  // ההגשה טרייה בערימה, והפנייה הפנימית היא מה שמרים אותה משם. קבור
+  // בתוך תור של 128 שורות הוא לא נמצא, וזה בדיוק מה שקרה עם Aidoc.
+  const startOfToday = new Date();
+  startOfToday.setHours(0, 0, 0, 0);
+  const todaySeen = new Set<string>();
+  const todayApplied = (appliedRows ?? [])
+    .filter((a: any) => a.sent_at && new Date(a.sent_at).getTime() >= startOfToday.getTime())
+    .map((a: any) => {
+      const company = a.jobs?.company ?? a.company ?? '';
+      return {
+        id: a.job_id as string,
+        title: a.jobs?.title ?? a.role ?? '',
+        company,
+        cvId: a.cv_id ?? null,
+        url: a.jobs?.url ?? null,
+        foundFor: a.jobs?.found_for ?? null,
+        people: warm.get(companyKey(company)) ?? [],
+      };
+    })
+    // רק כאלה שיש בהן למי לפנות. הגשה בלי מכר בחברה אינה פריט פעולה כאן.
+    .filter((r) => r.people.length > 0)
+    .filter((r) => (todaySeen.has(r.id) ? false : (todaySeen.add(r.id), true)));
+
   const withContacts = postings
     .map((m) => {
       const k = companyKey(m.jobs.company);
@@ -297,6 +326,43 @@ export default async function Warm({
       </p>
 
       <Refresh />
+
+      {todayApplied.length > 0 && (
+        <div
+          style={{
+            background: 'var(--surface)', border: '1px solid var(--line)',
+            borderRadius: 7, padding: 12, marginBottom: 14,
+          }}
+        >
+          <div style={{ fontWeight: 700, marginBottom: 2 }}>הגשת היום</div>
+          <div style={{ color: 'var(--muted)', fontSize: '.76rem', marginBottom: 8 }}>
+            {todayApplied.length} {todayApplied.length === 1 ? 'הגשה' : 'הגשות'} שאתה
+            מכיר שם מישהו. ההגשה טרייה בערימה, והפנייה הפנימית היא מה שמרימה אותה.
+          </div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+            {todayApplied.map((r) => (
+              <div
+                key={r.id}
+                style={{
+                  background: 'var(--raised)', border: '1px solid var(--hair)',
+                  borderRadius: 7, padding: 10,
+                }}
+              >
+                <div style={{ fontWeight: 700, fontSize: '.86rem' }}>{r.company}</div>
+                <div style={{ fontSize: '.78rem', color: 'var(--muted)' }}>{r.title}</div>
+                <JobContacts
+                  contacts={r.people}
+                  job={{
+                    company: r.company, title: r.title, cvId: r.cvId,
+                    url: r.url, foundFor: r.foundFor, applied: true,
+                  }}
+                  open
+                />
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       <WarmPicker picks={picks} />
 
