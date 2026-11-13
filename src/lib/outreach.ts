@@ -31,6 +31,30 @@ export function cvFileName(cvId?: string | null): string {
   return FILE_NAME[cvId ?? ''] ?? FILE_NAME.qa;
 }
 
+// שם החברה באנגלית.
+//
+// 13.11.2026. לוחות ישראליים מפרסמים שם דו לשוני: "Clal Insurance &
+// Finance- כלל ביטוח ופיננסים", או "מרטנס | Mertens - מקבוצת מלם תים".
+// בתוך הודעה באנגלית זה נראה שבור.
+//
+// ניקוי חד פעמי במסד כבר נוסה באותו יום, והסריקה הבאה כתבה מעליו את
+// השם המקורי. לכן הניקוי קורה כאן, בכל בנייה של הודעה, ולא בנתונים.
+//
+// מחלקים לפי מפרידים ובוחרים את הקטע עם הכי הרבה אותיות לטיניות.
+// חברה ששמה עברי בלבד נשארת כמו שהיא: תרגום שלה הוא ניחוש, ושם חברה
+// שגוי גרוע משם בעברית.
+export function englishCompany(name?: string | null): string {
+  const raw = (name ?? '').trim();
+  if (!raw || !/[A-Za-z]/.test(raw)) return raw;
+  const parts = raw.split(/\s*[|\u2013\u2014\u00b7/]\s*|\s+-\s+|-\s+/)
+    .map((s) => s.trim())
+    .filter(Boolean);
+  if (parts.length < 2) return raw;
+  const latin = (s: string) => (s.match(/[A-Za-z]/g) ?? []).length;
+  const best = parts.reduce((a, b) => (latin(b) > latin(a) ? b : a));
+  return latin(best) ? best : raw;
+}
+
 // כותרת המשרה באנגלית.
 //
 // 13.11.2026, שאול: "הכל צריך להיות באנגלית, אם אתה מזהה עברית פשוט
@@ -150,12 +174,13 @@ export function referralMessage(opts: {
   // 13.11.2026: המשפט השלישי משתנה כשאיש הקשר הוא עצמו מגייס. אותו
   // מבנה, אותה פתיחה ואותה סגירה, רק הבקשה מתאימה למי שקורא אותה.
   const title = englishTitle(opts);
+  const company = englishCompany(opts.company);
   const ask = isRecruiter(opts.contactTitle)
     ? `I'm attaching my CV for the ${title} position, and I would be glad if you could take a look.`
     : `I'm attaching my CV for the ${title} position, and I would be glad if you could pass it on internally to the relevant recruiters.`;
   return [
     `Hi ${firstName(opts.contactName)},`,
-    `I saw that you work at ${opts.company}.`,
+    `I saw that you work at ${company}.`,
     ask,
     '',
     'Thanks a lot,',

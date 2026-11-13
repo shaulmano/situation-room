@@ -1,6 +1,6 @@
 import { NextResponse, type NextRequest } from 'next/server';
 import { serverClient } from '@/lib/server';
-import { englishTitle, referralMessage } from '@/lib/outreach';
+import { englishCompany, englishTitle, referralMessage } from '@/lib/outreach';
 
 // תור הפניות דרך מכרים.
 //
@@ -132,7 +132,7 @@ export async function POST(req: NextRequest) {
       cv_id: it.cv_id ?? null,
       // 13.11.2026: גם הנושא באנגלית. משרה שפורסמה בעברית קיבלה
       // שורת נושא מעורבת, ושאול ביקש שהכל יהיה אנגלית.
-      subject: `${englishTitle({ jobTitle: it.job_title, foundFor: it.found_for, cvId: it.cv_id })} at ${it.company}`,
+      subject: `${englishTitle({ jobTitle: it.job_title, foundFor: it.found_for, cvId: it.cv_id })} at ${englishCompany(it.company)}`,
       body: referralMessage({
         contactName: it.contact_name,
         company: it.company,
