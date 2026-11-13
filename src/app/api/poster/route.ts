@@ -14,17 +14,21 @@ const COL = {
 } as const;
 
 export async function POST(req: NextRequest) {
-  const { action, id, undo } = await req.json();
+  const { action, ids, undo } = await req.json();
   const col = COL[action as keyof typeof COL];
-  if (!col || !id) {
+  const list: string[] = Array.isArray(ids) ? ids.filter(Boolean) : [];
+  if (!col || list.length === 0) {
     return NextResponse.json({ error: 'bad request' }, { status: 400 });
   }
 
+  // כמה מזהים ולא אחד: אותו אדם פרסם כמה משרות ששאול הגיש אליהן, והפנייה
+  // אליו היא אחת. לינקדאין מאפשרת בקשת חברות אחת, ולכן סימון הפנייה חייב
+  // לכסות את כל המשרות שלו, אחרת השורה חוזרת לתור מחר.
   const sb = serverClient();
   const { error } = await sb
     .from('jobs')
     .update({ [col]: undo ? null : new Date().toISOString() })
-    .eq('id', id);
+    .in('id', list);
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
   return NextResponse.json({ ok: true });

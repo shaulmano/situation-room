@@ -88,9 +88,31 @@ export default async function Warm({
     (knownPosters ?? []).map((c: any) => slugOf(c.linkedin_url)).filter(Boolean)
   );
 
-  const posters: PosterRow[] = (postedRows ?? [])
-    .map((a: any) => ({
-      jobId: a.jobs.id,
+  // כרטיס אחד לאדם ולא אחד למשרה. נמדד ב-13.11: מתוך 17 ההגשות שיש להן
+  // מפרסם, שלושה אנשים פרסמו שתיים כל אחד. שני כרטיסים לאותו אדם היו
+  // אומרים שתי בקשות חברות, ולינקדאין מאפשרת אחת.
+  //
+  // המשרות מגיעות ממוינות לפי תאריך הגשה יורד, ולכן הראשונה שנרשמת היא
+  // האחרונה שהוגשה, וזאת שההודעה מדברת עליה.
+  const byPoster = new Map<string, PosterRow>();
+  for (const a of (postedRows ?? []) as any[]) {
+    const slug = slugOf(a.jobs?.recruiter_url);
+    if (!slug || !a.jobs?.recruiter_url) continue;
+    const prev = byPoster.get(slug);
+    if (prev) {
+      prev.jobIds.push(a.jobs.id);
+      if (a.jobs.title && !prev.alsoTitles.includes(a.jobs.title)
+          && a.jobs.title !== prev.title) {
+        prev.alsoTitles.push(a.jobs.title);
+      }
+      // הסטטוס הוא של האדם: די בכך שסומן על אחת מהמשרות שלו.
+      prev.sentAt ??= a.jobs.poster_sent_at ?? null;
+      prev.repliedAt ??= a.jobs.poster_replied_at ?? null;
+      prev.skippedAt ??= a.jobs.poster_skipped_at ?? null;
+      continue;
+    }
+    byPoster.set(slug, {
+      jobIds: [a.jobs.id],
       title: a.jobs.title,
       company: a.jobs.company ?? '',
       cvId: a.cv_id ?? null,
@@ -98,13 +120,15 @@ export default async function Warm({
       url: a.jobs.url ?? null,
       posterName: a.jobs.recruiter_name as string,
       posterUrl: a.jobs.recruiter_url as string,
-      connected: knownSlugs.has(slugOf(a.jobs.recruiter_url)),
+      connected: knownSlugs.has(slug),
+      alsoTitles: [],
       appliedAt: a.sent_at ?? null,
       sentAt: a.jobs.poster_sent_at ?? null,
       repliedAt: a.jobs.poster_replied_at ?? null,
       skippedAt: a.jobs.poster_skipped_at ?? null,
-    }))
-    .filter((r: PosterRow) => r.posterUrl);
+    });
+  }
+  const posters: PosterRow[] = [...byPoster.values()];
 
   // שורה אחת למשרה, הגרסה שקיבלה את הניקוד הגבוה ביותר.
   const best = new Map<string, any>();

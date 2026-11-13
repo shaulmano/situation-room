@@ -18,7 +18,9 @@ import { cvFileName, posterMessage, posterNote } from '@/lib/outreach';
 // במקום שאין בו כפתור לצרף.
 
 export type PosterRow = {
-  jobId: string;
+  /** כל המשרות של אותו מפרסם שהוגש אליהן. הפנייה אליו היא אחת. */
+  jobIds: string[];
+  /** המשרה האחרונה שהוגשה אליו, זאת שההודעה מדברת עליה. */
   title: string;
   company: string;
   cvId: string | null;
@@ -28,6 +30,8 @@ export type PosterRow = {
   posterUrl: string;
   /** האם שאול מחובר אליו: הכתובת תואמת לאיש קשר מדרגה ראשונה שלו. */
   connected: boolean;
+  /** שמות המשרות הנוספות של אותו מפרסם, אם יש. */
+  alsoTitles: string[];
   appliedAt: string | null;
   sentAt: string | null;
   repliedAt: string | null;
@@ -43,8 +47,9 @@ export default function PosterQueue({ rows }: { rows: PosterRow[] }) {
   const [msg, setMsg] = useState('');
   const [local, setLocal] = useState<Record<string, Partial<PosterRow>>>({});
 
+  const key = (r: PosterRow) => r.jobIds[0];
   const at = (r: PosterRow, k: 'sentAt' | 'repliedAt' | 'skippedAt') =>
-    (local[r.jobId] && k in local[r.jobId]!) ? (local[r.jobId] as any)[k] : r[k];
+    (local[key(r)] && k in local[key(r)]!) ? (local[key(r)] as any)[k] : r[k];
 
   const live = rows.filter((r) => !at(r, 'skippedAt'));
   const skipped = rows.filter((r) => at(r, 'skippedAt'));
@@ -63,21 +68,21 @@ export default function PosterQueue({ rows }: { rows: PosterRow[] }) {
     ? Math.round((replied.length / sent.length) * 100) : null;
 
   async function mark(r: PosterRow, action: 'sent' | 'replied' | 'skipped', undo = false) {
-    const key = action === 'sent' ? 'sentAt' : action === 'replied' ? 'repliedAt' : 'skippedAt';
-    const before = at(r, key as any);
+    const field = action === 'sent' ? 'sentAt' : action === 'replied' ? 'repliedAt' : 'skippedAt';
+    const before = at(r, field as any);
     // הסימון חל מיד על המסך והכתיבה נמשכת ברקע, כמו בתור של לינקדאין:
     // רענון של המסך הזה מריץ מחדש את כל השאילתות הכבדות שלו.
     setLocal((cur) => ({
       ...cur,
-      [r.jobId]: { ...cur[r.jobId], [key]: undo ? null : new Date().toISOString() },
+      [key(r)]: { ...cur[key(r)], [field]: undo ? null : new Date().toISOString() },
     }));
     const res = await fetch('/api/poster', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ action, id: r.jobId, undo }),
+      body: JSON.stringify({ action, ids: r.jobIds, undo }),
     }).catch(() => null);
     if (!res || !res.ok) {
-      setLocal((cur) => ({ ...cur, [r.jobId]: { ...cur[r.jobId], [key]: before } }));
+      setLocal((cur) => ({ ...cur, [key(r)]: { ...cur[key(r)], [field]: before } }));
       setMsg('לא נשמר, נסה שוב');
     }
   }
@@ -87,6 +92,7 @@ export default function PosterQueue({ rows }: { rows: PosterRow[] }) {
       ? posterMessage({
           contactName: r.posterName, company: r.company, jobTitle: r.title,
           foundFor: r.foundFor, cvId: r.cvId, jobUrl: r.url,
+          alsoTitles: r.alsoTitles,
         })
       : posterNote({
           contactName: r.posterName, company: r.company, jobTitle: r.title,
@@ -94,7 +100,7 @@ export default function PosterQueue({ rows }: { rows: PosterRow[] }) {
         });
     try {
       await navigator.clipboard.writeText(text);
-      setCopied((cur) => ({ ...cur, [r.jobId]: true }));
+      setCopied((cur) => ({ ...cur, [key(r)]: true }));
     } catch {
       setMsg('ההעתקה נכשלה');
     }
@@ -169,7 +175,7 @@ export default function PosterQueue({ rows }: { rows: PosterRow[] }) {
       <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
         {list.map((r) => (
           <div
-            key={r.jobId}
+            key={key(r)}
             style={{
               background: 'var(--raised)', border: '1px solid var(--hair)',
               borderRadius: 7, padding: 10,
@@ -186,6 +192,14 @@ export default function PosterQueue({ rows }: { rows: PosterRow[] }) {
             <div style={{ fontSize: '.78rem', margin: '4px 0 2px' }}>
               <b>המשרה:</b> {r.title} · {r.company}
             </div>
+            {/* אותו אדם פרסם כמה משרות שהגשת אליהן. כרטיס אחד ולא שניים:
+                לינקדאין מאפשרת בקשת חברות אחת, ושתי בקשות לאותו אדם הן
+                בדיוק מה שגורם לו להתעלם. */}
+            {r.alsoTitles.length > 0 && (
+              <div style={{ color: 'var(--muted)', fontSize: '.74rem', marginBottom: 2 }}>
+                הגשת אצלו גם ל: {r.alsoTitles.join(' · ')}
+              </div>
+            )}
             {/* שורת הקובץ מוצגת רק כשאפשר לצרף. בבקשת חברות אין כפתור
                 לצרף קובץ, ושורה שאומרת "קובץ לצרף" במקום כזה שולחת אותו
                 לחפש משהו שלא קיים. */}
@@ -207,12 +221,12 @@ export default function PosterQueue({ rows }: { rows: PosterRow[] }) {
             }}>
               <button
                 type="button"
-                style={copied[r.jobId]
+                style={copied[key(r)]
                   ? { ...btn, background: 'var(--good)', color: '#fff' }
                   : btn}
                 onClick={() => copy(r)}
               >
-                {copied[r.jobId] ? '✓ הועתק' : r.connected ? 'העתק הודעה' : 'העתק פתק'}
+                {copied[key(r)] ? '✓ הועתק' : r.connected ? 'העתק הודעה' : 'העתק פתק'}
               </button>
               <a
                 className="apply" style={{ ...btn, textAlign: 'center' }}

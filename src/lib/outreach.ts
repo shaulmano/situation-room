@@ -269,6 +269,8 @@ export function posterMessage(opts: {
   foundFor?: string | null;
   cvId?: string | null;
   jobUrl?: string | null;
+  /** משרות נוספות של אותו מפרסם שהוגש אליהן. */
+  alsoTitles?: string[];
 }): string {
   const title = englishTitle(opts);
   const company = englishCompany(opts.company);
@@ -278,6 +280,17 @@ export function posterMessage(opts: {
     // הבקשה למפרסם היא להסתכל, לא להעביר הלאה: הוא זה שמחזיק את המשרה.
     `I'm attaching my CV, and I would be glad if you could take a look.`,
   ];
+  // אותו אדם פרסם כמה משרות שהוגש אליהן. הודעה אחת שמזכירה את כולן, ולא
+  // שתי הודעות לאותו אדם באותו יום.
+  // דרך אותו ניקוי: בלעדיו ההודעה אמרה "Senior Project Manager" בשורה
+  // אחת ו-"Technology Project Manager (38055)" בשורה אחרת, כלומר מספר
+  // דרישה פנימי של החברה בתוך הודעה אישית.
+  const also = (opts.alsoTitles ?? [])
+    .filter(Boolean)
+    .map((t) => englishTitle({ jobTitle: t }));
+  if (also.length) {
+    lines.push('', `I also applied to ${also.join(' and ')}, if either is a better fit.`);
+  }
   const link = cleanJobUrl(opts.jobUrl);
   if (link) lines.push('', `The role: ${link}`);
   lines.push('', 'Thanks a lot,', 'Shaul');
