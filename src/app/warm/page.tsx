@@ -156,6 +156,7 @@ export default async function Warm({
           id: m.jobs.id, title: m.jobs.title,
           company: m.jobs.company, cvId: m.cv_id ?? null,
           foundFor: m.jobs.found_for ?? null,
+          url: m.jobs.url ?? null,
         },
         queued: queuedBy.get(`${c.id}|${m.jobs.id}`) ?? null,
         score: m.score ?? 0,
@@ -260,7 +261,8 @@ export default async function Warm({
                     שום סיבה שיצטרך עוד לחיצה כדי להיפתח. */}
                 <JobContacts
                   contacts={people}
-                  job={{ company: j.company, title: j.title, cvId: m.cv_id }}
+                  job={{ company: j.company, title: j.title, cvId: m.cv_id,
+                         url: j.url, foundFor: j.found_for }}
                   open
                 />
               </div>

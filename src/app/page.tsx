@@ -413,7 +413,8 @@ export default async function Dashboard({
                 <Dismiss id={j.id} ids={m.copies.map((c: any) => c.jobs.id)} />
                 <JobContacts
                   contacts={warm.get(companyKey(j.company)) ?? []}
-                  job={{ company: j.company, title: j.title, cvId: m.cv_id }}
+                  job={{ company: j.company, title: j.title, cvId: m.cv_id,
+                         url: j.url, foundFor: j.found_for }}
                 />
                 <JobBrief
                   job={{

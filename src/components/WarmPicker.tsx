@@ -21,7 +21,7 @@ export type Pick = {
   contact: WarmContact;
   job: {
     id: string; title: string; company: string;
-    cvId: string | null; foundFor: string | null;
+    cvId: string | null; foundFor: string | null; url: string | null;
   };
   queued: {
     id: number;
@@ -82,6 +82,7 @@ export default function WarmPicker({ picks }: { picks: Pick[] }) {
         company: p.job.company,
         cv_id: p.job.cvId,
         found_for: p.job.foundFor,
+        job_url: p.job.url,
       }));
     if (!items.length) return;
 

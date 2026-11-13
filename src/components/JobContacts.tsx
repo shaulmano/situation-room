@@ -32,7 +32,14 @@ const link: React.CSSProperties = {
 
 const button: React.CSSProperties = { ...link, background: 'transparent', cursor: 'pointer', width: 'auto' };
 
-export type JobRef = { company: string; title: string; cvId?: string | null };
+export type JobRef = {
+  company: string; title: string;
+  cvId?: string | null;
+  // 13.11.2026: הקישור למודעה. שלושת הראשונים שענו שאלו על איזו
+  // משרה מדובר, ושם התפקיד לבדו לא הספיק להם.
+  url?: string | null;
+  foundFor?: string | null;
+};
 
 // The three CVs, in the same ids the matcher uses.
 const CVS: [string, string][] = [
@@ -126,6 +133,8 @@ function Contact({
       // 13.11.2026: גם כאן. התפקיד של איש הקשר קובע אם מבקשים ממנו
       // להעביר הלאה או להסתכל, וכותרת בעברית מתורגמת לאנגלית.
       contactTitle: contact.title,
+      jobUrl: job.url,
+      foundFor: job.foundFor,
     });
   }
 

@@ -164,6 +164,8 @@ export function referralMessage(opts: {
   contactTitle?: string | null;
   // שם התפקיד באנגלית שבו המשרה נמצאה בחיפוש.
   foundFor?: string | null;
+  // הקישור למודעה עצמה.
+  jobUrl?: string | null;
   attached?: boolean;
 }): string {
   // 12.11.2026, שאול הכתיב את המבנה מילה במילה: "הי שם, ראיתי שאתה
@@ -178,12 +180,20 @@ export function referralMessage(opts: {
   const ask = isRecruiter(opts.contactTitle)
     ? `I'm attaching my CV for the ${title} position, and I would be glad if you could take a look.`
     : `I'm attaching my CV for the ${title} position, and I would be glad if you could pass it on internally to the relevant recruiters.`;
-  return [
+  // 13.11.2026: הקישור למודעה. שלושת האנשים הראשונים שענו שאלו את אותה
+  // שאלה בדיוק, "על איזו משרה", ואחד מהם כתב במפורש "if you can attach
+  // the specific role you are interested in that will help". שם התפקיד
+  // לבדו לא הספיק להם: בחברה גדולה יש כמה משרות דומות, והם צריכים
+  // לדעת על איזו מודעה להעביר את הקובץ.
+  //
+  // בשורה נפרדת ולא בתוך המשפט, כדי שאפשר יהיה להעתיק אותה או ללחוץ
+  // עליה בלי לקרוא את כל ההודעה.
+  const lines = [
     `Hi ${firstName(opts.contactName)},`,
     `I saw that you work at ${company}.`,
     ask,
-    '',
-    'Thanks a lot,',
-    'Shaul',
-  ].join('\n');
+  ];
+  if (opts.jobUrl) lines.push('', `The role: ${opts.jobUrl}`);
+  lines.push('', 'Thanks a lot,', 'Shaul');
+  return lines.join('\n');
 }
