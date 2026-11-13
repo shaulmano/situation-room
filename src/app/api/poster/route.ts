@@ -8,6 +8,9 @@ import { serverClient } from '@/lib/server';
 // בכלל. אותו אדם יכול לפרסם שלוש משרות.
 
 const COL = {
+  // בקשת החברות שיצאה, ולא ההודעה. שני שדות כי אלה שני צעדים שונים:
+  // הבקשה, האישור שלה, ואז ההודעה עם הקובץ.
+  request: 'poster_request_at',
   sent: 'poster_sent_at',
   replied: 'poster_replied_at',
   skipped: 'poster_skipped_at',

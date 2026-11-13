@@ -65,7 +65,7 @@ export default async function Warm({
     .select(
       'job_id, cv_id, sent_at, '
       + 'jobs!inner(id, title, company, url, found_for, recruiter_name, recruiter_url, '
-      + 'poster_sent_at, poster_replied_at, poster_skipped_at)'
+      + 'poster_request_at, poster_sent_at, poster_replied_at, poster_skipped_at)'
     )
     .not('jobs.recruiter_name', 'is', null)
     .order('sent_at', { ascending: false })
@@ -106,6 +106,7 @@ export default async function Warm({
         prev.alsoTitles.push(a.jobs.title);
       }
       // הסטטוס הוא של האדם: די בכך שסומן על אחת מהמשרות שלו.
+      prev.requestAt ??= a.jobs.poster_request_at ?? null;
       prev.sentAt ??= a.jobs.poster_sent_at ?? null;
       prev.repliedAt ??= a.jobs.poster_replied_at ?? null;
       prev.skippedAt ??= a.jobs.poster_skipped_at ?? null;
@@ -123,6 +124,7 @@ export default async function Warm({
       connected: knownSlugs.has(slug),
       alsoTitles: [],
       appliedAt: a.sent_at ?? null,
+      requestAt: a.jobs.poster_request_at ?? null,
       sentAt: a.jobs.poster_sent_at ?? null,
       repliedAt: a.jobs.poster_replied_at ?? null,
       skippedAt: a.jobs.poster_skipped_at ?? null,

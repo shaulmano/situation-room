@@ -33,6 +33,8 @@ export type PosterRow = {
   /** שמות המשרות הנוספות של אותו מפרסם, אם יש. */
   alsoTitles: string[];
   appliedAt: string | null;
+  /** הפתק בבקשת החברות יצא. רק למי ששאול לא מחובר אליו. */
+  requestAt: string | null;
   sentAt: string | null;
   repliedAt: string | null;
   skippedAt: string | null;
@@ -42,22 +44,26 @@ const BATCH = 10;
 
 export default function PosterQueue({ rows }: { rows: PosterRow[] }) {
   const [shown, setShown] = useState(BATCH);
-  const [tab, setTab] = useState<'open' | 'sent' | 'replied' | 'skipped'>('open');
+  const [tab, setTab] = useState<'open' | 'waiting' | 'sent' | 'replied' | 'skipped'>('open');
   const [copied, setCopied] = useState<Record<string, boolean>>({});
   const [msg, setMsg] = useState('');
   const [local, setLocal] = useState<Record<string, Partial<PosterRow>>>({});
 
   const key = (r: PosterRow) => r.jobIds[0];
-  const at = (r: PosterRow, k: 'sentAt' | 'repliedAt' | 'skippedAt') =>
+  const at = (r: PosterRow, k: 'requestAt' | 'sentAt' | 'repliedAt' | 'skippedAt') =>
     (local[key(r)] && k in local[key(r)]!) ? (local[key(r)] as any)[k] : r[k];
 
   const live = rows.filter((r) => !at(r, 'skippedAt'));
   const skipped = rows.filter((r) => at(r, 'skippedAt'));
-  const open = live.filter((r) => !at(r, 'sentAt'));
+  // "בתור" הוא מה שעוד לא עשית עליו כלום. מי שהבקשה אליו יצאה יושב
+  // ב"ממתין לאישור" עד שתשלח לו את ההודעה עצמה, ולא נעלם.
+  const open = live.filter((r) => !at(r, 'sentAt') && !at(r, 'requestAt'));
+  const waiting = live.filter((r) => at(r, 'requestAt') && !at(r, 'sentAt'));
   const sent = live.filter((r) => at(r, 'sentAt'));
   const replied = live.filter((r) => at(r, 'repliedAt'));
 
   const view = tab === 'open' ? open
+    : tab === 'waiting' ? waiting
     : tab === 'sent' ? sent
     : tab === 'skipped' ? skipped
     : replied;
@@ -67,8 +73,15 @@ export default function PosterQueue({ rows }: { rows: PosterRow[] }) {
   const rate = sent.length >= 10
     ? Math.round((replied.length / sent.length) * 100) : null;
 
-  async function mark(r: PosterRow, action: 'sent' | 'replied' | 'skipped', undo = false) {
-    const field = action === 'sent' ? 'sentAt' : action === 'replied' ? 'repliedAt' : 'skippedAt';
+  async function mark(
+    r: PosterRow,
+    action: 'request' | 'sent' | 'replied' | 'skipped',
+    undo = false,
+  ) {
+    const field = action === 'request' ? 'requestAt'
+      : action === 'sent' ? 'sentAt'
+      : action === 'replied' ? 'repliedAt'
+      : 'skippedAt';
     const before = at(r, field as any);
     // הסימון חל מיד על המסך והכתיבה נמשכת ברקע, כמו בתור של לינקדאין:
     // רענון של המסך הזה מריץ מחדש את כל השאילתות הכבדות שלו.
@@ -88,7 +101,9 @@ export default function PosterQueue({ rows }: { rows: PosterRow[] }) {
   }
 
   async function copy(r: PosterRow) {
-    const text = r.connected
+    // אחרי שהבקשה יצאה והיא אושרה, אתם מחוברים, ולכן ההודעה המלאה עם
+    // הקובץ. לפני זה רק הפתק.
+    const text = (r.connected || at(r, 'requestAt'))
       ? posterMessage({
           contactName: r.posterName, company: r.company, jobTitle: r.title,
           foundFor: r.foundFor, cvId: r.cvId, jobUrl: r.url,
@@ -128,12 +143,14 @@ export default function PosterQueue({ rows }: { rows: PosterRow[] }) {
         שלח לאלו שפרסמת
       </div>
       <div style={{ color: 'var(--muted)', fontSize: '.76rem', marginBottom: 8 }}>
-        בסך הכל נשלחו {live.filter((r) => at(r, 'sentAt')).length} · ענו {replied.length}
+        בסך הכל נשלחו {sent.length} · ענו {replied.length}
+        {waiting.length > 0 && ` · ${waiting.length} ממתינות לאישור בקשה`}
       </div>
 
       <div className="filters" style={{ marginBottom: 10 }}>
         {([
           ['open', 'בתור', open.length],
+          ['waiting', 'ממתין לאישור', waiting.length],
           ['sent', 'נשלחו', sent.length],
           ['replied', 'ענו', replied.length],
           ['skipped', 'ויתרתי', skipped.length],
@@ -158,8 +175,9 @@ export default function PosterQueue({ rows }: { rows: PosterRow[] }) {
 
       <p className="screen-note" style={{ margin: '0 0 10px' }}>
         משרות שסימנת כהוגשו, ושלינקדאין מציגה מי פרסם אותן. ההגשה כבר בערימה
-        של המגייס, וההודעה הזאת היא מה שמוציא אותה משם. הרשימה נצברת ולא
-        מתאפסת בכל יום, ולכן גם מה שהגשת אתמול ועוד לא פנית עליו נשאר כאן.
+        של המגייס, וההודעה הזאת היא מה שמוציא אותה משם. למי שאתה לא מחובר
+        אליו זה בשני צעדים: קודם הפתק בבקשת החברות, ואחרי שהיא אושרה ההודעה
+        עם הקובץ. הרשימה נצברת ולא מתאפסת בכל יום.
       </p>
 
       {msg && <div className="chip mute" style={{ marginBottom: 8 }}>{msg}</div>}
@@ -167,6 +185,7 @@ export default function PosterQueue({ rows }: { rows: PosterRow[] }) {
       {list.length === 0 && (
         <p className="screen-note" style={{ margin: 0 }}>
           {tab === 'open' ? 'פנית לכל המפרסמים.'
+            : tab === 'waiting' ? 'אין בקשת חברות שממתינה לאישור.'
             : tab === 'sent' ? 'עוד לא סימנת אף פנייה כנשלחה.'
             : tab === 'skipped' ? 'לא ויתרת על אף אחד.'
             : 'עוד לא ענו. סמן "ענה לי" על מי שחזר אליך.'}
@@ -184,9 +203,14 @@ export default function PosterQueue({ rows }: { rows: PosterRow[] }) {
           >
             <div style={{ fontWeight: 700, fontSize: '.86rem' }}>
               {r.posterName}
-              {!r.connected && (
+              {!r.connected && !at(r, 'requestAt') && (
                 <span className="chip mute" style={{ marginInlineStart: 6 }}>
                   לא מחובר, בקשת חברות
+                </span>
+              )}
+              {!r.connected && at(r, 'requestAt') && !at(r, 'sentAt') && (
+                <span className="chip mute" style={{ marginInlineStart: 6 }}>
+                  הבקשה יצאה, שלח כשתאושר
                 </span>
               )}
             </div>
@@ -206,7 +230,7 @@ export default function PosterQueue({ rows }: { rows: PosterRow[] }) {
             {/* שורת הקובץ מוצגת רק כשאפשר לצרף. בבקשת חברות אין כפתור
                 לצרף קובץ, ושורה שאומרת "קובץ לצרף" במקום כזה שולחת אותו
                 לחפש משהו שלא קיים. */}
-            {r.connected ? (
+            {(r.connected || at(r, 'requestAt')) ? (
               <div style={{ fontSize: '.78rem', marginBottom: 8 }}>
                 <b>קובץ לצרף:</b>{' '}
                 <span style={{ fontFamily: 'ui-monospace, monospace', fontSize: '.74rem' }}>
@@ -215,7 +239,7 @@ export default function PosterQueue({ rows }: { rows: PosterRow[] }) {
               </div>
             ) : (
               <div style={{ fontSize: '.74rem', color: 'var(--muted)', marginBottom: 8 }}>
-                פתק קצר בבקשת החברות, בלי קובץ. הקובץ נשלח בהודעה אחרי שיאשר.
+                פתק קצר בבקשת החברות, בלי קובץ. הקובץ נשלח בהודעה אחרי האישור.
               </div>
             )}
 
@@ -229,7 +253,9 @@ export default function PosterQueue({ rows }: { rows: PosterRow[] }) {
                   : btn}
                 onClick={() => copy(r)}
               >
-                {copied[key(r)] ? '✓ הועתק' : r.connected ? 'העתק הודעה' : 'העתק פתק'}
+                {copied[key(r)] ? '✓ הועתק'
+                  : (r.connected || at(r, 'requestAt')) ? 'העתק הודעה'
+                  : 'העתק פתק'}
               </button>
               <a
                 className="apply" style={{ ...btn, textAlign: 'center' }}
@@ -237,7 +263,16 @@ export default function PosterQueue({ rows }: { rows: PosterRow[] }) {
               >
                 פתח פרופיל
               </a>
-              {!at(r, 'sentAt') && (
+              {/* למי שאתה לא מחובר אליו, הצעד הראשון הוא הבקשה ולא
+                  ההודעה. שאול, 13.11: "בקשת חברות אני אמור לסמן נשלח?"
+                  סימון אחד לשני הצעדים היה מוריד את השורה מהתור והחצי
+                  השני לא היה קורה לעולם. */}
+              {!r.connected && !at(r, 'requestAt') && !at(r, 'sentAt') && (
+                <button type="button" style={quiet} onClick={() => mark(r, 'request')}>
+                  שלחתי בקשה
+                </button>
+              )}
+              {(r.connected || at(r, 'requestAt')) && !at(r, 'sentAt') && (
                 <button type="button" style={quiet} onClick={() => mark(r, 'sent')}>
                   סמן שנשלח
                 </button>
