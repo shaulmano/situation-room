@@ -123,6 +123,9 @@ function Contact({
       company: job.company,
       jobTitle: job.title,
       cvId,
+      // 13.11.2026: גם כאן. התפקיד של איש הקשר קובע אם מבקשים ממנו
+      // להעביר הלאה או להסתכל, וכותרת בעברית מתורגמת לאנגלית.
+      contactTitle: contact.title,
     });
   }
 

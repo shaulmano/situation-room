@@ -31,6 +31,68 @@ export function cvFileName(cvId?: string | null): string {
   return FILE_NAME[cvId ?? ''] ?? FILE_NAME.qa;
 }
 
+// כותרת המשרה באנגלית.
+//
+// 13.11.2026, שאול: "הכל צריך להיות באנגלית, אם אתה מזהה עברית פשוט
+// תתרגם לאנגלית". הפנייה לרייצ'ל בכלל יצאה עם "I'm attaching my CV for
+// the מנהל.ת פרויקטים ארגון ושיטות position", עברית בתוך משפט באנגלית.
+//
+// שלושה מקורות, לפי סדר אמינות, ולא ניחוש:
+//   1. הכותרת עצמה, כשהיא כבר לטינית.
+//   2. foundFor, שם התפקיד באנגלית שבו המשרה נמצאה בחיפוש. זה המידע
+//      הכי אמין שיש: זה בדיוק מה שהמערכת חיפשה כשהיא מצאה אותה.
+//   3. טבלת ביטויים לכותרות שחוזרות בלוחות הישראליים.
+// ואם כל אלה נכשלו, שם משפחת התפקידים לפי גרסת קורות החיים.
+const HE = /[\u0590-\u05FF]/;
+
+const HE_TITLE: Array<[RegExp, string]> = [
+  [/ארגון\s*ו?שיטות/, 'Organization and Methods'],
+  [/אבטחת\s*איכות/, 'QA'],
+  [/בקרת\s*איכות/, 'Quality Control'],
+  [/ראש\s*צוות/, 'Team Lead'],
+  [/מנהל[\/.]?ת?\s*צוות/, 'Team Lead'],
+  [/מנהל[\/.]?ת?\s*תוכני(ו?ת|ה)/, 'Program Manager'],
+  [/מנהל[\/.]?ת?\s*פרויקטים/, 'Project Manager'],
+  [/מנהל[\/.]?ת?\s*פרויקט/, 'Project Manager'],
+  [/מנהל[\/.]?ת?\s*איכות/, 'Quality Manager'],
+  [/מנהל[\/.]?ת?\s*שחרור(ים)?/, 'Release Manager'],
+  [/מנהל[\/.]?ת?\s*תפעול/, 'Operations Manager'],
+  [/מנהל[\/.]?ת?\s*פיתוח/, 'Development Manager'],
+  [/מנהל[\/.]?ת?\s*מוצר/, 'Product Manager'],
+];
+
+const FAMILY: Record<string, string> = {
+  qa: 'QA Manager',
+  program: 'Project Manager',
+  delivery: 'Delivery Manager',
+  release: 'Release Manager',
+  'project-release-manager': 'Project and Release Manager',
+};
+
+export function englishTitle(opts: {
+  jobTitle: string;
+  foundFor?: string | null;
+  cvId?: string | null;
+}): string {
+  const raw = shortTitle(opts.jobTitle ?? '');
+  if (raw && !HE.test(raw)) return raw;
+
+  const found = (opts.foundFor ?? '').trim();
+  if (found && !HE.test(found)) return found;
+
+  for (const [re, en] of HE_TITLE) {
+    if (re.test(opts.jobTitle ?? '')) {
+      // "מנהל פרויקטים ארגון ושיטות" הוא שני ביטויים, ומחברים אותם
+      // בסדר האנגלי: התחום ואחריו התפקיד.
+      const domain = HE_TITLE.find(
+        ([r, e]) => e !== en && r.test(opts.jobTitle ?? '') && !e.includes('Manager') && !e.includes('Lead'),
+      );
+      return domain ? `${domain[1]} ${en}` : en;
+    }
+  }
+  return FAMILY[opts.cvId ?? ''] ?? FAMILY.qa;
+}
+
 // מי שהוא עצמו מגייס.
 //
 // 12.11.2026 בלילה, שאול: "תסביר לי את הקונפליקט שאני מרגיש". מתוך
@@ -76,6 +138,8 @@ export function referralMessage(opts: {
   cvId?: string | null;
   // התפקיד של איש הקשר עצמו, לא של המשרה. הוא קובע איזו בקשה מתאימה.
   contactTitle?: string | null;
+  // שם התפקיד באנגלית שבו המשרה נמצאה בחיפוש.
+  foundFor?: string | null;
   attached?: boolean;
 }): string {
   // 12.11.2026, שאול הכתיב את המבנה מילה במילה: "הי שם, ראיתי שאתה
@@ -85,7 +149,7 @@ export function referralMessage(opts: {
   //
   // 13.11.2026: המשפט השלישי משתנה כשאיש הקשר הוא עצמו מגייס. אותו
   // מבנה, אותה פתיחה ואותה סגירה, רק הבקשה מתאימה למי שקורא אותה.
-  const title = shortTitle(opts.jobTitle);
+  const title = englishTitle(opts);
   const ask = isRecruiter(opts.contactTitle)
     ? `I'm attaching my CV for the ${title} position, and I would be glad if you could take a look.`
     : `I'm attaching my CV for the ${title} position, and I would be glad if you could pass it on internally to the relevant recruiters.`;

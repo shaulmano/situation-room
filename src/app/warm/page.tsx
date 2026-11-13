@@ -40,7 +40,7 @@ export default async function Warm({
       .from('matches')
       .select(
         'score, cv_id, reasons, '
-        + 'jobs!inner(id, title, company, source, location, url, first_seen, '
+        + 'jobs!inner(id, title, company, source, location, url, first_seen, found_for, '
         + 'posted, on_target, dismissed_at)'
       )
       .eq('jobs.on_target', true)
@@ -155,6 +155,7 @@ export default async function Warm({
         job: {
           id: m.jobs.id, title: m.jobs.title,
           company: m.jobs.company, cvId: m.cv_id ?? null,
+          foundFor: m.jobs.found_for ?? null,
         },
         queued: queuedBy.get(`${c.id}|${m.jobs.id}`) ?? null,
         score: m.score ?? 0,

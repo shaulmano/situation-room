@@ -1,6 +1,6 @@
 import { NextResponse, type NextRequest } from 'next/server';
 import { serverClient } from '@/lib/server';
-import { referralMessage } from '@/lib/outreach';
+import { englishTitle, referralMessage } from '@/lib/outreach';
 
 // תור הפניות דרך מכרים.
 //
@@ -130,13 +130,16 @@ export async function POST(req: NextRequest) {
       job_id: it.job_id,
       channel,
       cv_id: it.cv_id ?? null,
-      subject: `${it.job_title} at ${it.company}`,
+      // 13.11.2026: גם הנושא באנגלית. משרה שפורסמה בעברית קיבלה
+      // שורת נושא מעורבת, ושאול ביקש שהכל יהיה אנגלית.
+      subject: `${englishTitle({ jobTitle: it.job_title, foundFor: it.found_for, cvId: it.cv_id })} at ${it.company}`,
       body: referralMessage({
         contactName: it.contact_name,
         company: it.company,
         jobTitle: it.job_title,
         cvId: it.cv_id,
         contactTitle: it.contact_title,
+        foundFor: it.found_for,
         // בקובץ מצורף אין טעם בשורת הקישור. שאול ביקש קובץ פיזי.
         attached: channel === 'email',
       }),

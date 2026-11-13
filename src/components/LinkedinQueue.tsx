@@ -136,6 +136,7 @@ export default function LinkedinQueue({ picks }: { picks: Pick[] }) {
       jobTitle: p.job.title,
       cvId: p.job.cvId,
       contactTitle: p.contact.title,
+      foundFor: p.job.foundFor,
       attached: true,
     });
     try {

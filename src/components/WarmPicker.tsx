@@ -19,7 +19,10 @@ import { cvFileName } from '@/lib/outreach';
 
 export type Pick = {
   contact: WarmContact;
-  job: { id: string; title: string; company: string; cvId: string | null };
+  job: {
+    id: string; title: string; company: string;
+    cvId: string | null; foundFor: string | null;
+  };
   queued: {
     id: number;
     status: string;
@@ -78,6 +81,7 @@ export default function WarmPicker({ picks }: { picks: Pick[] }) {
         job_title: p.job.title,
         company: p.job.company,
         cv_id: p.job.cvId,
+        found_for: p.job.foundFor,
       }));
     if (!items.length) return;
 
