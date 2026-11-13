@@ -19,7 +19,7 @@ on:
   workflow_dispatch:
     inputs:
       mode:
-        description: 'fetch, render, audit, dismissals, migrate, query, checkapi, referrals, referral_pdf, referral_mark, mail_selftest, mail_test or mail_send'
+        description: 'fetch, render, audit, dismissals, migrate, query, checkapi, poster, referrals, referral_pdf, referral_mark, mail_selftest, mail_test or mail_send'
         required: true
         default: 'fetch'
       migration:
@@ -105,6 +105,18 @@ jobs:
 
       # בודק מה PostgREST מחזיר לאתר, ולא מה שיש במסד. שאילתה ישירה
       # עוקפת אותו, ולכן היא לא יכולה לתפוס מטמון סכימה ישן.
+      # מי פרסם את המודעה. 13.11.2026, באישור שאול. רץ רק על משרות שהוא כבר
+      # הגיש אליהן: בקשה אחת למשרה שהוא באמת פנה אליה, במקום עשרים בקשות
+      # ספקולטיביות לכל חיפוש, וזאת גם הדרך היחידה להגיע למשרה שנסרקה לפני
+      # שבוע והוא הגיש אליה היום.
+      - name: Fetch the job poster
+        if: inputs.mode == 'poster'
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+          SUPABASE_PROJECT_REF: ${{ secrets.SUPABASE_PROJECT_REF }}
+          JOB_ID: ${{ inputs.request_id }}
+        run: python sync/poster.py $JOB_ID
+
       - name: Check what the API layer returns
         if: inputs.mode == 'checkapi'
         env:
