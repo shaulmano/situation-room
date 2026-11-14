@@ -248,6 +248,8 @@ export default async function Warm({
         url: a.jobs?.url ?? null,
         foundFor: a.jobs?.found_for ?? null,
         people: (warm.get(companyKey(company)) ?? []).filter((p) => !alreadyMessaged(p)),
+        openCount: (warm.get(companyKey(company)) ?? [])
+          .filter((p) => !p.contacted_at && !alreadyMessaged(p)).length,
       };
     })
     // רק כאלה שיש בהן למי לפנות. הגשה בלי מכר בחברה אינה פריט פעולה כאן.
@@ -292,11 +294,18 @@ export default async function Warm({
         foundFor: a.jobs?.found_for ?? null,
         days: Math.max(0, Math.floor((Date.now() - sent) / 864e5)),
         sentAt: sent,
-        people: all.filter((p) => !p.contacted_at && !alreadyMessaged(p)),
+        // 14.11.2026: מי שפנית אליו נשאר בשורה ורק נצבע. שאול: "פניתי
+        // וסימנתי וכלום לא קורה... צריך לצבוע אותה בצבע אחר. ולשמור אותה."
+        // הסינון היחיד שנשאר הוא מי שכבר קיבל הודעה בטאב המפרסמים, כדי
+        // לא לשלוח לאותו אדם פעמיים.
+        people: all.filter((p) => !alreadyMessaged(p)),
+        openCount: all.filter((p) => !p.contacted_at && !alreadyMessaged(p)).length,
       };
     })
     .filter((r) => r.people.length > 0 && !todaySeen.has(r.jobId))
-    .sort((a, b) => b.sentAt - a.sentAt);
+    // מי שעוד מחכה למעלה, מה שטיפלת בו נשאר למטה כעדות ליום העבודה.
+    .sort((a, b) => (b.openCount > 0 ? 1 : 0) - (a.openCount > 0 ? 1 : 0)
+      || b.sentAt - a.sentAt);
 
   for (const r of weekMapped) {
     const prev = weekSeen.get(r.key);
@@ -514,7 +523,7 @@ export default async function Warm({
     {
       id: 'today',
       label: 'היום',
-      count: todayApplied.length,
+      count: todayApplied.filter((r) => r.openCount > 0).length,
       note: 'הגשת היום לחברה שאתה מכיר בה מישהו. ההגשה עוד על השולחן אצלם, '
         + 'והודעה אחת היום מרימה אותה מהערימה. לחץ "פנייה" ליד מי שתבחר, '
         + 'העתק, צרף את הקובץ שרשום, ושלח בלינקדאין או במייל.',
@@ -523,7 +532,7 @@ export default async function Warm({
     {
       id: 'week',
       label: 'השבוע',
-      count: appliedWeek.length,
+      count: appliedWeek.filter((r) => r.openCount > 0).length,
       note: 'הגשות משבעת הימים האחרונים שעוד לא פנית לאף אחד בחברה שלהן. '
         + 'אותה עבודה בדיוק כמו בטאב "היום", רק על מה שפספסת. מעבר לשבוע '
         + 'כבר מאוחר מדי, ולכן זה לא מופיע כאן.',

@@ -34,5 +34,28 @@ export async function POST(req: NextRequest) {
     .in('id', list);
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+
+  // 14.11.2026. שאול פנה לטליה נובק נינו בטאב המפרסמים, ולמחרת היא הוצגה
+  // שוב בטאב "השבוע" כאילו לא פנה: "פניתי אתמול ועדיין מופיעה כאילו לא
+  // פניתי".
+  //
+  // הסיבה: "פניתי" היה שלוש עובדות נפרדות בשלושה מקומות. jobs.poster_sent_at
+  // לטאב המפרסמים, contacts.contacted_at לשאר המסכים, ואף אחד מהם לא ידע על
+  // השני. עכשיו פנייה למפרסם מסמנת גם את איש הקשר, אם הוא קיים אצלו, לפי
+  // ה-slug של הפרופיל. זאת עובדה אחת על אדם אחד.
+  if (action === 'sent' && !undo) {
+    const { data: jobs } = await sb
+      .from('jobs').select('recruiter_url').in('id', list);
+    const slug = (u?: string | null) =>
+      ((u ?? '').match(/\/in\/([A-Za-z0-9\-_%]+)/)?.[1] ?? '').toLowerCase();
+    const slugs = [...new Set((jobs ?? []).map((j: any) => slug(j.recruiter_url)).filter(Boolean))];
+    for (const sg of slugs) {
+      await sb.from('contacts')
+        .update({ contacted_at: new Date().toISOString() })
+        .ilike('linkedin_url', `%/in/${sg}%`)
+        .is('contacted_at', null);
+    }
+  }
+
   return NextResponse.json({ ok: true });
 }

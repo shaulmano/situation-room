@@ -71,9 +71,17 @@ export default function JobContacts(
   // מגייסים של אותה חברה ותשע פניות הן תשעה עותקים של אותה הודעה.
   const agency = isAgency(job.company);
   const ranked = rankContacts(rows, job.title, agency);
+  // מי שפנית אליו יורד לתחתית ולא נעלם, וגם לא נספר במכסה של השלושה
+  // המוצגים: אחרת כרטיס שטיפלת בו היה חוסם את מי שעוד מחכה.
+  const openFirst = [...ranked].sort(
+    (a, b) => Number(!!a.contacted_at) - Number(!!b.contacted_at));
   const cap = agency ? 1 : 3;
-  const visible = showAll ? ranked : ranked.slice(0, cap);
-  const hidden = ranked.length - visible.length;
+  const openOnes = openFirst.filter((c) => !c.contacted_at);
+  const doneOnes = openFirst.filter((c) => c.contacted_at);
+  const visible = showAll
+    ? openFirst
+    : [...openOnes.slice(0, cap), ...doneOnes];
+  const hidden = openFirst.length - visible.length;
 
   return (
     <details
@@ -199,8 +207,24 @@ function Contact({
     }
   }
 
+  // 14.11.2026. שאול סימן "פניתי" והכרטיס נראה בדיוק אותו דבר: "פניתי
+  // וסימנתי וכלום לא קורה... צריך לצבוע אותה בצבע אחר. ולשמור אותה."
+  // סימון שלא משנה כלום על המסך הוא סימון שאי אפשר לסמוך עליו, והעלמה
+  // של השורה ברענון הבא גרועה עוד יותר: אין שום עדות למה שעשית היום.
+  const done = !!contact.contacted_at;
+
   return (
-    <div style={line}>
+    <div
+      style={{
+        ...line,
+        ...(done ? {
+          background: 'color-mix(in srgb, var(--good) 10%, transparent)',
+          borderInlineStart: '3px solid var(--good)',
+          paddingInlineStart: 8,
+          borderRadius: 6,
+        } : null),
+      }}
+    >
       <span style={{ flex: '1 1 140px', minWidth: 0, fontSize: '.82rem', fontWeight: 600 }}>
         {contact.full_name}
         {contact.title && (
@@ -209,8 +233,11 @@ function Contact({
           </span>
         )}
         {askedDays !== null && (
-          <span style={{ display: 'block', color: 'var(--good)', fontSize: '.72rem', fontWeight: 600 }}>
-            {askedDays === 0 ? 'פנית היום' : `פנית לפני ${askedDays} ימים`}
+          <span
+            className="chip ok"
+            style={{ display: 'inline-block', marginTop: 3, fontSize: '.72rem' }}
+          >
+            ✓ {askedDays === 0 ? 'פנית היום' : `פנית לפני ${askedDays} ימים`}
           </span>
         )}
       </span>

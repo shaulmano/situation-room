@@ -24,6 +24,8 @@ export type AppliedRow = {
   foundFor: string | null;
   /** כמה ימים עברו מההגשה. */
   days: number;
+  /** כמה אנשים בשורה הזאת עוד מחכים לפנייה. אפס פירושו שטיפלת בה. */
+  openCount: number;
   people: WarmContact[];
 };
 
@@ -78,12 +80,18 @@ export default function AppliedList({ rows }: { rows: AppliedRow[] }) {
           <div
             key={r.key}
             style={{
-              background: 'var(--raised)', border: '1px solid var(--hair)',
+              background: 'var(--raised)',
+              border: '1px solid var(--hair)',
               borderRadius: 7, padding: 10,
+              // שורה שטיפלת בה נשארת, דהויה, כעדות ליום העבודה.
+              opacity: r.openCount === 0 ? 0.65 : 1,
             }}
           >
             <div style={{ fontWeight: 700, fontSize: '.86rem' }}>
               {r.company}
+              {r.openCount === 0 && (
+                <span className="chip ok" style={{ marginInlineStart: 6 }}>✓ טופל</span>
+              )}
               <span className="chip mute" style={{ marginInlineStart: 6 }}>
                 {r.days === 0 ? 'הגשת היום'
                   : r.days === 1 ? 'הגשת אתמול'
