@@ -35,6 +35,26 @@ export function mutualsHref(linkedinUrl?: string | null): string | null {
   );
 }
 
+/**
+ * חיפוש אנשים בחברה מסוימת, בלינקדאין עצמה.
+ *
+ * 14.11.2026. שאול, אחרי ששלומי בלינקו ענה שהוא עזב: "אולי אתה יכול
+ * להביא אנשי קשר אחרים במקומו באותה חברה כהמלצה אלי, איש קשר שעובד שם
+ * והוא לא חבר, ואז לבקש חברות".
+ *
+ * **קישור ולא גריפה.** הכלל שלו עצמו, מ-12.11: "קשרים מדרגה שנייה לא
+ * נגרדים מלינקדאין: רק קישור לחיפוש של לינקדאין עצמה". אנשים שלא הסכימו
+ * להיקטלג לא נכנסים למסד, והחיפוש נפתח אצלו בדפדפן עם הסינון מוכן.
+ * network=S הוא דרגה שנייה, כלומר בדיוק מי שאפשר לשלוח לו בקשת חברות.
+ */
+export function peopleAtCompanyHref(company?: string | null, role?: string | null): string | null {
+  const name = (company ?? '').trim();
+  if (!name) return null;
+  const words = [name, (role ?? '').trim()].filter(Boolean).join(' ');
+  return 'https://www.linkedin.com/search/results/people/?network=%5B%22S%22%5D&keywords='
+    + encodeURIComponent(words);
+}
+
 // שליפת אנשי קשר לפי מפתחות חברה, במנות.
 //
 // 12.11.2026. הקוד הקודם עשה או `in` עם כל המפתחות, או, כשהיו יותר

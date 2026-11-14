@@ -36,6 +36,18 @@ export default function ReplyBanner({ rows }: { rows: ReplyRow[] }) {
   const open = rows.filter((r) => !done[r.id]);
   if (open.length === 0) return null;
 
+  // 14.11.2026: "אני כבר לא עובד בחברה" היא תגובה שתחזור. מי שעזב מפסיק
+  // להיות מוצע כמכר בחברה הזאת, ונשאר איש קשר לכל דבר אחר.
+  async function left(r: ReplyRow) {
+    setDone((cur) => ({ ...cur, [r.id]: true }));
+    const res = await fetch('/api/contacts', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id: r.id, leftCompany: true, replyDone: true }),
+    }).catch(() => null);
+    if (!res || !res.ok) setDone((cur) => ({ ...cur, [r.id]: false }));
+  }
+
   async function close(r: ReplyRow) {
     setDone((cur) => ({ ...cur, [r.id]: true }));
     const res = await fetch('/api/contacts', {
@@ -154,6 +166,19 @@ export default function ReplyBanner({ rows }: { rows: ReplyRow[] }) {
               >
                 טיפלתי
               </button>
+              {r.company && (
+                <button
+                  type="button"
+                  style={{
+                    ...btn, background: 'var(--raised)', color: 'var(--muted)',
+                    border: '1px solid var(--hair)',
+                  }}
+                  title={`${r.name} לא עובד יותר ב-${r.company}, ולכן יפסיק להיות מוצע שם`}
+                  onClick={() => left(r)}
+                >
+                  עזב את {r.company}
+                </button>
+              )}
             </div>
           </div>
         ))}

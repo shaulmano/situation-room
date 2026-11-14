@@ -1,6 +1,6 @@
 'use client';
 import { useState } from 'react';
-import { mutualsHref, type WarmContact } from '@/lib/contacts';
+import { mutualsHref, peopleAtCompanyHref, type WarmContact } from '@/lib/contacts';
 import { referralMessage } from '@/lib/outreach';
 import { isAgency, rankContacts } from '@/lib/pickContact';
 
@@ -115,6 +115,26 @@ export default function JobContacts(
       {visible.map((c) => (
         <Contact key={c.id} contact={c} job={job} onPatch={(f) => patch(c.id, f)} />
       ))}
+
+      {/* 14.11.2026. שאול: "אולי אתה יכול להביא אנשי קשר אחרים במקומו
+          באותה חברה... איש קשר שעובד שם והוא לא חבר, ואז לבקש חברות".
+          קישור לחיפוש של לינקדאין ולא רשימה שנגרדה: הכלל שלו עצמו הוא
+          שקשרים מדרגה שנייה לא נגרדים, רק מקשרים לחיפוש. */}
+      {peopleAtCompanyHref(job.company, job.title) && (
+        <div style={{ marginTop: 8, paddingTop: 8, borderTop: '1px solid var(--hair)' }}>
+          <a
+            style={link}
+            href={peopleAtCompanyHref(job.company, job.title) as string}
+            target="_blank"
+            rel="noreferrer"
+          >
+            מצא עוד אנשים ב{job.company}
+          </a>
+          <span style={{ fontSize: '.72rem', color: 'var(--muted)', marginInlineStart: 8 }}>
+            דרגה שנייה, לבקשת חברות עם פתק
+          </span>
+        </div>
+      )}
 
       {hidden > 0 && (
         <button

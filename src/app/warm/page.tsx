@@ -261,7 +261,8 @@ export default async function Warm({
     ...postings.map((m) => companyKey(m.jobs.company)),
     ...weekRows.map((a: any) => companyKey(a.jobs?.company ?? a.company)),
   ].filter(Boolean))];
-  const select = 'id, full_name, title, company_key, linkedin_url, email, phone, contacted_at, replied_at, skipped_at';
+  const select = 'id, full_name, title, company_key, linkedin_url, email, phone, '
+    + 'contacted_at, replied_at, skipped_at, left_company_at';
   const contacts = await contactsByCompanyKeys(sb, keys, select);
 
   // 12.11.2026. מפתח ריק אינו התאמה. 81 משרות פתוחות הגיעו בלי שם חברה,
@@ -269,9 +270,14 @@ export default async function Warm({
   // ריקה. התוצאה: ארבעת האנשים הותאמו לכל 81 המשרות, וזה היה רוב הרשימה
   // על המסך. מי שאין לו שם חברה לא מתאים לאף אחד, בשני הכיוונים.
   const warm = new Map<string, WarmContact[]>();
+  // מי שסומן כמי שעזב את החברה יוצא מההתאמה. 14.11.2026: שלומי בלינקו ענה
+  // "אני כבר לא עובד בחברה", והוא היה ממשיך להיות מוצע כדלת פנימה לעשר
+  // המשרות הפתוחות שם. השורה עצמה נשארת באנשי הקשר, רק ההתאמה נפסקת.
+  const leftCompany = new Set(
+    (contacts as any[]).filter((c) => c.left_company_at).map((c) => c.id));
   for (const c of contacts as any[]) {
     const k = (c.company_key ?? '').trim();
-    if (!k) continue;
+    if (!k || leftCompany.has(c.id)) continue;
     const list = warm.get(k) ?? [];
     list.push(c);
     warm.set(k, list);

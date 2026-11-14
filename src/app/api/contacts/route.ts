@@ -89,7 +89,7 @@ export async function POST(req: NextRequest) {
 export async function PATCH(req: NextRequest) {
   const body = (await req.json().catch(() => null)) as
     | { id?: unknown; phone?: unknown; note?: unknown; contacted?: unknown;
-        jobId?: unknown; replyDone?: unknown }
+        jobId?: unknown; replyDone?: unknown; leftCompany?: unknown }
     | null;
   const id = typeof body?.id === 'string' ? body.id : '';
   if (!id) return NextResponse.json({ error: 'missing id' }, { status: 400 });
@@ -102,6 +102,12 @@ export async function PATCH(req: NextRequest) {
   // "טיפלתי" על תגובה. replied_at נשאר: הוא העדות שהוא ענה, ו-reply_done_at
   // הוא מה שמוריד את ההתראה מהמסך.
   if (body?.replyDone === true) patch.reply_done_at = new Date().toISOString();
+
+  // 14.11.2026: "אני כבר לא עובד בחברה". סימון ולא מחיקה של שם החברה,
+  // כי מי שעבד שם עד לא מזמן עדיין מכיר שם אנשים, ומחיקה אי אפשר לשחזר.
+  if (typeof body?.leftCompany === 'boolean') {
+    patch.left_company_at = body.leftCompany ? new Date().toISOString() : null;
+  }
 
   if (typeof body?.contacted === 'boolean') {
     patch.contacted_at = body.contacted ? new Date().toISOString() : null;
