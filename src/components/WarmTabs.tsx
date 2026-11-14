@@ -22,11 +22,16 @@ export type WarmTab = {
   panel: ReactNode;
 };
 
-export default function WarmTabs({ tabs }: { tabs: WarmTab[] }) {
-  // נפתח על הטאב הראשון שיש בו עבודה. אם אין בשום טאב, על הראשון.
-  const [active, setActive] = useState(
-    () => (tabs.find((t) => t.count > 0) ?? tabs[0])?.id
-  );
+export default function WarmTabs(
+  { tabs, initial }: { tabs: WarmTab[]; initial?: string },
+) {
+  // 14.11.2026: הכפתור מחדר המצב מגיע עם ?tab=today, כי שאול רוצה לנחות
+  // ישר על העבודה של היום ולא על הטאב שבמקרה יש בו הכי הרבה.
+  // בלי זה: הטאב הראשון שיש בו עבודה, ואם אין בשום טאב, הראשון.
+  const [active, setActive] = useState(() => {
+    if (initial && tabs.some((t) => t.id === initial)) return initial;
+    return (tabs.find((t) => t.count > 0) ?? tabs[0])?.id;
+  });
   const current = tabs.find((t) => t.id === active) ?? tabs[0];
   if (!current) return null;
 

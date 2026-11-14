@@ -31,15 +31,25 @@ export const dynamic = 'force-dynamic';
 export default async function Warm({
   searchParams,
 }: {
-  searchParams: { all?: string };
+  searchParams: { all?: string; tab?: string };
 }) {
   const sb = serverClient();
   // ברירת המחדל היא מי שעוד לא פנית אליו. "הכל" מראה גם את מי שכבר פנית.
   const showAll = searchParams.all === '1';
 
-  const [{ data: appliedRows }, { data }] = await Promise.all([
-    sb.from('applications').select(
-      'job_id, sent_at, cv_id, company, role, jobs(id, title, company, url, found_for)'),
+  const [{ data: appliedIdRows }, { data: appliedRows }, { data }] = await Promise.all([
+    // 14.11.2026, שאול: "המעבר צריך להיות מהיר כי כרגע הוא ממש איטי. ממש."
+    //
+    // זאת הייתה השליפה הכבדה כאן: כל 550 ההגשות, כל אחת עם join לטבלת
+    // המשרות, בכל טעינה של המסך. מתוכן משתמשים בפרטים המלאים רק בשבעת
+    // הימים האחרונים, כלומר בעשרות בודדות. כל השאר נדרש רק בשביל רשימת
+    // המזהים של מה שהוגש.
+    //
+    // לכן שתי שליפות: עמודה אחת על הכל, ו-join רק על השבוע.
+    sb.from('applications').select('job_id'),
+    sb.from('applications')
+      .select('job_id, sent_at, cv_id, company, role, jobs(id, title, company, url, found_for)')
+      .gte('sent_at', new Date(Date.now() - 7 * 864e5).toISOString()),
     sb
       .from('matches')
       .select(
@@ -53,7 +63,7 @@ export default async function Warm({
       .limit(3000),
   ]);
 
-  const appliedIds = new Set((appliedRows ?? []).map((a: any) => a.job_id));
+  const appliedIds = new Set((appliedIdRows ?? []).map((a: any) => a.job_id));
 
   // ── הגשה טרייה היא הסיבה לפנות, לא הסיבה להסתיר ────────────────────────
   //
@@ -66,13 +76,10 @@ export default async function Warm({
   //
   // שלושים יום ולא תמיד: 238 הגשות מספטמבר כבר לא רלוונטיות, והן היו
   // מציפות את התור בפניות על משרות שמזמן נסגרו.
-  const FRESH_DAYS = 30;
-  const freshFrom = Date.now() - FRESH_DAYS * 864e5;
-  const freshlyApplied = new Set(
-    (appliedRows ?? [])
-      .filter((a: any) => a.sent_at && new Date(a.sent_at).getTime() >= freshFrom)
-      .map((a: any) => a.job_id)
-  );
+  // 14.11.2026: השליפה המפורטת היא שבעה ימים, וזה גם החלון של הטאב
+  // "השבוע". שאול: "אני לא רוצה להתעסק בחודש האחרון... אנחנו מתחילים
+  // ממחר", ולכן אין יותר טעם בשלושים יום.
+  const freshlyApplied = new Set((appliedRows ?? []).map((a: any) => a.job_id));
 
   // ── מי שפרסם משרה שהגשת אליה ───────────────────────────────────────────
   //
@@ -585,9 +592,24 @@ export default async function Warm({
         מכיר בהן מישהו אישית. כל טאב הוא עבודה אחת, והמספר עליו הוא כמה נשאר בה.
       </p>
 
-      <Refresh />
+      {/* 14.11.2026: חזרה לחדר המצב. שאול: "אלה שני המקומות שאני עובד
+          איתם", ושני המעברים צריכים להיות לחיצה אחת ומיידיים. */}
+      <div style={{ display: 'flex', gap: 8, alignItems: 'center', margin: '10px 0 12px' }}>
+        <Link
+          href="/"
+          prefetch
+          className="apply"
+          style={{
+            flex: 1, textAlign: 'center', padding: '.7em',
+            fontSize: '.9rem', fontWeight: 800,
+          }}
+        >
+          ← חזרה לחדר המצב
+        </Link>
+        <Refresh />
+      </div>
 
-      <WarmTabs tabs={tabs} />
+      <WarmTabs tabs={tabs} initial={searchParams.tab} />
     </main>
   );
 }

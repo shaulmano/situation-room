@@ -274,6 +274,22 @@ export default async function Dashboard({
         </p>
       )}
 
+      {/* 14.11.2026, שאול: "אני רוצה כפתור בולט של מכרים כאן שיקח אותי
+          ישר למכרים לטאב היום... אלה שני המקומות שאני עובד איתם."
+          prefetch: המסך הזה נטען לפני הלחיצה, בזמן שהוא קורא את חדר המצב,
+          ולכן המעבר מיידי במקום להמתין לשליפות של מכרים. */}
+      <Link
+        href="/warm?tab=today"
+        prefetch
+        className="apply"
+        style={{
+          display: 'block', textAlign: 'center', margin: '14px 0 4px',
+          padding: '.8em', fontSize: '.95rem', fontWeight: 800,
+        }}
+      >
+        מכרים: מה לעשות היום ←
+      </Link>
+
       <div className="screen-head">
         <h2>{source || 'חדשות היום'}</h2>
         <Link className="more" href="/jobs">כל המשרות ←</Link>
