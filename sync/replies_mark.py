@@ -156,17 +156,26 @@ def main():
         at = r.get('at') or None
         at_sql = 'least(%s::timestamptz, now())' % q(at) if at else 'null::timestamptz'
 
+        # **הכל ב-format ואף %s בשאילתה הזאת.**
+        #
+        # 14.11.2026, אותו יום: הגרסה הראשונה של הקיצוץ שירשרה את at_sql
+        # עם + לתוך מחרוזת שהסתיימה ב-% (...), ובפייתון % קודם ל-+, ולכן
+        # הפורמט הוחל רק על המחרוזת האחרונה בשרשרת ולא על כולה. התוצאה:
+        # TypeError בכל קריאה, הוורקפלו נפל אחרי "replies to record: 2",
+        # ו-notify_push לא רץ בכלל. ערבוב של + ושל % באותו ביטוי הוא
+        # מלכודת, ולכן אין כאן % בכלל.
         changed = sql(
-            "update contacts set "
-            "replied_at = coalesce(" + at_sql + ", replied_at, now()), "
-            "reply_text = %s, reply_url = %s, "
-            "reply_done_at = null, reply_pushed_at = null "
-            "where id = %s and ("
-            "  replied_at is null"
-            "  or (" + at_sql + " is not null and replied_at < " + at_sql + ")"
-            "  or coalesce(reply_text,'') <> coalesce(%s,'')"
-            ") returning id"
-            % (q(txt), q(r.get('url') or None), q(cid), q(txt))
+            ("update contacts set "
+             "replied_at = coalesce({at}, replied_at, now()), "
+             "reply_text = {txt}, reply_url = {url}, "
+             "reply_done_at = null, reply_pushed_at = null "
+             "where id = {cid} and ("
+             "  replied_at is null"
+             "  or ({at} is not null and replied_at < {at})"
+             "  or coalesce(reply_text,'') <> coalesce({txt},'')"
+             ") returning id").format(
+                at=at_sql, txt=q(txt),
+                url=q(r.get('url') or None), cid=q(cid))
         )
         if changed:
             hit += 1
