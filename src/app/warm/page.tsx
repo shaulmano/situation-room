@@ -37,7 +37,8 @@ export default async function Warm({
   // ברירת המחדל היא מי שעוד לא פנית אליו. "הכל" מראה גם את מי שכבר פנית.
   const showAll = searchParams.all === '1';
 
-  const [{ data: appliedIdRows }, { data: appliedRows }, { data }] = await Promise.all([
+  const [{ data: appliedIdRows }, { data: appliedRows }, { data, error: matchErr }] =
+    await Promise.all([
     // 14.11.2026, שאול: "המעבר צריך להיות מהיר כי כרגע הוא ממש איטי. ממש."
     //
     // זאת הייתה השליפה הכבדה כאן: כל 550 ההגשות, כל אחת עם join לטבלת
@@ -59,9 +60,34 @@ export default async function Warm({
       )
       .eq('jobs.on_target', true)
       .is('jobs.dismissed_at', null)
+      // 14.11.2026: היה 3,000 שורות התאמה בלי גבול תאריך, שזה כל ההיסטוריה
+      // עם join ומיון על טבלה מקושרת. היא נכשלה לסירוגין, והמסך הציג אפס
+      // בכל הטאבים בלי שום שגיאה: בלינקדאין 130 הפך ל-0 ואז ל-3 בין שתי
+      // טעינות. בדיוק המלכודת שמתועדת כאן, אפס שורות שנראה כמו "אין נתונים".
+      //
+      // ארבעים וחמישה יום ו-1,500 שורות: שאול אמר ב-14.11 "אני לא רוצה
+      // להתעסק בחודש האחרון", ומשרה בת חודשיים ממילא נסגרה.
+      .gte('jobs.first_seen', new Date(Date.now() - 45 * 864e5).toISOString())
       .order('first_seen', { ascending: false, referencedTable: 'jobs' })
-      .limit(3000),
+      .limit(1500),
   ]);
+
+  // ולא לבלוע את השגיאה. מסך ריק בלי הודעה הוא מה שגרם לשאול לחשוב
+  // פעמיים השבוע שמשהו נמחק, כשבפועל שאילתה אחת נפלה.
+  if (matchErr) {
+    return (
+      <main>
+        <h2>דרך מישהו שאתה מכיר</h2>
+        <div className="alert">
+          <b>השליפה נכשלה, ולכן המסך הזה ריק ולא בגלל שאין עבודה.</b>
+          <br />
+          {matchErr.message}
+          <br />
+          נסה לרענן. אם זה חוזר, זאת תקלה במסד ולא במידע שלך.
+        </div>
+      </main>
+    );
+  }
 
   const appliedIds = new Set((appliedIdRows ?? []).map((a: any) => a.job_id));
 
