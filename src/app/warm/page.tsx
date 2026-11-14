@@ -47,7 +47,7 @@ export default async function Warm({
     // המזהים של מה שהוגש.
     //
     // לכן שתי שליפות: עמודה אחת על הכל, ו-join רק על השבוע.
-    sb.from('applications').select('job_id'),
+    sb.from('applications').select('job_id, sent_at'),
     sb.from('applications')
       .select('job_id, sent_at, cv_id, company, role, jobs(id, title, company, url, found_for)')
       .gte('sent_at', new Date(Date.now() - 7 * 864e5).toISOString()),
@@ -69,7 +69,11 @@ export default async function Warm({
       // להתעסק בחודש האחרון", ומשרה בת חודשיים ממילא נסגרה.
       .gte('jobs.first_seen', new Date(Date.now() - 45 * 864e5).toISOString())
       .order('first_seen', { ascending: false, referencedTable: 'jobs' })
-      .limit(1500),
+      // 3,000 ולא 1,500: ה-limit חל על שורות ההתאמה ולא על משרות, וכל משרה
+      // נושאת חמש גרסאות קורות חיים. 1,500 שורות הן בערך 300 משרות, כלומר
+      // שבוע אחד, וזה מה שרוקן את הטאב "משרות פתוחות" מ-95 לאפס. גבול
+      // התאריך של 45 יום הוא מה שמוריד את העומס, לא ה-limit.
+      .limit(3000),
   ]);
 
   // ולא לבלוע את השגיאה. מסך ריק בלי הודעה הוא מה שגרם לשאול לחשוב
@@ -102,10 +106,20 @@ export default async function Warm({
   //
   // שלושים יום ולא תמיד: 238 הגשות מספטמבר כבר לא רלוונטיות, והן היו
   // מציפות את התור בפניות על משרות שמזמן נסגרו.
-  // 14.11.2026: השליפה המפורטת היא שבעה ימים, וזה גם החלון של הטאב
-  // "השבוע". שאול: "אני לא רוצה להתעסק בחודש האחרון... אנחנו מתחילים
-  // ממחר", ולכן אין יותר טעם בשלושים יום.
-  const freshlyApplied = new Set((appliedRows ?? []).map((a: any) => a.job_id));
+  // שלושים יום, ולא שבעה.
+  //
+  // 14.11.2026: קיצרתי את זה לשבעה בטעות, והטאב "משרות פתוחות" התרוקן.
+  // השדה הזה אינו חלון התצוגה של "השבוע" אלא משהו אחר לגמרי: משרה שהוגשה
+  // יורדת מרשימת הלידים, אלא אם ההגשה טרייה, ואז היא נשארת כדי שאפשר יהיה
+  // לפנות עליה למכר. קיצור שלו מפיל קבוצות פרסום שלמות, כי די בעותק אחד
+  // שהוגש ואינו טרי כדי להעיף את כל הקבוצה.
+  const FRESH_DAYS = 30;
+  const freshFrom = Date.now() - FRESH_DAYS * 864e5;
+  const freshlyApplied = new Set(
+    (appliedIdRows ?? [])
+      .filter((a: any) => a.sent_at && new Date(a.sent_at).getTime() >= freshFrom)
+      .map((a: any) => a.job_id)
+  );
 
   // ── מי שפרסם משרה שהגשת אליה ───────────────────────────────────────────
   //
