@@ -34,6 +34,8 @@ const link: React.CSSProperties = {
 const button: React.CSSProperties = { ...link, background: 'transparent', cursor: 'pointer', width: 'auto' };
 
 export type JobRef = {
+  /** מזהה המשרה, כדי לדעת על מה כתבת כשתגיע תגובה. */
+  id?: string | null;
   company: string; title: string;
   cvId?: string | null;
   // 13.11.2026: הקישור למודעה. שלושת הראשונים שענו שאלו על איזו
@@ -348,7 +350,9 @@ function Contact({
               style={button}
               disabled={busy}
               onClick={async () => {
-                const ok = await save({ contacted: true }, { contacted_at: new Date().toISOString() });
+                const ok = await save(
+                  { contacted: true, jobId: job.id ?? null },
+                  { contacted_at: new Date().toISOString() });
                 if (ok) setDraft(null);
               }}
             >

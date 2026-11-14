@@ -295,6 +295,7 @@ export default async function Applications({
               <JobContacts
                 contacts={warm.get(companyKey(a.company)) ?? []}
                 job={{
+                  id: a.job_id ?? null,
                   company: a.company ?? '', title: a.role ?? '', cvId: a.cv_id,
                   url: a.jobs?.url ?? null, foundFor: a.jobs?.found_for ?? null,
                   applied: true,

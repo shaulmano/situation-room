@@ -118,7 +118,7 @@ export default function LinkedinQueue({ picks }: { picks: Pick[] }) {
     }
   }
 
-  async function mark(contactId: string, action: 'contacted' | 'replied') {
+  async function mark(contactId: string, action: 'contacted' | 'replied', jobId?: string) {
     const now = new Date().toISOString();
     const set = action === 'contacted' ? setLocalSent : setLocalReplied;
     set((cur) => ({ ...cur, [contactId]: now }));
@@ -126,7 +126,9 @@ export default function LinkedinQueue({ picks }: { picks: Pick[] }) {
     const res = await fetch('/api/outreach', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ action, ids: [contactId] }),
+      // jobId: על איזו משרה כתבת לו. בלי זה ההתראה על תגובה יכולה לומר
+      // מי ענה ולא על מה, ואז אתה חוזר לחפש בעצמך.
+      body: JSON.stringify({ action, ids: [contactId], jobId }),
     }).catch(() => null);
 
     if (!res || !res.ok) {
@@ -337,7 +339,7 @@ export default function LinkedinQueue({ picks }: { picks: Pick[] }) {
               {!sentAt(p) && (
                 <button
                   type="button" style={quiet}
-                  onClick={() => mark(p.contact.id, 'contacted')}
+                  onClick={() => mark(p.contact.id, 'contacted', p.job.id)}
                 >
                   סמן שנשלח
                 </button>

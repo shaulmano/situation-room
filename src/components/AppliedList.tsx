@@ -15,6 +15,8 @@ import type { WarmContact } from '@/lib/contacts';
 
 export type AppliedRow = {
   key: string;
+  /** מזהה המשרה האחרונה שהוגשה בחברה הזאת. */
+  jobId: string;
   company: string;
   title: string;
   /** משרות נוספות באותה חברה שהגשת אליהן השבוע. */
@@ -110,7 +112,7 @@ export default function AppliedList({ rows }: { rows: AppliedRow[] }) {
             <JobContacts
               contacts={r.people}
               job={{
-                company: r.company, title: r.title, cvId: r.cvId,
+                id: r.jobId, company: r.company, title: r.title, cvId: r.cvId,
                 url: r.url, foundFor: r.foundFor, applied: true,
               }}
               open

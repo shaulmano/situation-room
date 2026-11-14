@@ -115,10 +115,73 @@ def send(sub, body: dict, pub_key: str, priv_key: str):
     return out
 
 
+def send_to_all(subs, body):
+    """שולח את אותה הודעה לכל המכשירים הרשומים, ומתחזק את הרשימה.
+
+    14.11.2026: הוצא מתוך main כדי שגם ההתראה על תגובה תשתמש בו. מנוי
+    שמחזיר 404 או 410 נמחק, כי הוא מכשיר שהוסר, וכל שאר הכישלונות נספרים
+    עד חמישה ואז המנוי יוצא מהשליפה.
+    """
+    pub, priv = vapid()
+    ok = 0
+    for sub in subs:
+        code = send(sub, body, pub, priv)
+        print(f"  {sub['endpoint'][:48]}… -> {code}")
+        if code in ("201", "200"):
+            ok += 1
+            sql("update push_subscriptions set last_ok = now(), failures = 0 "
+                "where endpoint = %s" % q(sub["endpoint"]))
+        elif code in ("404", "410"):
+            sql("delete from push_subscriptions where endpoint = %s" % q(sub["endpoint"]))
+        else:
+            sql("update push_subscriptions set failures = failures + 1 "
+                "where endpoint = %s" % q(sub["endpoint"]))
+    return ok
+
+
+def reply_body():
+    """התראה על תגובה שהגיעה בלינקדאין ועוד לא יצא עליה פוש.
+
+    14.11.2026, שאול: "תקפיץ לי נוטיפיקציה על המסך עם הודעה שיש לך תגובה
+    מאיש קשר ששלחת לו". תשובה אחת שווה בערך ארבע עשרה פניות חדשות, והוא
+    איבד אחת ל-33 יום כי שום דבר לא צלצל.
+    """
+    rows = sql(
+        "select id, full_name from contacts "
+        "where replied_at is not null and reply_done_at is null "
+        "and reply_pushed_at is null order by replied_at limit 20"
+    )
+    if not rows:
+        print("no new replies to announce")
+        return None, []
+    names = " · ".join((r["full_name"] or "")[:28] for r in rows[:MAX_TITLES])
+    extra = len(rows) - MAX_TITLES
+    body = {
+        "title": "יש לך תגובה" if len(rows) == 1 else "יש לך %d תגובות" % len(rows),
+        "body": names + (" ועוד %d" % extra if extra > 0 else ""),
+        # ישר למסך שבו ההתראה יושבת, ולא לדף הבית.
+        "url": "/warm",
+        "tag": "replies",
+        "count": len(rows),
+    }
+    return body, rows
+
+
 def main():
+    mode = sys.argv[1] if len(sys.argv) > 1 else "jobs"
     subs = sql("select endpoint, p256dh, auth from push_subscriptions where failures < 5")
     if not subs:
         print("no push subscriptions")
+        return
+
+    if mode == "replies":
+        body, rows = reply_body()
+        if not body:
+            return
+        send_to_all(subs, body)
+        ids = ",".join(q(r["id"]) for r in rows)
+        sql("update contacts set reply_pushed_at = now() where id in (%s)" % ids)
+        print("announced %d replies" % len(rows))
         return
 
     rows = sql(
@@ -143,21 +206,7 @@ def main():
         "count": len(rows),
     }
 
-    pub, priv = vapid()
-    ok = 0
-    for sub in subs:
-        code = send(sub, body, pub, priv)
-        print(f"  {sub['endpoint'][:48]}… -> {code}")
-        if code in ("201", "200"):
-            ok += 1
-            sql("update push_subscriptions set last_ok = now(), failures = 0 where endpoint = %s"
-                % q(sub["endpoint"]))
-        elif code in ("404", "410"):
-            # The device unsubscribed or the endpoint expired; stop writing to it.
-            sql("delete from push_subscriptions where endpoint = %s" % q(sub["endpoint"]))
-        else:
-            sql("update push_subscriptions set failures = failures + 1 where endpoint = %s"
-                % q(sub["endpoint"]))
+    ok = send_to_all(subs, body)
 
     # Mark regardless: a job announced to nobody should not queue up and arrive
     # as a hundred-job notification the day a device finally subscribes.

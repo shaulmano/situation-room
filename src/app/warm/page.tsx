@@ -7,6 +7,7 @@ import { postingKey } from '@/lib/dedupe';
 import Dismiss from '@/components/Dismiss';
 import JobContacts from '@/components/JobContacts';
 import WarmTabs from '@/components/WarmTabs';
+import ReplyBanner, { type ReplyRow } from '@/components/ReplyBanner';
 import AppliedList, { type AppliedRow } from '@/components/AppliedList';
 import MarkApplied from '@/components/MarkApplied';
 import LinkedinQueue from '@/components/LinkedinQueue';
@@ -363,6 +364,44 @@ export default async function Warm({
   }
   const appliedWeek: AppliedRow[] = [...weekSeen.values()];
 
+  // ── תגובות שממתינות לך ─────────────────────────────────────────────────
+  //
+  // 14.11.2026. ראשון על המסך, לפני כל טאב: 41 הודעות הביאו 3 תשובות,
+  // ולכן תשובה אחת שווה בערך ארבע עשרה פניות חדשות. שאול איבד אחת
+  // ל-33 יום ומצא אותה במקרה.
+  const { data: replyRows } = await sb
+    .from('contacts')
+    .select('id, full_name, title, company, reply_text, reply_url, replied_at, last_job_id')
+    .not('replied_at', 'is', null)
+    .is('reply_done_at', null)
+    .order('replied_at', { ascending: true })
+    .limit(20);
+
+  const replyJobIds = [...new Set(
+    ((replyRows ?? []) as any[]).map((r) => r.last_job_id).filter(Boolean))];
+  const { data: replyJobs } = replyJobIds.length
+    ? await sb.from('jobs').select('id, title, company, url').in('id', replyJobIds)
+    : { data: [] as any[] };
+  const jobById = new Map(((replyJobs ?? []) as any[]).map((j) => [j.id, j]));
+
+  const replies: ReplyRow[] = ((replyRows ?? []) as any[]).map((r) => {
+    const j = r.last_job_id ? jobById.get(r.last_job_id) : null;
+    return {
+      id: r.id,
+      name: r.full_name,
+      title: r.title ?? null,
+      company: r.company ?? null,
+      text: r.reply_text ?? null,
+      url: r.reply_url ?? r.linkedin_url ?? null,
+      jobTitle: j?.title ?? null,
+      jobCompany: j?.company ?? null,
+      jobUrl: j?.url ?? null,
+      days: r.replied_at
+        ? Math.max(0, Math.floor((Date.now() - new Date(r.replied_at).getTime()) / 864e5))
+        : 0,
+    };
+  });
+
   // כמה הגשות מהשבוע לא קיבלו מפרסם. 14.11.2026: בלי המספר הזה, משרה
   // שהוגשה ואין לה מפרסם פשוט לא מופיעה בטאב, וזה נראה בדיוק כמו תקלה.
   const noPosterCount = weekRows.filter(
@@ -479,7 +518,7 @@ export default async function Warm({
           <JobContacts
             contacts={r.people}
             job={{
-              company: r.company, title: r.title, cvId: r.cvId,
+              id: r.id, company: r.company, title: r.title, cvId: r.cvId,
               url: r.url, foundFor: r.foundFor, applied: true,
             }}
             open
@@ -551,7 +590,7 @@ export default async function Warm({
 
                 <JobContacts
                   contacts={people}
-                  job={{ company: j.company, title: j.title, cvId: m.cv_id,
+                  job={{ id: j.id, company: j.company, title: j.title, cvId: m.cv_id,
                          url: j.url, foundFor: j.found_for,
                          applied: appliedIds.has(j.id) }}
                   open

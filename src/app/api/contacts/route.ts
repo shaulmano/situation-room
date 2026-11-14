@@ -88,7 +88,8 @@ export async function POST(req: NextRequest) {
 // import, which is the whole point of keeping them in separate columns.
 export async function PATCH(req: NextRequest) {
   const body = (await req.json().catch(() => null)) as
-    | { id?: unknown; phone?: unknown; note?: unknown; contacted?: unknown }
+    | { id?: unknown; phone?: unknown; note?: unknown; contacted?: unknown;
+        jobId?: unknown; replyDone?: unknown }
     | null;
   const id = typeof body?.id === 'string' ? body.id : '';
   if (!id) return NextResponse.json({ error: 'missing id' }, { status: 400 });
@@ -98,8 +99,16 @@ export async function PATCH(req: NextRequest) {
   if (typeof body?.note === 'string') patch.note = body.note.trim() || null;
   // Marking an outreach is a timestamp, not a flag: the job screen shows how
   // long ago it was, which is what decides whether to follow up.
+  // "טיפלתי" על תגובה. replied_at נשאר: הוא העדות שהוא ענה, ו-reply_done_at
+  // הוא מה שמוריד את ההתראה מהמסך.
+  if (body?.replyDone === true) patch.reply_done_at = new Date().toISOString();
+
   if (typeof body?.contacted === 'boolean') {
     patch.contacted_at = body.contacted ? new Date().toISOString() : null;
+    // 14.11.2026: על איזו משרה כתבת לו, כדי שההתראה על תגובה תדע לְמה הוא
+    // עונה. ריק כשמבטלים סימון, אחרת נשארת משרה בלי פנייה.
+    patch.last_job_id = body.contacted && typeof body.jobId === 'string'
+      ? body.jobId : null;
   }
 
   const { error } = await serverClient().from('contacts').update(patch).eq('id', id);

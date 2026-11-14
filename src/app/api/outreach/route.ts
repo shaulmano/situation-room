@@ -98,9 +98,14 @@ export async function POST(req: NextRequest) {
   if (action === 'contacted') {
     const ids: string[] = Array.isArray(body.ids) ? body.ids : [];
     if (!ids.length) return NextResponse.json({ error: 'no ids' }, { status: 400 });
+    // 14.11.2026: גם על איזו משרה. שאול: "סוכן שרץ כמה פעמים ביום על מנת
+    // לקרוא ולהביא אותו למשרה הנכונה שנשלחה". בלי זה ההתראה על תגובה
+    // יכולה לומר מי ענה אבל לא על מה, והוא חוזר לחפש בעצמו.
+    const patch: Record<string, unknown> = { contacted_at: new Date().toISOString() };
+    if (typeof body.jobId === 'string' && body.jobId) patch.last_job_id = body.jobId;
     const { data, error } = await sb
       .from('contacts')
-      .update({ contacted_at: new Date().toISOString() })
+      .update(patch)
       .in('id', ids)
       .is('contacted_at', null)
       .select('id');
