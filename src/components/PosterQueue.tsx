@@ -42,7 +42,9 @@ export type PosterRow = {
 
 const BATCH = 10;
 
-export default function PosterQueue({ rows }: { rows: PosterRow[] }) {
+export default function PosterQueue(
+  { rows, noPoster = 0 }: { rows: PosterRow[]; noPoster?: number },
+) {
   const [shown, setShown] = useState(BATCH);
   const [tab, setTab] = useState<'open' | 'waiting' | 'sent' | 'replied' | 'skipped'>('open');
   const [copied, setCopied] = useState<Record<string, boolean>>({});
@@ -121,7 +123,30 @@ export default function PosterQueue({ rows }: { rows: PosterRow[] }) {
     }
   }
 
-  if (rows.length === 0) return null;
+  // 14.11.2026. שאול הגיש ל-Aidoc, השורה לא הופיעה כאן, והוא חשב שמשהו
+  // נשבר. לינקדאין פשוט לא מציגה מפרסם על חלק מהמודעות: נמדד 17 מתוך 25.
+  // שתיקה ושבר נראים אותו דבר על מסך, וזאת מלכודת שחזרה כאן כבר שלוש
+  // פעמים. עדיף שורה שאומרת "אין, וזה נורמלי" מאשר שום דבר.
+  const missingNote = noPoster > 0 ? (
+    <p className="screen-note" style={{ margin: '0 0 10px' }}>
+      ל-{noPoster} {noPoster === 1 ? 'הגשה' : 'הגשות'} מהשבוע האחרון אין מפרסם
+      בלינקדאין, ולכן {noPoster === 1 ? 'היא לא מופיעה' : 'הן לא מופיעות'} כאן.
+      זה נורמלי: בערך אחת משלוש מודעות מתפרסמת על ידי החברה ולא על ידי אדם,
+      ואין שם למי לכתוב. הדרך אליהן היא טאב "השבוע", דרך מכר בחברה.
+    </p>
+  ) : null;
+
+  if (rows.length === 0) {
+    return missingNote ? (
+      <div>
+        {missingNote}
+        <div className="empty">
+          <strong>אין מפרסם ממתין</strong>
+          <span>משרה שתסמן כהוגשה תופיע כאן אם לינקדאין מציגה מי פרסם אותה.</span>
+        </div>
+      </div>
+    ) : null;
+  }
 
   const btn: React.CSSProperties = {
     width: 'auto', flex: 'none', padding: '.45em .9em',
@@ -179,6 +204,8 @@ export default function PosterQueue({ rows }: { rows: PosterRow[] }) {
         אליו זה בשני צעדים: קודם הפתק בבקשת החברות, ואחרי שהיא אושרה ההודעה
         עם הקובץ. הרשימה נצברת ולא מתאפסת בכל יום.
       </p>
+
+      {missingNote}
 
       {msg && <div className="chip mute" style={{ marginBottom: 8 }}>{msg}</div>}
 

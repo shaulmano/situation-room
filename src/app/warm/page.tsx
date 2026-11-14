@@ -116,6 +116,12 @@ export default async function Warm({
   //
   // המשרות מגיעות ממוינות לפי תאריך הגשה יורד, ולכן הראשונה שנרשמת היא
   // האחרונה שהוגשה, וזאת שההודעה מדברת עליה.
+  const postedWithPoster = new Set(
+    ((postedRows ?? []) as any[])
+      .filter((a) => a.jobs?.recruiter_name)
+      .map((a) => a.job_id as string)
+  );
+
   const byPoster = new Map<string, PosterRow>();
   for (const a of (postedRows ?? []) as any[]) {
     const slug = slugOf(a.jobs?.recruiter_url);
@@ -271,6 +277,13 @@ export default async function Warm({
     .filter((r) => r.people.length > 0 && !todaySeen.has(r.key))
     .filter((r) => (weekSeen.has(r.key) ? false : (weekSeen.add(r.key), true)))
     .sort((a, b) => b.sentAt - a.sentAt);
+
+  // כמה הגשות מהשבוע לא קיבלו מפרסם. 14.11.2026: בלי המספר הזה, משרה
+  // שהוגשה ואין לה מפרסם פשוט לא מופיעה בטאב, וזה נראה בדיוק כמו תקלה.
+  const noPosterCount = weekRows.filter(
+    (a: any) => (a.jobs?.url ?? '').includes('linkedin.com')
+      && !postedWithPoster.has(a.job_id)
+  ).length;
 
   const withContacts = postings
     .map((m) => {
@@ -512,7 +525,7 @@ export default async function Warm({
       note: 'מי שפרסם בלינקדאין משרה שהגשת אליה. זה לא מכר שלך אלא מי שמחזיק '
         + 'את המשרה עצמה. למי שאתה מחובר אליו שלח הודעה עם הקובץ, ולמי שלא '
         + 'שלח קודם בקשת חברות עם הפתק, והקובץ בהודעה אחרי שהיא תאושר.',
-      panel: <PosterQueue rows={posters} />,
+      panel: <PosterQueue rows={posters} noPoster={noPosterCount} />,
     },
     {
       id: 'open',
