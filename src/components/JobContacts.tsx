@@ -70,7 +70,7 @@ export default function JobContacts(
   // הגיוס, ובסוף מגייסת זוטרה. בחברת השמה מוצג אחד בלבד, כי שם כולם
   // מגייסים של אותה חברה ותשע פניות הן תשעה עותקים של אותה הודעה.
   const agency = isAgency(job.company);
-  const ranked = rankContacts(rows, job.title);
+  const ranked = rankContacts(rows, job.title, agency);
   const cap = agency ? 1 : 3;
   const visible = showAll ? ranked : ranked.slice(0, cap);
   const hidden = ranked.length - visible.length;

@@ -50,7 +50,11 @@ export function isRecruiterTitle(title?: string | null): boolean {
  * לומר "אני מכיר אותו" ולא רק להעביר קובץ. אחריו מי שמחזיק את הגיוס
  * בפועל, ובסוף מגייסת זוטרה.
  */
-export function contactScore(c: WarmContact, jobTitle?: string | null): number {
+export function contactScore(
+  c: WarmContact,
+  jobTitle?: string | null,
+  agency = false,
+): number {
   const t = (c.title ?? '').toLowerCase();
   const recruiter = isRecruiterTitle(c.title);
   const senior = SENIOR_RE.test(c.title ?? '');
@@ -61,7 +65,16 @@ export function contactScore(c: WarmContact, jobTitle?: string | null): number {
   const shared = domains.some((d) => t.includes(d) && job.includes(d));
 
   let n = 0;
-  if (!recruiter && shared) n += 6;   // עמית בתחום, הפנייה החזקה ביותר
+  if (agency) {
+    // 14.11.2026. בחברת השמה הסדר הפוך: אין שם "עמית בתחום" ואין פנייה
+    // פנימית, כי כל החברה עוסקת באיוש. מי שמחזיק את הגיוס הוא מי שמחזיק
+    // את המשרה. הדירוג הרגיל בחר במרטנס את Account Manager על פני
+    // Tech Recruitment Team Lead, רק כי "manager" נקרא כבכירות שאינה בגיוס.
+    if (recruiter && senior) n += 6;
+    else if (recruiter) n += 4;
+    else if (senior) n += 2;
+    else n += 1;
+  } else if (!recruiter && shared) n += 6;   // עמית בתחום, הפנייה החזקה ביותר
   else if (!recruiter && senior) n += 4; // בכיר בחברה, לא בגיוס
   else if (recruiter && senior) n += 3;  // מי שמחזיק את הגיוס
   else if (recruiter) n += 1;            // מגייסת זוטרה
@@ -72,6 +85,11 @@ export function contactScore(c: WarmContact, jobTitle?: string | null): number {
   return n;
 }
 
-export function rankContacts(cs: WarmContact[], jobTitle?: string | null): WarmContact[] {
-  return [...cs].sort((a, b) => contactScore(b, jobTitle) - contactScore(a, jobTitle));
+export function rankContacts(
+  cs: WarmContact[],
+  jobTitle?: string | null,
+  agency = false,
+): WarmContact[] {
+  return [...cs].sort(
+    (a, b) => contactScore(b, jobTitle, agency) - contactScore(a, jobTitle, agency));
 }

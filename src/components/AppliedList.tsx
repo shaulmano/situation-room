@@ -17,6 +17,8 @@ export type AppliedRow = {
   key: string;
   company: string;
   title: string;
+  /** משרות נוספות באותה חברה שהגשת אליהן השבוע. */
+  alsoTitles: string[];
   cvId: string | null;
   url: string | null;
   foundFor: string | null;
@@ -89,6 +91,14 @@ export default function AppliedList({ rows }: { rows: AppliedRow[] }) {
               </span>
             </div>
             <div style={{ fontSize: '.78rem', color: 'var(--muted)' }}>{r.title}</div>
+            {/* 14.11.2026: כרטיס אחד לחברה ולא אחד למשרה. מרטנס הופיעה
+                פעמיים עם אותו איש קשר, כלומר שתי הודעות זהות לאותו אדם
+                באותו יום. אותו לקח מהתור של המפרסמים. */}
+            {r.alsoTitles.length > 0 && (
+              <div style={{ color: 'var(--muted)', fontSize: '.74rem' }}>
+                הגשת שם גם ל: {r.alsoTitles.join(' · ')}
+              </div>
+            )}
             <JobContacts
               contacts={r.people}
               job={{

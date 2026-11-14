@@ -256,15 +256,19 @@ export default async function Warm({
 
   // הגשות השבוע שיש בהן למי לפנות, חוץ מאלה של היום שיושבות בטאב שלהן.
   // מי שכבר פנית אליו לא מופיע: הטאב הזה הוא רשימת עבודה, לא ארכיון.
-  const weekSeen = new Set<string>();
-  const appliedWeek: AppliedRow[] = weekRows
+  // כרטיס אחד לחברה ולא אחד למשרה: מרטנס הופיעה פעמיים עם אותו איש
+  // קשר, כלומר שתי הודעות זהות לאותו אדם באותו יום.
+  const weekSeen = new Map<string, AppliedRow>();
+  const weekMapped = weekRows
     .map((a: any) => {
       const company = a.jobs?.company ?? a.company ?? '';
       const all = warm.get(companyKey(company)) ?? [];
       const sent = new Date(a.sent_at).getTime();
       return {
-        key: a.job_id as string,
+        key: companyKey(company) || (a.job_id as string),
+        jobId: a.job_id as string,
         company,
+        alsoTitles: [] as string[],
         title: a.jobs?.title ?? a.role ?? '',
         cvId: a.cv_id ?? null,
         url: a.jobs?.url ?? null,
@@ -274,9 +278,17 @@ export default async function Warm({
         people: all.filter((p) => !p.contacted_at),
       };
     })
-    .filter((r) => r.people.length > 0 && !todaySeen.has(r.key))
-    .filter((r) => (weekSeen.has(r.key) ? false : (weekSeen.add(r.key), true)))
+    .filter((r) => r.people.length > 0 && !todaySeen.has(r.jobId))
     .sort((a, b) => b.sentAt - a.sentAt);
+
+  for (const r of weekMapped) {
+    const prev = weekSeen.get(r.key);
+    if (!prev) { weekSeen.set(r.key, r); continue; }
+    if (r.title && r.title !== prev.title && !prev.alsoTitles.includes(r.title)) {
+      prev.alsoTitles.push(r.title);
+    }
+  }
+  const appliedWeek: AppliedRow[] = [...weekSeen.values()];
 
   // כמה הגשות מהשבוע לא קיבלו מפרסם. 14.11.2026: בלי המספר הזה, משרה
   // שהוגשה ואין לה מפרסם פשוט לא מופיעה בטאב, וזה נראה בדיוק כמו תקלה.
