@@ -393,7 +393,10 @@ export default async function Warm({
       title: r.title ?? null,
       company: r.company ?? null,
       text: r.reply_text ?? null,
-      url: r.reply_url ?? r.linkedin_url ?? null,
+      // לא ליפול לפרופיל: כפתור שכתוב עליו "פתח את השיחה" ומגיע לפרופיל
+      // הוא כפתור שמשקר. הפרופיל מוצג בנפרד וכגיבוי מוצהר.
+      url: r.reply_url ?? null,
+      profile: r.linkedin_url ?? null,
       jobTitle: j?.title ?? null,
       jobCompany: j?.company ?? null,
       jobUrl: j?.url ?? null,

@@ -19,8 +19,10 @@ export type ReplyRow = {
   company: string | null;
   /** מה הוא כתב. */
   text: string | null;
-  /** קישור לשיחה עצמה בלינקדאין. */
+  /** קישור לשיחה עצמה בלינקדאין, אם יש. */
   url: string | null;
+  /** קישור לפרופיל, כגיבוי בלבד. */
+  profile: string | null;
   /** המשרה שכתבת לו עליה. */
   jobTitle: string | null;
   jobCompany: string | null;
@@ -101,6 +103,13 @@ export default function ReplyBanner({ rows }: { rows: ReplyRow[] }) {
 
             {/* המשרה שכתבת עליה. שאול, 14.11: "להביא אותו למשרה הנכונה
                 שנשלחה". בלי השורה הזאת אתה יודע שמישהו ענה ולא על מה. */}
+            {!r.url && (
+              <div style={{ fontSize: '.74rem', color: 'var(--muted)', marginTop: 4 }}>
+                אין כאן קישור לשיחה עצמה, כי סימנת את התגובה הזאת ידנית. מהסריקה
+                הבאה של הסוכן כל תגובה תגיע עם קישור ישיר לשיחה.
+              </div>
+            )}
+
             {r.jobTitle ? (
               <div style={{ fontSize: '.78rem' }}>
                 <b>כתבת לו על:</b>{' '}
@@ -116,14 +125,25 @@ export default function ReplyBanner({ rows }: { rows: ReplyRow[] }) {
             )}
 
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginTop: 8 }}>
-              {r.url && (
+              {/* 14.11.2026. שאול: "פתח את השיחה לוקחת אותי לעמוד הפרופיל
+                  שלו. זה לא טוב." הכפתור נפל לפרופיל כשלא היה קישור לשיחה,
+                  ואמר משהו אחר ממה שהוא עשה. כפתור ששולח למקום אחר ממה
+                  שכתוב עליו גרוע מכפתור שחסר. */}
+              {r.url ? (
                 <a
                   className="apply" style={{ ...btn, textAlign: 'center' }}
                   href={r.url} target="_blank" rel="noreferrer"
                 >
                   פתח את השיחה
                 </a>
-              )}
+              ) : r.profile ? (
+                <a
+                  className="apply" style={{ ...btn, textAlign: 'center' }}
+                  href={r.profile} target="_blank" rel="noreferrer"
+                >
+                  פתח פרופיל
+                </a>
+              ) : null}
               <button
                 type="button"
                 style={{
