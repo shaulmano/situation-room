@@ -131,6 +131,23 @@ jobs:
       #
       # שני צעדים בוורקפלו אחד בכוונה: רישום בלי התראה משאיר תגובה יושבת
       # בשקט, וזאת בדיוק הבעיה שהתחלנו ממנה.
+      # 14.11.2026. "מתחת לרדאר": משרות שנמצאו בחיפוש הבוליאני בגוגל, לפי
+      # המדריך ששאול שלח. גוגל לא עונה לראנר של GitHub, אבל כן עונה לקלוד,
+      # ולכן המשימה המתוזמנת מחפשת ושולחת לכאן את מה שמצאה.
+      #
+      # score.py רץ מיד אחרי, באותו צעד: משרה שנכנסה ל-jobs בלי שורה
+      # ב-matches אינה מוצגת במסכים שמצרפים אותן, בלי שום שגיאה. זאת
+      # המלכודת שהפילה כאן את הלוח פעמיים.
+      - name: Record under-the-radar jobs
+        if: inputs.mode == 'seo'
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+          SUPABASE_PROJECT_REF: ${{ secrets.SUPABASE_PROJECT_REF }}
+          PAYLOAD: ${{ inputs.content }}
+        run: |
+          python sync/seo_jobs.py "$PAYLOAD"
+          python sync/score.py missing
+
       - name: Record LinkedIn replies
         if: inputs.mode == 'replies'
         env:

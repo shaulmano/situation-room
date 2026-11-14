@@ -292,7 +292,10 @@ export default async function Dashboard({
 
       <div className="screen-head">
         <h2>{source || 'חדשות היום'}</h2>
-        <Link className="more" href="/jobs">כל המשרות ←</Link>
+        <span className="more-group">
+          <Link className="more" href="/radar">מתחת לרדאר ←</Link>
+          <Link className="more" href="/jobs">כל המשרות ←</Link>
+        </span>
       </div>
 
       {/* Shown even for a single source: on a day when one board brought the
