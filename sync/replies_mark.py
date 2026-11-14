@@ -69,21 +69,48 @@ def main():
             print('  not in contacts, skipped: %s' % name[:50])
             miss += 1
             continue
-        # coalesce על replied_at: הזמן של התגובה הראשונה שלא נענתה הוא מה
-        # שמודד כמה זמן היא מחכה, ולכן ריצה חוזרת לא דוחפת אותו קדימה.
-        # הטקסט והקישור כן מתעדכנים: הם מתארים את מה שעומד עכשיו.
-        sql(
+        # תגובה חדשה מחזירה שיחה שנסגרה.
+        #
+        # 14.11.2026, שאול: "ברגע שסימנתי שיחה כטופלה אתה לא תדע עליה ולא
+        # תמשיך להציף הודעות... הסימון הזה הוא דטרמיניסטי. צריך לחשוב על
+        # להחזיר אותו לחיים במידה ושיחה ממשיכה אחרי סימון טיפלתי."
+        #
+        # הוא צדק, וזה קרה לו באותו יום: הוא סימן את עמרי ינאי כטופל, ועמרי
+        # ענה שוב אחרי. הגרסה הקודמת גם דילגה על שורה שסומנה כטופלה
+        # (`and reply_done_at is null`), כלומר התגובה החדשה הייתה נעלמת
+        # לגמרי, וגם השאירה את `replied_at` הישן בגלל coalesce, כלומר
+        # "ממתין 3 ימים" במקום "ענה עכשיו".
+        #
+        # **"טיפלתי" סוגר תגובה, לא שיחה.** תגובה חדשה יותר, או טקסט אחר,
+        # מאפסת גם את reply_done_at וגם את reply_pushed_at, ולכן השורה
+        # חוזרת לבאנר ויוצא עליה פוש.
+        #
+        # התנאי הוא מה ששומר על זה: קריאה חוזרת של אותה תגובה בדיוק לא
+        # מחזירה אותה לחיים, אחרת כל ריצה של הסוכן הייתה פותחת מחדש כל מה
+        # שנסגר.
+        txt = (r.get('text') or '')[:400] or None
+        changed = sql(
             "update contacts set "
-            "replied_at = coalesce(replied_at, %s), "
-            "reply_text = %s, reply_url = %s "
-            "where id = %s and reply_done_at is null"
-            % (q(r.get('at') or None), q((r.get('text') or '')[:400] or None),
-               q(r.get('url') or None), q(cid))
+            "replied_at = coalesce(%s, replied_at, now()), "
+            "reply_text = %s, reply_url = %s, "
+            "reply_done_at = null, reply_pushed_at = null "
+            "where id = %s and ("
+            "  replied_at is null"
+            "  or (%s is not null and replied_at < %s)"
+            "  or coalesce(reply_text,'') <> coalesce(%s,'')"
+            ") returning id"
+            % (q(r.get('at') or None), q(txt), q(r.get('url') or None), q(cid),
+               q(r.get('at') or None), q(r.get('at') or None), q(txt))
         )
-        hit += 1
-        print('  %s' % name[:50])
+        if changed:
+            hit += 1
+            print('  %s' % name[:50])
+        else:
+            print('  unchanged, left as is: %s' % name[:50])
 
-    print('recorded %d, skipped %d' % (hit, miss))
+    print('recorded %d, unchanged or skipped %d' % (hit, len(rows) - hit))
+    if miss:
+        print('(%d were not in contacts)' % miss)
 
 
 if __name__ == '__main__':
