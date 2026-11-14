@@ -133,6 +133,10 @@ jobs:
           VAPID_PRIVATE_KEY: ${{ secrets.VAPID_PRIVATE_KEY }}
           PAYLOAD: ${{ inputs.content }}
         run: |
+          # cryptography: הפוש חותם VAPID ב-ES256, והוא לא מותקן בוורקפלו
+          # הזה כברירת מחדל. 14.11.2026: הריצה הראשונה רשמה את התגובה
+          # ונפלה בשליחה, כלומר השורה נשמרה ואף התראה לא יצאה.
+          pip install cryptography
           python sync/replies_mark.py "$PAYLOAD"
           python sync/notify_push.py replies
 
