@@ -344,6 +344,14 @@ export default async function Dashboard({
         </div>
       )}
 
+      {/* 14.11.2026, שאול סימן את הרווח הזה בצילום: "שים לי קובייה לחיצה
+          לקישור פה". שורת השבבים נשברת לשתי שורות ומשאירה חצי שורה ריקה,
+          והקישור הקטן למעלה לא נראה כמו משהו שלוחצים עליו. */}
+      <Link className="radar-tile" href="/radar">
+        <b>מתחת לרדאר ←</b>
+        <span>משרות מעמודי הקריירה של החברות, שלא הגיעו לאף לוח</span>
+      </Link>
+
       <p className="screen-note">
         {rows.length > 0
           ? source
