@@ -2,6 +2,7 @@
 import { useState } from 'react';
 import { mutualsHref, type WarmContact } from '@/lib/contacts';
 import { referralMessage } from '@/lib/outreach';
+import { isAgency, rankContacts } from '@/lib/pickContact';
 
 // The block that sits under a job row when Shaul already knows someone at that
 // company. Collapsed by default: on a day with forty jobs, four of them warm,
@@ -55,11 +56,24 @@ export default function JobContacts(
   { contacts: WarmContact[]; job: JobRef; open?: boolean },
 ) {
   const [rows, setRows] = useState(contacts);
+  const [showAll, setShowAll] = useState(false);
   if (rows.length === 0) return null;
 
   function patch(id: string, fields: Partial<WarmContact>) {
     setRows((prev) => prev.map((p) => (p.id === id ? { ...p, ...fields } : p)));
   }
+
+  // 14.11.2026. שאול מול SQLink עם עשרה אנשי קשר: "אם כן מה אני אמור
+  // לעשות פה?" תשעה כרטיסים בלי סדר הם לא תשע הזדמנויות, הם שאלה פתוחה.
+  //
+  // הסדר עכשיו קבוע: עמית בתחום של המשרה ראשון, אחריו מי שמחזיק את
+  // הגיוס, ובסוף מגייסת זוטרה. בחברת השמה מוצג אחד בלבד, כי שם כולם
+  // מגייסים של אותה חברה ותשע פניות הן תשעה עותקים של אותה הודעה.
+  const agency = isAgency(job.company);
+  const ranked = rankContacts(rows, job.title);
+  const cap = agency ? 1 : 3;
+  const visible = showAll ? ranked : ranked.slice(0, cap);
+  const hidden = ranked.length - visible.length;
 
   return (
     <details
@@ -77,11 +91,39 @@ export default function JobContacts(
     >
       <summary style={{ cursor: 'pointer', fontSize: '.8rem', fontWeight: 700, color: 'var(--good)' }}>
         אתה מכיר שם {rows.length} {rows.length === 1 ? 'איש קשר' : 'אנשי קשר'}
+        {ranked.length > 1 && !agency && ' · הראשון הוא הכי שווה'}
       </summary>
 
-      {rows.map((c) => (
+      {agency && (
+        <p style={{ margin: '6px 0 0', fontSize: '.74rem', color: 'var(--muted)' }}>
+          ‏{job.company} היא חברת השמה, כלומר האנשים שאתה מכיר שם הם המגייסים
+          ולא עובדים אצל המעסיק. בקשה "להעביר פנימית" חסרת משמעות כאן, ופנייה
+          אחת מספיקה. ההודעה כבר כתובה בהתאם.
+        </p>
+      )}
+
+      {visible.map((c) => (
         <Contact key={c.id} contact={c} job={job} onPatch={(f) => patch(c.id, f)} />
       ))}
+
+      {hidden > 0 && (
+        <button
+          type="button"
+          style={{ ...button, marginTop: 8 }}
+          onClick={() => setShowAll(true)}
+        >
+          הצג עוד {hidden}
+        </button>
+      )}
+      {showAll && ranked.length > cap && (
+        <button
+          type="button"
+          style={{ ...button, marginTop: 8 }}
+          onClick={() => setShowAll(false)}
+        >
+          הצג רק את {cap === 1 ? 'הראשון' : `${cap} הראשונים`}
+        </button>
+      )}
     </details>
   );
 }
@@ -138,6 +180,7 @@ function Contact({
       jobUrl: job.url,
       foundFor: job.foundFor,
       applied: job.applied,
+      agency: isAgency(job.company),
     });
   }
 

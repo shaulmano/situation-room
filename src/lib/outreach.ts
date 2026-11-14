@@ -192,6 +192,8 @@ export function referralMessage(opts: {
   attached?: boolean;
   /** המשרה כבר הוגשה. מוסיף את העובדה הזאת, כי היא הקרס החזק ביותר. */
   applied?: boolean;
+  /** חברת השמה. שם אין "פנימית": הם המגייסים, ולא עובדים אצל המעסיק. */
+  agency?: boolean;
 }): string {
   // 12.11.2026, שאול הכתיב את המבנה מילה במילה: "הי שם, ראיתי שאתה
   // עובד בחברת שם החברה, אני מצרף את הקורות חיים שלי למשרת שם המשרה
@@ -206,7 +208,17 @@ export function referralMessage(opts: {
   // לא מופיע במכרים?". משרה שהוגשה הוסרה משני המסכים, וזה היה הפוך
   // מהכוונה: מועמדות שכבר בתוך המערכת היא בדיוק מה שמכר יכול להרים.
   // בלי המשפט הזה הוא לא יודע שיש מה להרים.
-  const ask = opts.applied
+  // 14.11.2026. שאול הצביע על SQLink: עשרה אנשי קשר, תשעה מהם מגייסים של
+  // חברת ההשמה עצמה, וההודעה ביקשה מהם "להעביר פנימית למגייסים
+  // הרלוונטיים". הם המגייסים הרלוונטיים, ואין אצלם "פנימית": הם לא
+  // עובדים אצל המעסיק אלא מאיישים אצלו.
+  const ask = opts.agency
+    ? (opts.applied
+        ? `I applied to the ${title} position you posted. I'm attaching my CV, and I would be glad to talk about whether it's a fit.`
+        // בלי "I saw" פעמיים ברצף: השורה שמעל כבר פותחת ב-"I saw that you
+        // work at". שתי אותן שתי מילים בשתי שורות עוקבות נקראות כמו תבנית.
+        : `I'm interested in the ${title} position you're advertising. I'm attaching my CV, and I would be glad to talk about whether it's a fit.`)
+    : opts.applied
     ? (isRecruiter(opts.contactTitle)
         ? `I applied to the ${title} position and I'm attaching my CV, so you have it directly.`
         : `I applied to the ${title} position, and I'm attaching my CV in case you can pass it on internally to the relevant recruiters.`)
