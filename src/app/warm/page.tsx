@@ -371,7 +371,8 @@ export default async function Warm({
   // ל-33 יום ומצא אותה במקרה.
   const { data: replyRows } = await sb
     .from('contacts')
-    .select('id, full_name, title, company, reply_text, reply_url, replied_at, last_job_id')
+    .select('id, full_name, title, company, linkedin_url, reply_text, reply_url, '
+            + 'replied_at, last_job_id')
     .not('replied_at', 'is', null)
     .is('reply_done_at', null)
     .order('replied_at', { ascending: true })
@@ -687,6 +688,9 @@ export default async function Warm({
         </Link>
         <Refresh />
       </div>
+
+      {/* ראשון, לפני הטאבים: תגובה שממתינה קודמת לכל פנייה שלא יצאה. */}
+      <ReplyBanner rows={replies} />
 
       <WarmTabs tabs={tabs} initial={searchParams.tab} />
     </main>

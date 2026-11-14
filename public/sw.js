@@ -1,8 +1,8 @@
-// v3 — badge support.
+// v4 — לחיצה על ההתראה פותחת את המסך הנכון.
 // A service worker normally waits for every tab to close before it replaces the
 // running one, so a fix here reached nothing while the app stayed open. These
 // two lines make a new version take over on the next launch instead.
-const SW_VERSION = 3;
+const SW_VERSION = 4;
 
 self.addEventListener('install', () => self.skipWaiting());
 self.addEventListener('activate', (event) => event.waitUntil(self.clients.claim()));
@@ -32,6 +32,28 @@ self.addEventListener('push', (event) => {
       ? self.navigator.setAppBadge(badge).catch(() => {})
       : Promise.resolve(),
   ]));
+});
+
+// 14.11.2026. שאול על ההתראה הראשונה של תגובה: "ראיתי אבל לא הביא אותי
+// לשום מקום". לא היה כאן notificationclick בכלל, ולכן לחיצה רק סגרה את
+// ההתראה. התראה שלא לוקחת לשום מקום היא גרועה מאין התראה: היא מבקשת
+// תשומת לב ולא נותנת תמורה.
+//
+// אם האפליקציה כבר פתוחה, מנווטים את החלון הקיים ומביאים אותו לפנים,
+// ולא פותחים עוד אחד.
+self.addEventListener('notificationclick', (event) => {
+  event.notification.close();
+  const target = event.notification.data?.url || '/';
+  event.waitUntil((async () => {
+    const all = await self.clients.matchAll({ type: 'window', includeUncontrolled: true });
+    for (const c of all) {
+      if ('focus' in c) {
+        if ('navigate' in c) { try { await c.navigate(target); } catch {} }
+        return c.focus();
+      }
+    }
+    if (self.clients.openWindow) return self.clients.openWindow(target);
+  })());
 });
 
 // The app asks for the badge to be cleared once it has been opened; doing it
