@@ -32,6 +32,16 @@ def norm(s):
 
 def main():
     raw = sys.argv[1] if len(sys.argv) > 1 else sys.stdin.read()
+
+    # 14.11.2026: "force" מאפס את סימון הפוש על התגובות הפתוחות, כדי
+    # שאפשר יהיה לשלוח שוב ולבדוק את ההתראה עצמה. לא נוגע בתגובות
+    # ובסטטוס שלהן, רק בשאלה אם כבר צלצלנו עליהן.
+    if raw.strip() == 'force':
+        sql("update contacts set reply_pushed_at = null "
+            "where replied_at is not null and reply_done_at is null")
+        print('push marks cleared, the next send will announce them again')
+        return
+
     try:
         rows = json.loads(raw or '[]')
     except ValueError as e:
