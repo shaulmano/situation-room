@@ -247,12 +247,29 @@ export default async function Warm({
         cvId: a.cv_id ?? null,
         url: a.jobs?.url ?? null,
         foundFor: a.jobs?.found_for ?? null,
-        people: warm.get(companyKey(company)) ?? [],
+        people: (warm.get(companyKey(company)) ?? []).filter((p) => !alreadyMessaged(p)),
       };
     })
     // רק כאלה שיש בהן למי לפנות. הגשה בלי מכר בחברה אינה פריט פעולה כאן.
     .filter((r) => r.people.length > 0)
     .filter((r) => (todaySeen.has(r.id) ? false : (todaySeen.add(r.id), true)));
+
+  // ── מי שכבר קיבל ממך הודעה דרך טאב המפרסמים ────────────────────────────
+  //
+  // 14.11.2026. טליה נובק נינו פרסמה את שתי משרות מרטנס, שאול פנה אליה שם,
+  // ואז היא הוצגה שוב בטאב "השבוע" כאילו לא פנה. אותו אדם, שני מסכים, ואף
+  // אחד מהם לא ידע על השני. פנייה שלישית לאותו אדם באותו שבוע היא בדיוק מה
+  // שגורם לו להפסיק לענות.
+  //
+  // ההצלבה לפי ה-slug של הפרופיל, כמו במקום היחיד האחר שמשווה פרופילים.
+  const messagedSlugs = new Set(
+    posters
+      .filter((r) => r.sentAt || r.requestAt)
+      .map((r) => slugOf(r.posterUrl))
+      .filter(Boolean)
+  );
+  const alreadyMessaged = (c: { linkedin_url?: string | null }) =>
+    messagedSlugs.has(slugOf(c.linkedin_url));
 
   // הגשות השבוע שיש בהן למי לפנות, חוץ מאלה של היום שיושבות בטאב שלהן.
   // מי שכבר פנית אליו לא מופיע: הטאב הזה הוא רשימת עבודה, לא ארכיון.
@@ -275,7 +292,7 @@ export default async function Warm({
         foundFor: a.jobs?.found_for ?? null,
         days: Math.max(0, Math.floor((Date.now() - sent) / 864e5)),
         sentAt: sent,
-        people: all.filter((p) => !p.contacted_at),
+        people: all.filter((p) => !p.contacted_at && !alreadyMessaged(p)),
       };
     })
     .filter((r) => r.people.length > 0 && !todaySeen.has(r.jobId))
