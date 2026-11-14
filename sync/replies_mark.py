@@ -139,18 +139,34 @@ def main():
         # מחזירה אותה לחיים, אחרת כל ריצה של הסוכן הייתה פותחת מחדש כל מה
         # שנסגר.
         txt = (r.get('text') or '')[:400] or None
+
+        # **השעה שהסוכן קורא מלינקדאין אינה נושאת אזור זמן.**
+        #
+        # 14.11.2026: עמרי ענה ב-16:58 שעון ישראל, ונרשם 17:58+00, כלומר
+        # 19:58 מקומי, שעה וחצי בעתיד. לינקדאין מציג שעה מקומית בלי סימן,
+        # והסוכן מרכיב ממנה ISO.
+        #
+        # למה זה לא רק מספר לא נעים: `replied_at` בעתיד הופך את התנאי
+        # `replied_at < <השעה שנתנו>` לאמת **בכל ריצה**, כי השמירה מקצצת
+        # להווה והקריאה הבאה מביאה שוב את אותה שעה עתידית. כל ריצה הייתה
+        # פותחת מחדש את מה ששאול סגר ומוציאה עליו פוש. בדיוק מה שהתנאי
+        # הזה נועד למנוע.
+        #
+        # לכן הקיצוץ נעשה פעם אחת, באותו ביטוי, גם בשמירה וגם בהשוואה.
+        at = r.get('at') or None
+        at_sql = 'least(%s::timestamptz, now())' % q(at) if at else 'null::timestamptz'
+
         changed = sql(
             "update contacts set "
-            "replied_at = coalesce(%s, replied_at, now()), "
+            "replied_at = coalesce(" + at_sql + ", replied_at, now()), "
             "reply_text = %s, reply_url = %s, "
             "reply_done_at = null, reply_pushed_at = null "
             "where id = %s and ("
             "  replied_at is null"
-            "  or (%s is not null and replied_at < %s)"
+            "  or (" + at_sql + " is not null and replied_at < " + at_sql + ")"
             "  or coalesce(reply_text,'') <> coalesce(%s,'')"
             ") returning id"
-            % (q(r.get('at') or None), q(txt), q(r.get('url') or None), q(cid),
-               q(r.get('at') or None), q(r.get('at') or None), q(txt))
+            % (q(txt), q(r.get('url') or None), q(cid), q(txt))
         )
         if changed:
             hit += 1
