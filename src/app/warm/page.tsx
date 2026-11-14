@@ -6,6 +6,8 @@ import { companyKey, contactsByCompanyKeys, type WarmContact } from '@/lib/conta
 import { postingKey } from '@/lib/dedupe';
 import Dismiss from '@/components/Dismiss';
 import JobContacts from '@/components/JobContacts';
+import WarmTabs from '@/components/WarmTabs';
+import AppliedList, { type AppliedRow } from '@/components/AppliedList';
 import MarkApplied from '@/components/MarkApplied';
 import LinkedinQueue from '@/components/LinkedinQueue';
 import PosterQueue, { type PosterRow } from '@/components/PosterQueue';
@@ -192,9 +194,18 @@ export default async function Warm({
   todayStart.setHours(0, 0, 0, 0);
   const todayRows = (appliedRows ?? []).filter(
     (a: any) => a.sent_at && new Date(a.sent_at).getTime() >= todayStart.getTime());
+
+  // 14.11.2026, שאול: "תתחיל מהשבוע האחרון ואם זה מסובך מעכשיו". שבוע
+  // ולא חודש: הגשה מלפני חודשיים היא כבר לא משהו שמרימים, ורשימה של 326
+  // שורות היא לא רשימת עבודה אלא עוד ערימה.
+  const WEEK_DAYS = 7;
+  const weekFrom = Date.now() - WEEK_DAYS * 864e5;
+  const weekRows = (appliedRows ?? []).filter(
+    (a: any) => a.sent_at && new Date(a.sent_at).getTime() >= weekFrom);
+
   const keys = [...new Set([
     ...postings.map((m) => companyKey(m.jobs.company)),
-    ...todayRows.map((a: any) => companyKey(a.jobs?.company ?? a.company)),
+    ...weekRows.map((a: any) => companyKey(a.jobs?.company ?? a.company)),
   ].filter(Boolean))];
   const select = 'id, full_name, title, company_key, linkedin_url, email, phone, contacted_at, replied_at, skipped_at';
   const contacts = await contactsByCompanyKeys(sb, keys, select);
@@ -236,6 +247,30 @@ export default async function Warm({
     // רק כאלה שיש בהן למי לפנות. הגשה בלי מכר בחברה אינה פריט פעולה כאן.
     .filter((r) => r.people.length > 0)
     .filter((r) => (todaySeen.has(r.id) ? false : (todaySeen.add(r.id), true)));
+
+  // הגשות השבוע שיש בהן למי לפנות, חוץ מאלה של היום שיושבות בטאב שלהן.
+  // מי שכבר פנית אליו לא מופיע: הטאב הזה הוא רשימת עבודה, לא ארכיון.
+  const weekSeen = new Set<string>();
+  const appliedWeek: AppliedRow[] = weekRows
+    .map((a: any) => {
+      const company = a.jobs?.company ?? a.company ?? '';
+      const all = warm.get(companyKey(company)) ?? [];
+      const sent = new Date(a.sent_at).getTime();
+      return {
+        key: a.job_id as string,
+        company,
+        title: a.jobs?.title ?? a.role ?? '',
+        cvId: a.cv_id ?? null,
+        url: a.jobs?.url ?? null,
+        foundFor: a.jobs?.found_for ?? null,
+        days: Math.max(0, Math.floor((Date.now() - sent) / 864e5)),
+        sentAt: sent,
+        people: all.filter((p) => !p.contacted_at),
+      };
+    })
+    .filter((r) => r.people.length > 0 && !todaySeen.has(r.key))
+    .filter((r) => (weekSeen.has(r.key) ? false : (weekSeen.add(r.key), true)))
+    .sort((a, b) => b.sentAt - a.sentAt);
 
   const withContacts = postings
     .map((m) => {
@@ -323,61 +358,41 @@ export default async function Warm({
       || new Date(b.m.jobs.first_seen).getTime() - new Date(a.m.jobs.first_seen).getTime();
   });
 
-  return (
-    <main>
-      <h2>דרך מישהו שאתה מכיר</h2>
-
-      <p className="screen-note">
-        ‏540 הגשות קרות הביאו 22 פתיחות ושתי שיחות. המשרות כאן הן בחברות שאתה
-        מכיר בהן מישהו אישית, ולכן הן לא עוד הגשה בערימה. הפנייה נכתבת כאן,
-        ההודעה מוכנה להעתקה, והשליחה היא שלך.
-      </p>
-
-      <Refresh />
-
-      {todayApplied.length > 0 && (
+  const todayPanel = (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+      {todayApplied.length === 0 ? (
+        <div className="empty">
+          <strong>לא הגשת היום למשרה בחברה שאתה מכיר בה מישהו</strong>
+          <span>
+            ברגע שתסמן משרה כהוגשה, אם אתה מכיר שם מישהו היא תופיע כאן
+            עם ההודעה מוכנה.
+          </span>
+        </div>
+      ) : todayApplied.map((r) => (
         <div
+          key={r.id}
           style={{
-            background: 'var(--surface)', border: '1px solid var(--line)',
-            borderRadius: 7, padding: 12, marginBottom: 14,
+            background: 'var(--raised)', border: '1px solid var(--hair)',
+            borderRadius: 7, padding: 10,
           }}
         >
-          <div style={{ fontWeight: 700, marginBottom: 2 }}>הגשת היום</div>
-          <div style={{ color: 'var(--muted)', fontSize: '.76rem', marginBottom: 8 }}>
-            {todayApplied.length} {todayApplied.length === 1 ? 'הגשה' : 'הגשות'} שאתה
-            מכיר שם מישהו. ההגשה טרייה בערימה, והפנייה הפנימית היא מה שמרימה אותה.
-          </div>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-            {todayApplied.map((r) => (
-              <div
-                key={r.id}
-                style={{
-                  background: 'var(--raised)', border: '1px solid var(--hair)',
-                  borderRadius: 7, padding: 10,
-                }}
-              >
-                <div style={{ fontWeight: 700, fontSize: '.86rem' }}>{r.company}</div>
-                <div style={{ fontSize: '.78rem', color: 'var(--muted)' }}>{r.title}</div>
-                <JobContacts
-                  contacts={r.people}
-                  job={{
-                    company: r.company, title: r.title, cvId: r.cvId,
-                    url: r.url, foundFor: r.foundFor, applied: true,
-                  }}
-                  open
-                />
-              </div>
-            ))}
-          </div>
+          <div style={{ fontWeight: 700, fontSize: '.86rem' }}>{r.company}</div>
+          <div style={{ fontSize: '.78rem', color: 'var(--muted)' }}>{r.title}</div>
+          <JobContacts
+            contacts={r.people}
+            job={{
+              company: r.company, title: r.title, cvId: r.cvId,
+              url: r.url, foundFor: r.foundFor, applied: true,
+            }}
+            open
+          />
         </div>
-      )}
+      ))}
+    </div>
+  );
 
-      <WarmPicker picks={picks} />
-
-      <LinkedinQueue picks={picks} />
-
-      <PosterQueue rows={posters} />
-
+  const openJobsPanel = (
+    <div>
       <div className="filters">
         <Link href="/warm" className={'filter' + (showAll ? '' : ' on')}>
           שלא פנית
@@ -409,7 +424,7 @@ export default async function Warm({
                 <span className="grow">
                   {j.title}
                   <span className="sub">
-                    {[j.company, j.location].filter(Boolean).join(' · ')}
+                    {[j.company, j.location].filter(Boolean).join(' \u00b7 ')}
                   </span>
                   <span className="why">
                     <span className="chip ok">
@@ -436,8 +451,6 @@ export default async function Warm({
                 <MarkApplied id={j.id} cvId={m.cv_id} />
                 <Dismiss id={j.id} ids={m.copies.map((c: any) => c.jobs.id)} noRefresh />
 
-                {/* פתוח כברירת מחדל: כל המסך הזה הוא בדיוק הבלוק הזה, ואין
-                    שום סיבה שיצטרך עוד לחיצה כדי להיפתח. */}
                 <JobContacts
                   contacts={people}
                   job={{ company: j.company, title: j.title, cvId: m.cv_id,
@@ -450,6 +463,80 @@ export default async function Warm({
           })}
         </div>
       )}
+    </div>
+  );
+
+  // כל טאב הוא עבודה אחת, עם מספר שאומר כמה נשאר ומשפט שאומר מה עושים בו.
+  // 14.11.2026, שאול: "שלא יהיו לי שאלות איפה זה ומה אני עושה עם זה".
+  const tabs = [
+    {
+      id: 'today',
+      label: 'היום',
+      count: todayApplied.length,
+      note: 'הגשת היום לחברה שאתה מכיר בה מישהו. ההגשה עוד על השולחן אצלם, '
+        + 'והודעה אחת היום מרימה אותה מהערימה. לחץ "פנייה" ליד מי שתבחר, '
+        + 'העתק, צרף את הקובץ שרשום, ושלח בלינקדאין או במייל.',
+      panel: todayPanel,
+    },
+    {
+      id: 'week',
+      label: 'השבוע',
+      count: appliedWeek.length,
+      note: 'הגשות משבעת הימים האחרונים שעוד לא פנית לאף אחד בחברה שלהן. '
+        + 'אותה עבודה בדיוק כמו בטאב "היום", רק על מה שפספסת. מעבר לשבוע '
+        + 'כבר מאוחר מדי, ולכן זה לא מופיע כאן.',
+      panel: <AppliedList rows={appliedWeek} />,
+    },
+    {
+      id: 'email',
+      label: 'במייל',
+      count: picks.filter((p) => p.contact.email && !p.contact.contacted_at).length,
+      note: 'האנשים היחידים שיש להם כתובת מייל שמורה. כאן המערכת שולחת בשבילך: '
+        + 'קרא את ההודעה, לחץ "שלח אלי לבדיקה" אם אתה רוצה לראות אותה אצלך קודם, '
+        + 'ואז "שלח". קורות החיים מצורפים אוטומטית.',
+      panel: <WarmPicker picks={picks} />,
+    },
+    {
+      id: 'linkedin',
+      label: 'בלינקדאין',
+      count: picks.filter((p) => !p.contact.email && !p.contact.contacted_at).length,
+      note: 'לאלה אין כתובת מייל, ולכן השליחה היא שלך: העתק את ההודעה, צרף את '
+        + 'הקובץ שרשום בשורה, שלח בלינקדאין, ואז סמן "שנשלח" כדי שירד מהתור. '
+        + 'חמישה עשר ביום זה כל התור בשלושה שבועות.',
+      panel: <LinkedinQueue picks={picks} />,
+    },
+    {
+      id: 'posters',
+      label: 'מפרסמים',
+      count: posters.filter((r) => !r.sentAt && !r.skippedAt).length,
+      note: 'מי שפרסם בלינקדאין משרה שהגשת אליה. זה לא מכר שלך אלא מי שמחזיק '
+        + 'את המשרה עצמה. למי שאתה מחובר אליו שלח הודעה עם הקובץ, ולמי שלא '
+        + 'שלח קודם בקשת חברות עם הפתק, והקובץ בהודעה אחרי שהיא תאושר.',
+      panel: <PosterQueue rows={posters} />,
+    },
+    {
+      id: 'open',
+      label: 'משרות פתוחות',
+      count: freshCount,
+      note: 'משרות שעוד לא הגשת אליהן, בחברות שאתה מכיר בהן מישהו. כאן הסדר '
+        + 'הפוך: קודם מגישים דרך הכפתור, ואז פונים למכר כדי שההגשה לא תישאר '
+        + 'בערימה.',
+      panel: openJobsPanel,
+    },
+  ];
+
+  return (
+    <main>
+      <h2>דרך מישהו שאתה מכיר</h2>
+
+      <p className="screen-note">
+        ‏540 הגשות קרות הביאו 22 פתיחות ושתי שיחות. כל מה שכאן הוא בחברות שאתה
+        מכיר בהן מישהו אישית. כל טאב הוא עבודה אחת, והמספר עליו הוא כמה נשאר בה.
+      </p>
+
+      <Refresh />
+
+      <WarmTabs tabs={tabs} />
     </main>
   );
 }
