@@ -125,6 +125,12 @@ def workday_api_url(url):
     הדייר הוא התווית הראשונה של המארח, `workday.wd5.myworkdayjobs.com`
     נותן `workday`. האתר הוא המקטע שלפני `/job/`, אחרי שפה כמו `en-US`
     אם היא מופיעה.
+
+    **וכותרת ה-Accept מחליפה את התשובה, לא רק את הפורמט.** הריצה הראשונה
+    שאלה את אותו API בדיוק עם `Accept: text/html` וקיבלה חיה, והסריקה
+    הכריזה "all still live" על המשרה המתה. עם `Accept: application/json`
+    אותה כתובת מחזירה 404. לכן `_status_ok` מקבל `json=True` כאן, וזה
+    לא קישוט.
     """
     parts = urllib.parse.urlsplit(url)
     if not parts.netloc.endswith('.myworkdayjobs.com'):
