@@ -434,3 +434,10 @@ a.kpi:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
 .reach-who{display:flex;align-items:center;gap:.5rem;flex-wrap:wrap}
 .reach-sub{font-size:.8rem;color:var(--muted);margin:.15rem 0 .6rem}
 .reach-acts{display:flex;gap:.4rem;flex-wrap:wrap;align-items:center}
+/* הכפתורים בשורת פנייה רחבה הם משפחות שונות, ו-.apply נמתח לרוחב
+   מלא כברירת מחדל. כאן כולם באותו גובה ובאותה שורה. */
+.reach-acts > *{
+  flex:none;width:auto;margin:0;
+  padding:.42em .8em;font-size:.8rem;line-height:1.2;border-radius:6px;
+}
+.reach-acts .apply{display:inline-flex;align-items:center}
