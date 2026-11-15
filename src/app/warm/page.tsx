@@ -30,7 +30,45 @@ export const dynamic = 'force-dynamic';
 // כל מה שצריך כבר היה בקוד, מקופל בתוך <details> מתחת לשורת משרה, במסך
 // עם מאות שורות. המסך הזה לא מוסיף יכולת, הוא מוציא אותה החוצה.
 
-export default async function Warm({
+// 15.11.2026. המסך נפל ב-"Application error", ו-Next מסתיר את ההודעה
+// בבנייה לייצור: `error.tsx` קיבל רק digest ואת הטקסט הגנרי. שאול שאל
+// "מה זה?" ולא הייתה לי תשובה, ושלוש השערות שבדקתי לא החזיקו.
+//
+// **כלי אבחון שאומר רק שמשהו נפל גרוע מכלי שחסר.** אותה שורה כבר כתובה
+// כאן על `audit_sources.py` ועל הכלי `gates`. לכן העמוד תופס את החריגה
+// בעצמו ומדפיס את ההודעה ואת העקבה, כמו ש-`matchErr` כבר עושה לשליפה
+// אחת. זה מסך פרטי מאחורי התחברות, ואין כאן מה להדליף.
+export default async function Warm(
+  props: { searchParams: { all?: string; tab?: string } },
+) {
+  try {
+    return await WarmBody(props);
+  } catch (e: any) {
+    return (
+      <main style={{ padding: '18px 16px', maxWidth: 680, margin: '0 auto' }}>
+        <h1 style={{ fontSize: '1.05rem', marginBottom: 6 }}>
+          מסך מכרים נפל, וזאת הסיבה
+        </h1>
+        <p style={{ fontSize: '.82rem', color: 'var(--muted)', lineHeight: 1.6 }}>
+          שום דבר לא נמחק ושום סימון לא אבד. תשלח לי את מה שכתוב למטה.
+        </p>
+        <pre
+          style={{
+            fontSize: '.72rem', whiteSpace: 'pre-wrap', direction: 'ltr',
+            textAlign: 'left', background: 'var(--raised)',
+            border: '1px solid var(--hair)', borderRadius: 6,
+            padding: '9px 10px', marginTop: 10,
+          }}
+        >
+          {String(e?.message ?? e)}
+          {e?.stack ? '\n\n' + String(e.stack).slice(0, 1500) : ''}
+        </pre>
+      </main>
+    );
+  }
+}
+
+async function WarmBody({
   searchParams,
 }: {
   searchParams: { all?: string; tab?: string };
