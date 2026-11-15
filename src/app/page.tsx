@@ -10,7 +10,7 @@ import JobBrief from '@/components/JobBrief';
 import JobContacts from '@/components/JobContacts';
 import MarkApplied from '@/components/MarkApplied';
 import PriorApplied from '@/components/PriorApplied';
-import { buildPriorIndex, priorApplication } from '@/lib/priorApplication';
+import { loadApplied, priorApplication } from '@/lib/priorApplication';
 
 export const dynamic = 'force-dynamic';
 
@@ -48,7 +48,7 @@ export default async function Dashboard({
     sb.from('events').select('id', { count: 'exact', head: true }).eq('classification', 'info_request'),
     sb.from('applications').select('id', { count: 'exact', head: true }).eq('status', 'silent'),
     sb.from('applications').select('sent_at').order('sent_at', { ascending: false }).limit(1),
-    sb.from('applications').select('job_id, sent_at, jobs(title, company)'),
+    loadApplied(sb),
     sb.from('contacts').select('imported_at').order('imported_at', { ascending: false }).limit(1),
     // שיחות וראיונות שנקבעו. מה שהיה אתמול נשאר יום אחד נוסף, כדי שראיון
     // שהתקיים הבוקר לא ייעלם מהמסך לפני שנרשם מה קרה בו.
@@ -70,10 +70,10 @@ export default async function Dashboard({
       .is('contacted_at', null).limit(5000),
   ]);
 
-  const appliedIds = new Set((applied.data ?? []).map((a: any) => a.job_id).filter(Boolean));
+  const appliedIds = new Set(applied.rows.map((a: any) => a.job_id).filter(Boolean));
   // 15.11.2026: "יש לי תחושה שהגשתי כבר למשרות האלו". אותה משרה מלוח אחר
   // היא כתובת אחרת, ולכן מזהה לבדו לא תופס אותה. ראה priorApplication.ts.
-  const priorIdx = buildPriorIndex(applied.data as any);
+  const priorIdx = applied.idx;
 
   // 15.11.2026, שאול: "יש משרות כפולות בחדר מצב ומתחת לרדאר (אלו אותן משרות)
   // תשאיר אותן רק במתחת לרדאר".

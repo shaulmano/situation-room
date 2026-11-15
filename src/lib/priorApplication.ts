@@ -93,6 +93,32 @@ export function buildPriorIndex(rows: AppliedJoinRow[] | null | undefined): Prio
   return idx;
 }
 
+/**
+ * שליפת ההגשות פעם אחת, עם נפילה לאחור.
+ *
+ * ה-join אל `jobs` הוא PostgREST ולא SQL, ו-tsc לא בודק אותו. אם הוא
+ * ייכשל, `data` חוזר ריק **בלי חריגה**, ואז `appliedIds` ריקה וכל ההגשות
+ * חוזרות לרשימת הלידים. זאת בדיוק המלכודת השקטה שהפילה כאן דברים לאורך
+ * כל 2026, ולכן יש כאן נפילה לאחור לשליפה הפשוטה: במקרה הגרוע הסימון
+ * החדש לא מופיע, אבל שום דבר קיים לא נשבר.
+ */
+export async function loadApplied(sb: any): Promise<{
+  rows: AppliedJoinRow[];
+  idx: PriorIndex;
+  degraded: boolean;
+}> {
+  const full = await sb.from('applications').select('job_id, sent_at, jobs(title, company)');
+  if (!full.error && full.data) {
+    return { rows: full.data as AppliedJoinRow[], idx: buildPriorIndex(full.data), degraded: false };
+  }
+  const bare = await sb.from('applications').select('job_id, sent_at');
+  return {
+    rows: (bare.data ?? []) as AppliedJoinRow[],
+    idx: emptyPriorIndex,
+    degraded: true,
+  };
+}
+
 export function priorApplication(
   idx: PriorIndex,
   job: { id?: string | null; company?: string | null; title?: string | null }

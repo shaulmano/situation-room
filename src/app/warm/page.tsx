@@ -89,7 +89,7 @@ async function WarmBody({
     // המזהים של מה שהוגש.
     //
     // לכן שתי שליפות: עמודה אחת על הכל, ו-join רק על השבוע.
-    sb.from('applications').select('job_id, sent_at, jobs(title, company)'),
+    sb.from('applications').select('job_id, sent_at'),
     sb.from('applications')
       .select('job_id, sent_at, cv_id, company, role, jobs(id, title, company, url, found_for)')
       .gte('sent_at', new Date(Date.now() - 7 * 864e5).toISOString()),
@@ -137,8 +137,13 @@ async function WarmBody({
 
   const appliedIds = new Set((appliedIdRows ?? []).map((a: any) => a.job_id));
   // 15.11.2026: אותה משרה מלוח אחר היא כתובת אחרת, ולכן שורה שהוגשה
-  // מופיעה כאן כחדשה. ראה src/lib/priorApplication.ts.
-  const priorIdx = buildPriorIndex(appliedIdRows as any);
+  // מופיעה כאן כחדשה.
+  //
+  // **כאן זה לפי שבוע ולא לפי הכל, בכוונה.** המסך הזה נבנה ב-14.11 בלי
+  // ה-join אל `jobs` על כל 550 ההגשות, אחרי ש"המעבר ממש איטי. ממש".
+  // `appliedRows` כבר נושא את החברה והכותרת לשבוע האחרון, ולכן הסימון
+  // כאן לא עולה בקשה אחת. מסך המשרות, הבית והרדאר מכסים את הכל.
+  const priorIdx = buildPriorIndex(appliedRows as any);
   // 15.11.2026, שאול: **"אין לי מושג מתי נשלחו הקורות חיים ואולי זה
   // ממזמן"**, והוא סימן אנשים כ"מוותר" רק בגלל זה. נמדד: מתוך 556
   // הגשות, **436 בנות יותר מחודש** ורק 91 מהשבועיים האחרונים. כלומר
