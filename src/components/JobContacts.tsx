@@ -199,7 +199,16 @@ function Contact({
   const [cv, setCv] = useState<string>(job.cvId ?? 'qa');
   const [copied, setCopied] = useState(false);
   const [busy, setBusy] = useState(false);
+  // ויתור. אופטימי, והשורה חוזרת אם הכתיבה נכשלה: שורה שנעלמה ולא נשמרה
+  // גרועה משורה שסירבה, כמו בכל שאר הסימונים כאן.
+  const [skipped, setSkipped] = useState(false);
   const mutuals = mutualsHref(contact.linkedin_url);
+
+  async function skip() {
+    setSkipped(true);
+    const ok = await save({ skipped: true }, {});
+    if (!ok) setSkipped(false);
+  }
 
   const askedDays = contact.contacted_at
     ? Math.floor((Date.now() - new Date(contact.contacted_at).getTime()) / 864e5)
@@ -257,6 +266,10 @@ function Contact({
   // של השורה ברענון הבא גרועה עוד יותר: אין שום עדות למה שעשית היום.
   const done = !!contact.contacted_at;
 
+  // ויתרת עליו: השורה יורדת מיד. ברענון הבא היא לא תחזור, כי `skipped_at`
+  // מסנן אותו מההתאמה בשרת.
+  if (skipped) return null;
+
   return (
     <div
       style={{
@@ -306,6 +319,29 @@ function Contact({
 
       {!contact.phone && !editing && (
         <button type="button" style={button} onClick={() => setEditing(true)}>הוסף טלפון</button>
+      )}
+
+      {/* 15.11.2026, שאול: **"תוסיף כפתור מוותר. במקרה של גילה היא לא
+          תעזור לי"**. גילה אייזקס היא Office Manager ב-Comm-IT, והמשרה
+          היא Software Project Manager. היא תחזור אליו כל יום על כל משרה
+          פתוחה שם, והוא יגלול מעליה שוב ושוב.
+
+          **העמודה קיימת מ-13.11**, `contacts.skipped_at`, שנוספה בדיוק
+          לבקשה הזאת ובמילים האלה. מה שלא נבנה הוא הכפתור והסינון, ולכן
+          שום דבר לא קרה. זאת הפעם השביעית שדפוס כזה חוזר כאן.
+
+          **לא `contacted_at`**: מי שוויתרת עליו לא נשלח אליו כלום, והוא
+          לא יכול להיספר בתוך אחוז המענה. זה מה שהמיגרציה עצמה אומרת.
+          והוא הפיך: זאת חותמת זמן, ואפשר לנקות אותה. */}
+      {!contact.contacted_at && !skipped && (
+        <button
+          type="button"
+          style={{ ...button, color: 'var(--muted)' }}
+          title="לא יעזור כאן. השורה תרד מהרשימה ואיש הקשר יישאר"
+          onClick={skip}
+        >
+          מוותר
+        </button>
       )}
 
       {editing && (

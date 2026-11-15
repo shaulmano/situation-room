@@ -17,13 +17,27 @@ export default function Refresh() {
   const [at, setAt] = useState<string>('');
 
   return (
-    <div style={{ display: 'flex', alignItems: 'center', gap: 8, margin: '0 0 10px' }}>
+    // 15.11.2026, שאול: "אני רוצה את הכפתור אותו גודל בגובה ובצבע אחר".
+    // הוא ישב ליד "חזרה לחדר המצב" בגובה נמוך יותר ובאותו חום, ולכן נראה
+    // כמו גרסה מוקטנת של אותו כפתור במקום כמו פעולה אחרת.
+    //
+    // אותו `padding` ואותו `font-size` כמו הקישור שלידו, וזה מה שמשווה
+    // את הגבהים בלי מספר קבוע שיישבר בפעם הבאה שהטיפוגרפיה תזוז.
+    //
+    // הצבע הוא משטח עם מסגרת ולא ירוק או אדום: שני אלה קיבלו היום
+    // משמעות על המסך הזה, "מחכה לפנייה" ו"נעשה", וכפתור רענון אינו אף
+    // אחד משניהם.
+    <div style={{ display: 'flex', alignItems: 'stretch', gap: 8 }}>
       <button
         type="button"
         disabled={pending}
         style={{
-          width: 'auto', flex: 'none', padding: '.5em 1.1em',
-          fontSize: '.82rem', borderRadius: 6, fontWeight: 700,
+          width: 'auto', flex: 'none', padding: '.7em 1.1em',
+          fontSize: '.9rem', borderRadius: 6, fontWeight: 800,
+          // בלי מסגרת, אחרת שני הפיקסלים שלה מגביהים את הכפתור ביחס
+          // לקישור שלידו, ושאול ביקש בדיוק אותו גובה. נמדד: 38 מול 37.
+          background: 'var(--ink)', color: 'var(--surface)',
+          border: 0, cursor: 'pointer',
         }}
         onClick={() => start(() => {
           router.refresh();
@@ -34,7 +48,11 @@ export default function Refresh() {
       >
         {pending ? 'מרענן…' : 'רענן'}
       </button>
-      {at && <span className="chip mute">עודכן {at}</span>}
+      {at && (
+        <span className="chip mute" style={{ alignSelf: 'center' }}>
+          עודכן {at}
+        </span>
+      )}
     </div>
   );
 }

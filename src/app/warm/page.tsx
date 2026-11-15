@@ -314,9 +314,15 @@ async function WarmBody({
   // המשרות הפתוחות שם. השורה עצמה נשארת באנשי הקשר, רק ההתאמה נפסקת.
   const leftCompany = new Set(
     (contacts as any[]).filter((c) => c.left_company_at).map((c) => c.id));
+  // 15.11.2026: **ומי שוויתרת עליו יוצא גם הוא.** `skipped_at` נוסף
+  // ב-13.11 ונשלף כאן מאז, אבל אף פעם לא סונן, ולכן הסימון לא עשה כלום.
+  // שאול ביקש את הכפתור שוב היום, על גילה אייזקס, Office Manager במשרת
+  // Software Project Manager. השורה הזאת היא מה שהופך את הלחיצה לאמיתית.
+  const skipped = new Set(
+    (contacts as any[]).filter((c) => c.skipped_at).map((c) => c.id));
   for (const c of contacts as any[]) {
     const k = (c.company_key ?? '').trim();
-    if (!k || leftCompany.has(c.id)) continue;
+    if (!k || leftCompany.has(c.id) || skipped.has(c.id)) continue;
     const list = warm.get(k) ?? [];
     list.push(c);
     warm.set(k, list);
