@@ -3,6 +3,8 @@ import { serverClient } from '@/lib/server';
 import { jobAge } from '@/lib/age';
 import Dismiss from '@/components/Dismiss';
 import MarkApplied from '@/components/MarkApplied';
+import PriorApplied from '@/components/PriorApplied';
+import { buildPriorIndex, priorApplication } from '@/lib/priorApplication';
 
 export const dynamic = 'force-dynamic';
 
@@ -40,8 +42,13 @@ export default async function Radar({
   const sb = serverClient();
   const source = searchParams.source ?? '';
 
-  const { data: applied } = await sb.from('applications').select('job_id');
+  // 15.11.2026: גם הכותרת והחברה. הרדאר מביא מלוחות ATS, ואותה משרה
+  // בלינקדאין היא כתובת אחרת, ולכן הסינון לפי מזהה לא תופס אותה.
+  const { data: applied } = await sb
+    .from('applications')
+    .select('job_id, sent_at, jobs(title, company)');
   const appliedIds = new Set((applied ?? []).map((a: any) => a.job_id).filter(Boolean));
+  const priorIdx = buildPriorIndex(applied as any);
 
   const { data: rows, error } = await sb
     .from('jobs')
@@ -122,6 +129,7 @@ export default async function Radar({
                 {j.location ? ` · ${j.location}` : ''}
                 <span className="chip mute">{j.source || 'SEO'}</span>
                 {j.found_for && <span className="chip mute">{j.found_for}</span>}
+                <PriorApplied prior={priorApplication(priorIdx, j)} />
                 {/* הגיל מוצג ולא מסנן. שאול מחליט, לא השער. */}
                 {age && <span className={`chip age-${age.tone}`}>{age.label}</span>}
               </div>

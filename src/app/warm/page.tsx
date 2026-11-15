@@ -10,6 +10,8 @@ import WarmTabs from '@/components/WarmTabs';
 import ReplyBanner, { type ReplyRow } from '@/components/ReplyBanner';
 import AppliedList, { type AppliedRow } from '@/components/AppliedList';
 import MarkApplied from '@/components/MarkApplied';
+import PriorApplied from '@/components/PriorApplied';
+import { buildPriorIndex, priorApplication } from '@/lib/priorApplication';
 import LinkedinQueue from '@/components/LinkedinQueue';
 import InviteQueue from '@/components/InviteQueue';
 import PosterQueue, { type PosterRow } from '@/components/PosterQueue';
@@ -87,7 +89,7 @@ async function WarmBody({
     // המזהים של מה שהוגש.
     //
     // לכן שתי שליפות: עמודה אחת על הכל, ו-join רק על השבוע.
-    sb.from('applications').select('job_id, sent_at'),
+    sb.from('applications').select('job_id, sent_at, jobs(title, company)'),
     sb.from('applications')
       .select('job_id, sent_at, cv_id, company, role, jobs(id, title, company, url, found_for)')
       .gte('sent_at', new Date(Date.now() - 7 * 864e5).toISOString()),
@@ -134,6 +136,9 @@ async function WarmBody({
   }
 
   const appliedIds = new Set((appliedIdRows ?? []).map((a: any) => a.job_id));
+  // 15.11.2026: אותה משרה מלוח אחר היא כתובת אחרת, ולכן שורה שהוגשה
+  // מופיעה כאן כחדשה. ראה src/lib/priorApplication.ts.
+  const priorIdx = buildPriorIndex(appliedIdRows as any);
   // 15.11.2026, שאול: **"אין לי מושג מתי נשלחו הקורות חיים ואולי זה
   // ממזמן"**, והוא סימן אנשים כ"מוותר" רק בגלל זה. נמדד: מתוך 556
   // הגשות, **436 בנות יותר מחודש** ורק 91 מהשבועיים האחרונים. כלומר
@@ -671,6 +676,7 @@ async function WarmBody({
                     {[j.company, j.location].filter(Boolean).join(' \u00b7 ')}
                   </span>
                   <span className="why">
+                    <PriorApplied prior={priorApplication(priorIdx, j)} />
                     <span className="chip ok">
                       {open > 0
                         ? `${open} ${open === 1 ? 'מכר' : 'מכרים'} שלא פנית`

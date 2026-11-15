@@ -9,6 +9,8 @@ import DismissAll from '@/components/DismissAll';
 import JobBrief from '@/components/JobBrief';
 import JobContacts from '@/components/JobContacts';
 import MarkApplied from '@/components/MarkApplied';
+import PriorApplied from '@/components/PriorApplied';
+import { buildPriorIndex, priorApplication } from '@/lib/priorApplication';
 
 export const dynamic = 'force-dynamic';
 
@@ -46,7 +48,7 @@ export default async function Dashboard({
     sb.from('events').select('id', { count: 'exact', head: true }).eq('classification', 'info_request'),
     sb.from('applications').select('id', { count: 'exact', head: true }).eq('status', 'silent'),
     sb.from('applications').select('sent_at').order('sent_at', { ascending: false }).limit(1),
-    sb.from('applications').select('job_id'),
+    sb.from('applications').select('job_id, sent_at, jobs(title, company)'),
     sb.from('contacts').select('imported_at').order('imported_at', { ascending: false }).limit(1),
     // שיחות וראיונות שנקבעו. מה שהיה אתמול נשאר יום אחד נוסף, כדי שראיון
     // שהתקיים הבוקר לא ייעלם מהמסך לפני שנרשם מה קרה בו.
@@ -69,6 +71,9 @@ export default async function Dashboard({
   ]);
 
   const appliedIds = new Set((applied.data ?? []).map((a: any) => a.job_id).filter(Boolean));
+  // 15.11.2026: "יש לי תחושה שהגשתי כבר למשרות האלו". אותה משרה מלוח אחר
+  // היא כתובת אחרת, ולכן מזהה לבדו לא תופס אותה. ראה priorApplication.ts.
+  const priorIdx = buildPriorIndex(applied.data as any);
 
   // 15.11.2026, שאול: "יש משרות כפולות בחדר מצב ומתחת לרדאר (אלו אותן משרות)
   // תשאיר אותן רק במתחת לרדאר".
@@ -431,6 +436,7 @@ export default async function Dashboard({
                     {[j.company, j.location].filter(Boolean).join(' · ')}
                   </span>
                   <span className="why">
+                      <PriorApplied prior={priorApplication(priorIdx, j)} />
                     {/* 10.11.2026: התיוג היה רק במסך המשרות, ושאול מסתכל
                         כאן. שינוי לא נגמר עד שהוא בכל המסכים, וזה כלל
                         שהוא עצמו ביקש. */}

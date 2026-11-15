@@ -4,6 +4,8 @@ import { applyTarget, directLinks } from '@/lib/apply';
 import { jobAge } from '@/lib/age';
 import { companyKey, type WarmContact, contactsByCompanyKeys } from '@/lib/contacts';
 import { postingKey } from '@/lib/dedupe';
+import { buildPriorIndex, priorApplication } from '@/lib/priorApplication';
+import PriorApplied from '@/components/PriorApplied';
 import Dismiss from '@/components/Dismiss';
 import DismissAll from '@/components/DismissAll';
 import JobBrief from '@/components/JobBrief';
@@ -48,8 +50,15 @@ export default async function Jobs({
 
   // Anything already applied to is history, not a lead. It belongs on the
   // applications screen and only gets in the way here.
-  const { data: applied } = await sb.from('applications').select('job_id');
+  //
+  // 15.11.2026: גם הכותרת והחברה, ולא רק המזהה. הזיהוי במערכת הוא לפי
+  // כתובת, ולכן אותה משרה מלוח אחר היא שורה חדשה שאין עליה שום סימן
+  // שהוגשה. ראה src/lib/priorApplication.ts.
+  const { data: applied } = await sb
+    .from('applications')
+    .select('job_id, sent_at, jobs(title, company)');
   const appliedIds = new Set((applied ?? []).map((a: any) => a.job_id).filter(Boolean));
+  const priorIdx = buildPriorIndex(applied as any);
 
   let query = sb
     .from('matches')
@@ -305,6 +314,10 @@ export default async function Jobs({
                   </span>
                   {(
                     <span className="why">
+                      {/* 15.11.2026: "יש לי תחושה שהגשתי כבר למשרות האלו".
+                          ראשון בשורה, כי זה הדבר שמשנה אם בכלל להסתכל על
+                          השאר. לקריאה בלבד. */}
+                      <PriorApplied prior={priorApplication(priorIdx, j)} />
                       {/* 10.11.2026: משרה שהחיפוש הידני מצא מסומנת ככזאת,
                           לפי בקשת שאול. הדגל נוסף על המקור ולא מחליף אותו:
                           היא באמת הגיעה מלינקדאין. */}
