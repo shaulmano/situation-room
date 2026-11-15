@@ -171,7 +171,13 @@ def posting_is_live(url, timeout=12):
     # ה-API שהעמוד נשען עליו הוא היחיד שאומר את האמת.
     api = workday_api_url(url)
     if api:
-        ok, why = _status_ok(api, timeout)
+        ok, why = _status_ok(api, timeout, json=True)
+        # **כל תשובה שאינה 200 מודפסת.** בריצה הראשונה הבדיקה אמרה "all
+        # still live" על משרה ששאול הראה שהיא מתה, ולא היה שום קו לעקוב
+        # אחריו: מסלול שמחזיר "חיה" בשקט גם כשהוא לא באמת בדק הוא בדיוק
+        # הסוג של שקט שהפיל כאן דברים לאורך כל 2026.
+        if why not in ('HTTP 200', ''):
+            print('  workday api: %s for %s' % (why, url[-48:]))
         if not ok:
             return False, 'workday api says %s' % why
         return True, ''
@@ -179,17 +185,19 @@ def posting_is_live(url, timeout=12):
     return _status_ok(url, timeout)
 
 
-def _status_ok(url, timeout):
+def _status_ok(url, timeout, json=False):
     req = urllib.request.Request(url, method='GET', headers={
         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) '
                       'AppleWebKit/537.36 (KHTML, like Gecko) '
                       'Chrome/140.0 Safari/537.36',
-        'Accept': 'text/html,application/xhtml+xml',
+        'Accept': 'application/json' if json else 'text/html,application/xhtml+xml',
     })
     opener = urllib.request.build_opener(_NoRedirect)
     try:
-        opener.open(req, timeout=timeout).close()
-        return True, ''
+        res = opener.open(req, timeout=timeout)
+        code = res.getcode()
+        res.close()
+        return True, 'HTTP %d' % code
     except _Redirected as e:
         target = urllib.parse.urljoin(url, e.to)
         if bounced_up(url, target):
@@ -198,10 +206,9 @@ def _status_ok(url, timeout):
     except urllib.error.HTTPError as e:
         if e.code in (404, 410):
             return False, 'HTTP %d' % e.code
-        return True, ''
+        return True, 'HTTP %d' % e.code
     except Exception as e:
-        print('  could not check %s: %s' % (url[:70], e))
-        return True, ''
+        return True, 'error: %s' % e
 
 
 def sweep_open_rows(limit=40):
@@ -227,6 +234,9 @@ def sweep_open_rows(limit=40):
         if not ok:
             gone.append(r)
             print('  closing, %s: %s' % (why, (r.get('title') or '')[:50]))
+        elif why not in ('HTTP 200', ''):
+            # נשמרת, אבל לא בגלל שהיא נבדקה בהצלחה. זה חייב להיראות.
+            print('  kept but unverified, %s: %s' % (why, (r.get('title') or '')[:46]))
     if not gone:
         print('swept %d open radar rows, all still live' % len(rows))
         return
