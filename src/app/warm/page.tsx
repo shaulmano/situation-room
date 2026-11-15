@@ -588,6 +588,8 @@ async function WarmBody({
           url: m.jobs.url ?? null,
           applied: appliedIds.has(m.jobs.id),
           appliedAt: appliedAtById.get(m.jobs.id) ?? null,
+          posted: m.jobs.posted ?? null,
+          firstSeen: m.jobs.first_seen ?? null,
         },
         queued: queuedBy.get(`${c.id}|${m.jobs.id}`) ?? null,
         score: m.score ?? 0,

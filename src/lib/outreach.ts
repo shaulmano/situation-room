@@ -31,6 +31,54 @@ export function cvFileName(cvId?: string | null): string {
   return FILE_NAME[cvId ?? ''] ?? FILE_NAME.qa;
 }
 
+// משפחת קורות החיים לפי כותרת המשרה.
+//
+// 15.11.2026, שאול: "למה אתה כותב לי לצרף קוח של QA כאשר זאת משרת
+// PROGRAM?" על Israel I&M Senior Project Manager ב-RINA.
+//
+// במסד הניקוד נכון, program מקבל 35 ו-qa מקבל 22, ובכל זאת על המסך
+// הופיע קובץ ה-QA. **הסיבה היא ש-`cvFileName` נפל ל-qa בשקט** על כל
+// מזהה שאינו במפה, ריק בכלל. נפילה שקטה לברירת מחדל היא בדיוק סוג
+// השקט שהפיל כאן דברים לאורך כל 2026: אין שגיאה, יש קובץ לא נכון.
+//
+// מעכשיו הכותרת מכריעה כשהיא אומרת משהו ברור. זאת ההודעה שהוא עומד
+// לשלוח על אותה משרה, ולכן הקובץ לא יכול לסתור אותה, בלי קשר למה
+// שהשתבש בדרך.
+const TITLE_FAMILY: [RegExp, string][] = [
+  [/\b(qa|q\.a|quality|testing|test)\b|אבטחת איכות|בדיקות/i, 'qa'],
+  [/\brelease\b|configuration\s*&?\s*release/i, 'release'],
+  [/\b(delivery|professional services|implementation)\b/i, 'delivery'],
+  [/\b(project|program|programme|pmo|תוכנית|פרויקט)/i, 'program'],
+];
+
+export function cvFamilyForTitle(title?: string | null): string | null {
+  const t = (title ?? '').trim();
+  if (!t) return null;
+  for (const [re, fam] of TITLE_FAMILY) {
+    if (re.test(t)) return fam;
+  }
+  return null;
+}
+
+/**
+ * הקובץ לצרף להודעה על משרה מסוימת.
+ *
+ * `cvId` הוא בחירת הניקוד, והוא עדיף כל עוד הוא לא סותר את הכותרת:
+ * הניקוד יודע להבדיל בין program ל-project-release-manager, והכותרת
+ * לא. אבל כשהוא סותר, או כשאין אותו, הכותרת מנצחת.
+ */
+export function cvFileFor(cvId: string | null | undefined, title?: string | null): string {
+  const byTitle = cvFamilyForTitle(title);
+  const known = cvId && FILE_NAME[cvId] ? cvId : null;
+  if (!byTitle) return cvFileName(known);
+  if (!known) return FILE_NAME[byTitle];
+  // project-release-manager ו-program הם שניהם משפחת הפרויקטים.
+  const famOf = (id: string) => (id === 'project-release-manager' ? 'program' : id);
+  const agree = famOf(known) === byTitle
+    || (byTitle === 'program' && famOf(known) === 'program');
+  return agree ? FILE_NAME[known] : FILE_NAME[byTitle];
+}
+
 // כתובת המודעה, בצורה שאפשר לשלוח.
 //
 // 13.11.2026. לוחות ישראליים מקודדים את הכותרת בעברית לתוך הכתובת,

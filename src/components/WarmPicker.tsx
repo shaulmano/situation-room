@@ -2,7 +2,7 @@
 import { useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { type WarmContact } from '@/lib/contacts';
-import { cvFileName } from '@/lib/outreach';
+import { cvFileFor } from '@/lib/outreach';
 
 // בחירת אנשי קשר לפנייה, ושליחה לתור.
 //
@@ -26,6 +26,12 @@ export type Pick = {
     applied?: boolean;
     /** מתי הוגשה. ISO, או null אם עוד לא הוגשה. */
     appliedAt?: string | null;
+    /** גיל המודעה. 15.11.2026: שאול פתח שתי מודעות מהתור ומצא אותן
+     *  סגורות. נמדד באותו יום: העמוד הציבורי של לינקדאין מחזיר 200 עם
+     *  הכותרת המלאה גם למודעה סגורה, בדיוק כמו לפתוחה, ולכן אין שום
+     *  דרך לאמת מבחוץ. הגיל הוא הקירוב היחיד שיש, והוא על הכרטיס. */
+    posted?: string | null;
+    firstSeen?: string | null;
   };
   queued: {
     id: number;
@@ -258,7 +264,7 @@ export default function WarmPicker({ picks }: { picks: Pick[] }) {
               <div style={{ fontSize: '.78rem', marginBottom: 4 }}>
                 <b>קובץ מצורף:</b>{' '}
                 <span style={{ fontFamily: 'ui-monospace, monospace', fontSize: '.74rem' }}>
-                  {cvFileName(p.job.cvId)}
+                  {cvFileFor(p.job.cvId, p.job.title)}
                 </span>
               </div>
 

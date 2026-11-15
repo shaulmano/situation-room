@@ -1,6 +1,7 @@
 'use client';
 import { useMemo, useState } from 'react';
-import { cvFileName, isRecruiter, referralMessage } from '@/lib/outreach';
+import { cvFileFor, isRecruiter, referralMessage } from '@/lib/outreach';
+import { jobAge } from '@/lib/age';
 import { type Pick } from './WarmPicker';
 
 // התור של לינקדאין.
@@ -86,9 +87,23 @@ export default function LinkedinQueue({ picks }: { picks: Pick[] }) {
     if (!at) return null;
     return Math.max(0, Math.floor((Date.now() - new Date(at).getTime()) / 864e5));
   };
+  const ageOf = (p: Pick) => jobAge(p.job.posted ?? null, p.job.firstSeen ?? null);
+  // 15.11.2026, שאול פתח שתי מודעות מהתור ומצא אותן סגורות: "אתה צריך
+  // לבדוק לפני שאתה מכניס לי רשומות לשליחה. זה לא מקצועי שאני שולח
+  // וזה בכלל לא רלוונטי".
+  //
+  // **נמדד באותו יום, ואי אפשר לבדוק.** העמוד הציבורי של לינקדאין
+  // מחזיר 200 עם הכותרת המלאה ועם מספר המועמדים גם למודעה סגורה,
+  // בדיוק כמו לפתוחה, ובלי שום סימן. זה לא כמו לוח ATS, שבו ההפניה אל
+  // שורש הלוח מסגירה את זה (ראה posting_is_live). הגיל הוא הקירוב
+  // היחיד שקיים.
+  //
+  // `crit` הוא מעל 21 יום, אותה רצועה שהניקוד כבר משתמש בה, ולכן שורה
+  // והניקוד שלה לא מספרים שני סיפורים על אותה מודעה.
   const isFresh = (p: Pick) => {
     const d = appliedDays(p);
-    return d === null || d <= 14;
+    if (d !== null && d > 14) return false;
+    return ageOf(p)?.tone !== 'crit';
   };
   const stale = all.filter(byWho).filter((p) => !isFresh(p)).length;
 
@@ -259,10 +274,10 @@ export default function LinkedinQueue({ picks }: { picks: Pick[] }) {
           type="button"
           className={'filter' + (freshOnly ? ' on' : '')}
           style={{ width: 'auto', flex: 'none' }}
-          title="מסתיר שורות שההגשה שלהן בת יותר משבועיים"
+          title="מסתיר מודעה בת יותר משלושה שבועות, ושורה שההגשה שלה בת יותר משבועיים. מודעה ישנה כנראה כבר אוישה, ולינקדאין לא מגלה את זה מבחוץ"
           onClick={() => { setFreshOnly(!freshOnly); setShown(BATCH); }}
         >
-          עד שבועיים
+          טריות בלבד
           <span className="n">{stale}</span>
         </button>
       </div>
@@ -353,12 +368,22 @@ export default function LinkedinQueue({ picks }: { picks: Pick[] }) {
                 );
               })()}
             </div>
+            {/* גיל המודעה. אין דרך לדעת אם היא נסגרה, ולכן הגיל הוא מה
+                שיש, והוא חייב להיות מול העיניים לפני שכותבים למישהו. */}
+            {(() => {
+              const a = ageOf(p);
+              return a ? (
+                <div style={{ fontSize: '.74rem', marginBottom: 6 }}>
+                  <span className={`chip age ${a.tone}`}>{a.label}</span>
+                </div>
+              ) : null;
+            })()}
             {/* שורת הקובץ, באותו מבנה של "סרטון לצרף" במוקד: שם הקובץ
                 בדיוק כפי שהוא נקרא אצלו, כדי שלא יצטרך לנחש איזו גרסה. */}
             <div style={{ fontSize: '.78rem', marginBottom: 8 }}>
               <b>קובץ לצרף:</b>{' '}
               <span style={{ fontFamily: 'ui-monospace, monospace', fontSize: '.74rem' }}>
-                {cvFileName(p.job.cvId)}
+                {cvFileFor(p.job.cvId, p.job.title)}
               </span>
             </div>
 
