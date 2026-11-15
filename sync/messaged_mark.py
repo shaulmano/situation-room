@@ -17,6 +17,7 @@ contacts is reported and skipped rather than invented into a row.
 import json
 import os
 import sys
+from urllib.parse import unquote
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from gmail_sync import sql, q           # noqa: E402
@@ -24,14 +25,26 @@ from replies_mark import norm           # noqa: E402
 
 
 def slug_of(url):
-    """הזהות של פרופיל לינקדאין: מה שאחרי /in/, בלי פרמטרים."""
+    """הזהות של פרופיל לינקדאין: מה שאחרי /in/, בלי פרמטרים.
+
+    **והוא מפוענח מקידוד אחוזים.** 15.11.2026: ברשימות של מאי אותו אדם
+    רשום `%e2%98%85mor-barki%e2%98%85-952a2b188`, ובייצוא הקשרים הוא
+    רשום `★mor-barki★-952a2b188`. שתי הצורות הן אותו פרופיל, ובלי
+    הפענוח הן שני אנשים שונים, בלי שום סימן שהצלבה פספסה.
+    """
     u = (url or '').strip().lower().rstrip('/')
     if not u:
         return ''
     if '/in/' in u:
         u = u.split('/in/')[-1]
     u = u.split('?')[0].split('#')[0].strip('/')
-    return u if u and '/' not in u else ''
+    if '/' in u or not u:
+        return ''
+    try:
+        u = unquote(u)
+    except Exception:
+        pass
+    return u
 
 
 def looks_like_profile(s):
@@ -95,8 +108,11 @@ def main():
         key = str(n).strip()
         # קישור פרופיל או slug מצליבים בוודאות, ושם מצליב בקירוב. שתי
         # הצורות מתקבלות באותו קלט כדי שלא יהיו שני מצבים לתחזק.
-        who = by_slug.get(slug_of(key)) if looks_like_profile(key) else None
-        if who is None:
+        # קודם slug, תמיד. שם תצוגה לא מייצר slug מתנגש, כי הוא מכיל
+        # רווח ואין רווח באף slug, ולכן אין מה להגן עליו. הניסיון המותנה
+        # שהיה כאן פספס כל slug בלי מקף, למשל `asafpublic`.
+        who = by_slug.get(slug_of(key))
+        if who is None and not looks_like_profile(key):
             who = by_name.get(norm(key))
         if not who:
             miss += 1
