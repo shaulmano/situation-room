@@ -23,6 +23,23 @@ from gmail_sync import sql, q           # noqa: E402
 from replies_mark import norm           # noqa: E402
 
 
+def slug_of(url):
+    """הזהות של פרופיל לינקדאין: מה שאחרי /in/, בלי פרמטרים."""
+    u = (url or '').strip().lower().rstrip('/')
+    if not u:
+        return ''
+    if '/in/' in u:
+        u = u.split('/in/')[-1]
+    u = u.split('?')[0].split('#')[0].strip('/')
+    return u if u and '/' not in u else ''
+
+
+def looks_like_profile(s):
+    s = (s or '').strip()
+    return 'linkedin.com' in s.lower() or ('/in/' in s) or (
+        ' ' not in s and '-' in s and len(s) > 5)
+
+
 def main():
     raw = sys.argv[1] if len(sys.argv) > 1 else sys.stdin.read()
     try:
@@ -37,16 +54,25 @@ def main():
         print('nothing to do')
         return
 
-    known = sql("select id, full_name, li_seen_at from contacts "
-                "where coalesce(full_name,'') <> ''") or []
+    known = sql("select id, full_name, linkedin_url, li_seen_at from contacts") or []
     by_name = {}
+    by_slug = {}
     for c in known:
-        by_name.setdefault(norm(c['full_name']), c)
+        if c.get('full_name'):
+            by_name.setdefault(norm(c['full_name']), c)
+        sl = slug_of(c.get('linkedin_url'))
+        if sl:
+            by_slug.setdefault(sl, c)
 
     hit = already = miss = 0
     ids = []
     for n in names:
-        who = by_name.get(norm(str(n)))
+        key = str(n).strip()
+        # קישור פרופיל או slug מצליבים בוודאות, ושם מצליב בקירוב. שתי
+        # הצורות מתקבלות באותו קלט כדי שלא יהיו שני מצבים לתחזק.
+        who = by_slug.get(slug_of(key)) if looks_like_profile(key) else None
+        if who is None:
+            who = by_name.get(norm(key))
         if not who:
             miss += 1
             continue
