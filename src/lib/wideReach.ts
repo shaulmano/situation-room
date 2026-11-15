@@ -138,14 +138,45 @@ export function eligible(c: ReachContact, now = Date.now()): boolean {
 // אז בכירים.
 const ORDER: Record<ReachBucket, number> = { recruiter: 0, peer: 1, senior: 2 };
 
-export function sortQueue(rows: ReachContact[]): ReachContact[] {
+/**
+ * ערבול יציב ליום אחד: אותו סדר בכל טעינה של אותו יום, סדר אחר מחר.
+ *
+ * 15.11.2026, שאול: **"עכשיו עדיין יש שם את השמות הקודמים. תמחק."**
+ *
+ * הוא ראה נכון ופירש לא נכון, ושני החלקים חשובים. השמות לא היו הקודמים:
+ * הוא שלח ל-Adi Bonfil, Adi Boni ו-Adi Noyman, והמסך הציג את Adi Baruch,
+ * Adi Cohen ו-Adi Engel, כלומר אנשים אחרים לגמרי. **אבל המסך נראה זהה**,
+ * כי המיון היה לפי אלף בית ו-2,600 אנשי קשר פירושם שבוע שלם על האות A.
+ *
+ * מיון לפי שם נבחר כדי ששתי טעינות של אותו יום יראו אותו דבר, וזאת דרישה
+ * נכונה: בלעדיה כל סימון היה מערבב את המסך מתחת לידיים. הערבול כאן שומר
+ * עליה בלי לשלם באלף בית, כי המפתח הוא המזהה ועוד תאריך היום.
+ *
+ * **ולמה לא למחוק את מי שהוא ראה, כמו שביקש.** אלה 25 מגייסות פנימיות
+ * ב-Placer.ai, ב-Yotpo, ב-NetApp וב-monday.com, והמחיקה הייתה שורפת אותן
+ * לתמיד בשביל תקלת תצוגה. "מוותר" קיים בשביל מי שבאמת לא רלוונטי.
+ */
+function dayHash(id: string, dayKey: string): number {
+  let h = 2166136261;
+  const s = id + '|' + dayKey;
+  for (let i = 0; i < s.length; i++) {
+    h ^= s.charCodeAt(i);
+    h = Math.imul(h, 16777619);
+  }
+  return (h >>> 0) / 4294967296;
+}
+
+export function sortQueue(rows: ReachContact[], dayKey = israelDayStart().slice(0, 10)): ReachContact[] {
+  const r = new Map(rows.map((x) => [x.id, dayHash(x.id, dayKey)]));
   return [...rows].sort((a, b) => {
     const ba = ORDER[bucketOf(a.title)!] ?? 9;
     const bb = ORDER[bucketOf(b.title)!] ?? 9;
     if (ba !== bb) return ba - bb;
-    // בתוך קבוצה, סדר יציב לפי שם, כדי ששתי טעינות של אותו יום יראו
-    // את אותה רשימה. אחרת סימון אחד היה מערבב את כל המסך.
-    return (a.full_name ?? '').localeCompare(b.full_name ?? '', 'he');
+    const ra = r.get(a.id) ?? 0;
+    const rb = r.get(b.id) ?? 0;
+    if (ra !== rb) return ra - rb;
+    // שובר שוויון יציב, כדי שלא יהיה סדר אקראי כשהגיבוב מתנגש.
+    return (a.id ?? '').localeCompare(b.id ?? '');
   });
 }
 
