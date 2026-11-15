@@ -13,6 +13,17 @@ import type { PriorApplication } from '@/lib/priorApplication';
  */
 export default function PriorApplied({ prior }: { prior: PriorApplication | null }) {
   if (!prior) return null;
+  // 15.11.2026, שאול: "אם מסומן הגשתי בתאריך ומצד שני פורסם היום למה
+  // בכלל רלוונטי מתי הגשתי?" וצדק.
+  //
+  // **התאמת חברה בלבד ירדה מכרטיס המשרה.** היא אמרה שהוא הגיש היום
+  // למשרה אחרת באותה חברה, וזה לא משנה כלום לגבי מודעה שפורסמה היום.
+  // גרוע מזה, התאריך לידה נקרא כאילו הוא מתייחס למשרה הזאת. הוא ביקש
+  // סימון על משרה שהוגשה, ורק ההתאמה המדויקת היא זאת.
+  //
+  // הענף נשאר בקוד ולא נמחק, כי במסך הפנייה למכרים זאת כן ידיעה
+  // שימושית: למגייס בהראל כבר יש את קורות החיים שלו מהיום.
+  if (!prior.exact) return null;
   const when = prior.when
     ? new Date(prior.when).toLocaleDateString('he-IL', { day: 'numeric', month: 'numeric' })
     : null;
