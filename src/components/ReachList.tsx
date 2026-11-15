@@ -9,6 +9,9 @@ export type ReachRow = {
   company: string | null;
   url: string | null;
   bucket: ReachBucket;
+  /** ההודעה שלו, עם שמו הפרטי בפתיחה. נבנית בשרת כדי שמה שמוצג
+   *  בתצוגה המקדימה ומה שמועתק יהיו אותו דבר. */
+  message: string;
 };
 
 /**
@@ -23,8 +26,8 @@ export type ReachRow = {
  * לדעת מתי גמרת איתה.
  */
 export default function ReachList(
-  { rows, message, cvFile, target, sentToday }:
-  { rows: ReachRow[]; message: string; cvFile: string; target: number; sentToday: number },
+  { rows, sample, cvFile, target, sentToday }:
+  { rows: ReachRow[]; sample: string; cvFile: string; target: number; sentToday: number },
 ) {
   const [done, setDone] = useState<Set<string>>(new Set());
   const [copied, setCopied] = useState<string | null>(null);
@@ -57,7 +60,7 @@ export default function ReachList(
 
   async function copy(r: ReachRow) {
     try {
-      await navigator.clipboard.writeText(message);
+      await navigator.clipboard.writeText(r.message);
       setCopied(r.id);
       setTimeout(() => setCopied((c) => (c === r.id ? null : c)), 2000);
     } catch {
@@ -80,8 +83,8 @@ export default function ReachList(
       </p>
 
       <details className="reach-msg">
-        <summary>◀ ההודעה שתשלח</summary>
-        <pre>{message}</pre>
+        <summary>◀ ההודעה שתשלח, השם הפרטי מתחלף לכל אדם</summary>
+        <pre>{sample}</pre>
       </details>
 
       {live.length === 0 && (

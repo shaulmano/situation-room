@@ -125,8 +125,13 @@ export function firstName(full?: string | null): string {
  * מה שנשאר הוא מה שהקובץ לא אומר: מה הוא מחפש, ומה הוא מבקש. **אל
  * תוסיף לזה שורות.** כל תוספת כאן כבר נוסתה ונפסלה.
  */
-export function wideMessage(_c: ReachContact): string {
+export function wideMessage(c: ReachContact | { full_name?: string | null }): string {
+  // 15.11.2026, שאול: "זה יותר אישי". זאת ההתאמה האישית היחידה בהודעה
+  // קבועה, ולכן היא שווה את עצמה.
+  const name = firstName((c as any).full_name) || 'there';
   return [
+    `Hi ${name},`,
+    '',
     "I'm looking for my next Delivery or Program Manager role.",
     'My CV is attached.',
     "If you hear of something, or have something open, I'd appreciate you keeping me in mind.",

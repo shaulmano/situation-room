@@ -58,6 +58,7 @@ export default async function Reach() {
     company: c.company ?? null,
     url: c.linkedin_url ?? null,
     bucket: bucketOf(c.title)!,
+    message: wideMessage(c),
   }));
 
   const pool = queue.length;
@@ -76,7 +77,7 @@ export default async function Reach() {
 
       <ReachList
         rows={rows}
-        message={wideMessage({ id: '', full_name: null, title: null, company: null, linkedin_url: null })}
+        sample={wideMessage({ full_name: rows[0]?.name ?? 'Mor Barki' })}
         cvFile={WIDE_CV_FILE}
         target={DAILY_TARGET}
         sentToday={done}
