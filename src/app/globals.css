@@ -413,3 +413,24 @@ a.kpi:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
   font-variant-numeric: tabular-nums;
 }
 .radar-tile:active { transform: scale(.99); }
+
+/* פנייה רחבה. 15.11.2026: "מספר שיורד מול העיניים על כל פניה".
+   המספר הוא העיקר במסך הזה, ולכן הוא גדול ויושב ראשון. */
+.reach-count{
+  display:flex;align-items:baseline;gap:.6rem;
+  background:var(--raised);border:1px solid var(--line);border-radius:12px;
+  padding:1rem 1.1rem;margin:.9rem 0;
+}
+.reach-count .rc-n{font-size:2.6rem;font-weight:800;line-height:1;color:var(--ink)}
+.reach-count .rc-t{font-size:.9rem;color:var(--muted);font-weight:700}
+.reach-msg{margin:.6rem 0 1rem;font-size:.82rem}
+.reach-msg summary{cursor:pointer;color:var(--muted);font-weight:700}
+.reach-msg pre{
+  white-space:pre-wrap;background:var(--raised);border:1px solid var(--hair);
+  border-radius:8px;padding:.7em .8em;margin:.5em 0 0;font-size:.8rem;
+  font-family:inherit;direction:ltr;text-align:left;
+}
+.reach-row{padding:.8rem .9rem}
+.reach-who{display:flex;align-items:center;gap:.5rem;flex-wrap:wrap}
+.reach-sub{font-size:.8rem;color:var(--muted);margin:.15rem 0 .6rem}
+.reach-acts{display:flex;gap:.4rem;flex-wrap:wrap;align-items:center}

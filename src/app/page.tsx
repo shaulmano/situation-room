@@ -12,6 +12,7 @@ import MarkApplied from '@/components/MarkApplied';
 import MarkClosed from '@/components/MarkClosed';
 import PriorApplied from '@/components/PriorApplied';
 import { loadApplied, priorApplication } from '@/lib/priorApplication';
+import { DAILY_TARGET, israelDayStart } from '@/lib/wideReach';
 
 export const dynamic = 'force-dynamic';
 
@@ -39,7 +40,7 @@ export default async function Dashboard({
   // 13.11.2026: שאילתת אנשי הקשר ירדה מכאן יחד עם הבאנר. היא רצה בכל
   // טעינה של דף הבית ושימשה רק לספירה שעל הבאנר, ודף הבית הוא המסך
   // שנטען הכי הרבה. המסך "מכרים" שואל אותה בעצמו.
-  const [convos, weekApps, needsReply, silent, lastSent, applied, lastImport, upcoming] = await Promise.all([
+  const [convos, weekApps, needsReply, silent, lastSent, applied, wideToday, lastImport, upcoming] = await Promise.all([
     // 9.11.2026: קודם נספר הסטטוס הנוכחי בלבד, ולכן דחייה אחרי ראיון מחקה
     // את הראיון מהמניין והאריח נשאר אפס גם אחרי ששאול סימן. stage מחזיק את
     // השלב הרחוק ביותר שההגשה הגיעה אליו, והוא לא נמחק.
@@ -50,6 +51,9 @@ export default async function Dashboard({
     sb.from('applications').select('id', { count: 'exact', head: true }).eq('status', 'silent'),
     sb.from('applications').select('sent_at').order('sent_at', { ascending: false }).limit(1),
     loadApplied(sb),
+    // 15.11.2026: המכסה היומית של הפנייה הרחבה. ראה src/app/reach.
+    sb.from('contacts').select('id', { count: 'exact', head: true })
+      .gte('wide_sent_at', israelDayStart()),
     sb.from('contacts').select('imported_at').order('imported_at', { ascending: false }).limit(1),
     // שיחות וראיונות שנקבעו. מה שהיה אתמול נשאר יום אחד נוסף, כדי שראיון
     // שהתקיים הבוקר לא ייעלם מהמסך לפני שנרשם מה קרה בו.
@@ -72,6 +76,8 @@ export default async function Dashboard({
   ]);
 
   const appliedIds = new Set(applied.rows.map((a: any) => a.job_id).filter(Boolean));
+  // כמה פניות רחבות נשארו להיום. ראה src/lib/wideReach.
+  const reachLeft = Math.max(0, DAILY_TARGET - (wideToday.count ?? 0));
   // 15.11.2026: "יש לי תחושה שהגשתי כבר למשרות האלו". אותה משרה מלוח אחר
   // היא כתובת אחרת, ולכן מזהה לבדו לא תופס אותה. ראה priorApplication.ts.
   const priorIdx = applied.idx;
@@ -393,6 +399,18 @@ export default async function Dashboard({
           בלתי נראית, והקו התחתון של העוגן נשאר. עכשיו זאת קובייה בטיפול
           של `.kpi.hero`, עם מסגרת בצבע המבטא ועם מספר, שהוא גם מה שממלא
           את הרווח שהוא סימן באדום. */}
+      <Link className="radar-tile" href="/reach">
+        <span className="rt-t">
+          <b>פנייה רחבה ←</b>
+          <span>
+            {reachLeft > 0
+              ? `${reachLeft} פניות לאנשי קשר, בלי קשר למשרה פתוחה`
+              : 'סיימת את המכסה של היום'}
+          </span>
+        </span>
+        <span className="rt-n">{reachLeft}</span>
+      </Link>
+
       <Link className="radar-tile" href="/radar">
         <span className="rt-t">
           <b>מתחת לרדאר ←</b>

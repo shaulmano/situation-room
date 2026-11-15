@@ -86,39 +86,59 @@ export function sortQueue(rows: ReachContact[]): ReachContact[] {
 
 export const DAILY_TARGET = 25;
 
+/**
+ * תחילת היום בשעון ישראל, כ-ISO.
+ *
+ * הראנר של ורסל רץ ב-UTC, ולכן `setHours(0,0,0,0)` היה סופר את
+ * הפניות של אתמול בערב כאילו הן של היום. ההיסט מחושב ולא מקובע, כי
+ * ישראל מתחלפת בין שתיים לשלוש שעות.
+ */
+export function israelDayStart(now = new Date()): string {
+  const parts = new Intl.DateTimeFormat('en-US', {
+    timeZone: 'Asia/Jerusalem', hour12: false,
+    year: 'numeric', month: '2-digit', day: '2-digit',
+    hour: '2-digit', minute: '2-digit', second: '2-digit',
+  }).formatToParts(now);
+  const g = (t: string) => Number(parts.find((p) => p.type === t)!.value);
+  const localAsUtc = Date.UTC(g('year'), g('month') - 1, g('day'), g('hour'), g('minute'), g('second'));
+  const offset = localAsUtc - now.getTime();
+  return new Date(Date.UTC(g('year'), g('month') - 1, g('day')) - offset).toISOString();
+}
+
 export function firstName(full?: string | null): string {
   return (full ?? '').trim().split(/\s+/)[0] || '';
 }
 
 /**
- * הנוסח. קבוע, אנגלית, קצר, עם קובץ מצורף.
+ * הנוסח, במילים של שאול עצמו.
  *
- * שאול, 15.11.2026: "אני חושב שהכל באנגלית" ו"ההודעה צריכה להיות
- * גנרית וקצרה. עם צירוף קורות חיים."
+ * 15.11.2026. שתי גרסאות שלי נפסלו לפניו, וכל אחת לימדה משהו:
  *
- * **והגרסה הראשונה נפסלה על ידו: "זה לא גנרי. כי בקורות חיים מופיע
- * הכל."** היא פתחה ב-25 שנה, 15 בניהול והתפקיד האחרון בקומרקטס, כלומר
- * חזרה בטקסט על מה שהקובץ המצורף אומר ממילא. מי שמתעניין פותח את
- * הקובץ, ומי שלא, לא יקרא שלוש שורות רקע.
+ * הראשונה פתחה ב-25 שנה, 15 בניהול והתפקיד האחרון בקומרקטס. שאול:
+ * **"זה לא גנרי. כי בקורות חיים מופיע הכל."** וצדק פעמיים: גם חזרה על
+ * הקובץ המצורף, וגם **סתרה אותו**, כי הקובץ עצמו כתוב "15+ years in
+ * high-tech" ולא 25.
  *
- * מה שנשאר הוא רק מה שהקובץ **לא** אומר: מה הוא מחפש עכשיו, ומה הוא
- * מבקש. שום דבר כאן אינו מומצא.
+ * השנייה אמרה "in the Tel Aviv area". שאול: **"ואם החברה ברעננה?"**
+ * נוסח קבוע לכולם לא יכול לנקוב באזור, והכתובת ממילא בראש הקובץ.
+ *
+ * מה שנשאר הוא מה שהקובץ לא אומר: מה הוא מחפש, ומה הוא מבקש. **אל
+ * תוסיף לזה שורות.** כל תוספת כאן כבר נוסתה ונפסלה.
  */
-export function wideMessage(c: ReachContact): string {
-  const name = firstName(c.full_name);
+export function wideMessage(_c: ReachContact): string {
   return [
-    `Hi ${name},`,
-    '',
-    'I\'m looking for my next Delivery or Program Manager role in the Tel Aviv area. '
-    + 'My CV is attached.',
-    '',
-    'If you hear of something, or have something open, I\'d appreciate you keeping me '
-    + 'in mind.',
-    '',
+    "I'm looking for my next Delivery or Program Manager role.",
+    'My CV is attached.',
+    "If you hear of something, or have something open, I'd appreciate you keeping me in mind.",
     'Thanks,',
     'Shaul',
   ].join('\n');
 }
 
 // הקובץ המאוחד ל-Delivery ול-Program. קיים במסד תחת המזהה program.
-export const WIDE_CV_ID = 'program';
+export const WIDE_CV_ID = 'project-release-manager';
+
+// הקובץ שהוא נתן ב-15.11: Shaul_Mano_Project_Release_Manager.pdf.
+// הכותרת שלו היא "Project & Program Manager | Release Manager |
+// Delivery | Enterprise SaaS", והוא כבר קיים במסד תחת המזהה הזה.
+export const WIDE_CV_FILE = 'Shaul_Mano_Project_Release_Manager.pdf';
