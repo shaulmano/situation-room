@@ -63,37 +63,34 @@ _GENERIC_SENDER = re.compile(
     r'^(no[- ]?reply|do[- ]?not[- ]?reply|notifications?|careers?|jobs?|hr|recruit\w*|'
     r'talent|hiring( team)?|mail|info|apply)$', re.I)
 
-# "...for the <ROLE> position at <CO>", "...for <ROLE>", "...to the <ROLE> role"
-_ROLE_PATTERNS = [
-    re.compile(r'appl\w*\s+(?:for|to)\s+the\s+(.+?)\s+(?:position|role|job)\b', re.I),
-    re.compile(r'(?:submitting|submitted)\s+your\s+resume\s+for\s+the\s+(.+?)\s+position\b', re.I),
-    re.compile(r'appl\w*\s+(?:for|to)\s+the\s+(.+?)(?:\s+at\s+.+)?$', re.I),
-    re.compile(r'appl\w*\s+(?:for|to)\s+(?:a\s+position\s+at\s+.+|)(.+?)(?:\s+at\s+.+)?$', re.I),
-    re.compile(r'למשרת\s+(.+?)\s*$'),
-    re.compile(r'לתפקיד\s+(.+?)\s*$'),
+# פענוח הנושא. **"for" הוא תפקיד ו-"to" הוא חברה**, וזה ההבדל שהפיל את
+# הריצה הראשונה: "Thank you for applying to Nebius" נקרא שם כתפקיד בשם
+# Nebius, ו"applying to the X role" כן מביא תפקיד. שלושה דפוסים ולא אחד.
+_PAT = [
+    # for the <ROLE> position at <CO>
+    re.compile(r'appl\w*\s+for\s+the\s+(?P<role>.+?)\s+(?:position|role|job)\b'
+               r'(?:\s+at\s+(?P<co>.+))?$', re.I),
+    re.compile(r'(?:submitting|submitted)\s+your\s+resume\s+for\s+the\s+(?P<role>.+?)'
+               r'\s+position\s+at\s+(?P<co>.+)$', re.I),
+    # to the <ROLE> role at <CO>
+    re.compile(r'appl\w*\s+to\s+the\s+(?P<role>.+?)\s+(?:position|role|job)\b'
+               r'(?:\s+at\s+(?P<co>.+))?$', re.I),
+    # for <ROLE> at <CO>   /   for <ROLE>
+    re.compile(r'appl\w*\s+for\s+(?P<role>.+?)\s+at\s+(?P<co>.+)$', re.I),
+    re.compile(r'appl\w*\s+for\s+(?P<role>.+?)$', re.I),
+    # to <CO>  — חברה בלבד, בלי תפקיד
+    re.compile(r'appl\w*\s+to\s+(?P<co>.+?)$', re.I),
+    re.compile(r'למשרת\s+(?P<role>.+?)$'),
+    re.compile(r'לתפקיד\s+(?P<role>.+?)$'),
 ]
 
-_AT_COMPANY = re.compile(r'\bat\s+([A-Z0-9][^,!|]*?)\s*$')
-
-
-# 15.11.2026: מיילים בעברית נושאים לפעמים `charset=iso-8859-8-i`, שזה
-# הכינוי הלוגי של עברית ויזואלית. Python לא מכיר אותו ו-`make_header`
-# נופל ב-LookupError על כל התיבה בגלל הודעה אחת. הקידוד עצמו זהה
-# ל-iso-8859-8, ולכן זאת רק רישום של השם.
-codecs.register(
-    lambda name: codecs.lookup('iso-8859-8')
-    if name.replace('_', '-').lower() in ('iso-8859-8-i', 'iso-8859-8-e')
-    else None
-)
-
-
-def safe_header(raw):
-    """כותרת מפוענחת, ולעולם לא חריגה: קידוד אחד לא תקין לא מפיל סריקה."""
-    try:
-        return str(make_header(decode_header(raw or '')))
-    except Exception:
-        return (raw or '')
-
+# תת-דומיין שהוא אזור ולא חברה. no-reply@eu.greenhouse-mail.io אינו
+# חברה בשם "eu", ו-us.greenhouse אינו "us".
+_NOT_A_COMPANY = {
+    'us', 'eu', 'il', 'uk', 'app', 'apps', 'mail', 'email', 'info', 'jobs', 'job',
+    'careers', 'career', 'hr', 'noreply', 'no-reply', 'notifications', 'isr', 'www',
+    'hire', 'hiring', 'recruit', 'recruiting', 'talent', 'web', 'smtp', 'go',
+}
 
 def norm(s):
     """אותו צמצום של contacts.companyKey בצד הטייפסקריפט: אותיות וספרות בלבד."""
@@ -111,55 +108,66 @@ def sender_parts(raw):
     return safe_header(name).strip(), (addr or '').lower()
 
 
-def company_from(display, addr, subject):
-    """
-    שם החברה, לפי שלושה מקורות ובסדר הזה.
-
-    **הנושא קודם לשולח**, כי "at Workday" בנושא מדויק יותר מ-
-    `workday@myworkday.com`, ששם הוא גם הספק וגם החברה במקרה היחיד הזה.
-    """
-    m = _AT_COMPANY.search(subject.strip().rstrip('!'))
-    if m:
-        name = m.group(1).strip()
-        if 2 <= len(name) <= 60:
-            return name
-
-    host = addr.split('@')[-1]
-    wrapper = next((h for h in _ATS_HOSTS if host.endswith(h)), None)
-
-    local = addr.split('@')[0]
-    if display and not _GENERIC_SENDER.match(display) and 'hiring team' not in display.lower():
-        return display
-    if wrapper:
-        # xsightlabs.comeet-notifications.com -> xsightlabs
-        left = host[: -len(wrapper)].strip('.')
-        if left:
-            return left.split('.')[0]
-    if not wrapper and not _GENERIC_SENDER.match(local):
-        return local
-    # הדומיין עצמו, בלי הסיומת: aidoc.com -> aidoc
-    parts = host.split('.')
-    return parts[-2] if len(parts) >= 2 else host
+def clean(v):
+    v = (v or '').strip(' .!,-–—\u200f\u200e')
+    v = re.sub(r'\s+', ' ', v)
+    return v or None
 
 
-def role_from(subject):
+def parse_subject(subject):
+    """(תפקיד, חברה) מהנושא. כל אחד מהם יכול לחזור ריק."""
     s = subject.strip()
-    # "We Got It: " ודומיו הם קידומת ולא חלק מהתפקיד.
-    s = re.sub(r'^.*?:\s*', '', s, count=1) if ':' in s[:20] else s
-    s = s.replace('👋', ' ')
-    for pat in _ROLE_PATTERNS:
+    # "We Got It: ", "Aidoc 👋 " וכו' הם קידומת ולא חלק מהתוכן.
+    if ':' in s[:24]:
+        s = re.sub(r'^.*?:\s*', '', s, count=1)
+    s = s.replace('👋', ' ').strip()
+    for pat in _PAT:
         m = pat.search(s)
         if not m:
             continue
-        role = m.group(1).strip(' .!-–—')
-        role = re.sub(r'^(a|an|the)\s+', '', role, flags=re.I)
-        role = re.sub(r'\s+(position|role|job)$', '', role, flags=re.I)
-        # "a position" הוא אישור בלי תפקיד, ולא תפקיד בשם הזה.
-        if role.lower() in ('position', 'a position', 'role', '') or len(role) > 90:
-            return None
-        if len(role) >= 3:
-            return role
-    return None
+        g = m.groupdict()
+        role = clean(g.get('role'))
+        co = clean(g.get('co'))
+        if role:
+            role = re.sub(r'^(a|an|the)\s+', '', role, flags=re.I)
+            role = re.sub(r'\s+(position|role|job)$', '', role, flags=re.I)
+            role = clean(role)
+        # "applying for a position at X" אינו תפקיד בשם "position".
+        if role and role.lower() in ('position', 'role', 'job', 'opportunity'):
+            role = None
+        if role and (len(role) < 3 or len(role) > 90):
+            role = None
+        if co and (len(co) < 2 or len(co) > 60):
+            co = None
+        if role or co:
+            return role, co
+    return None, None
+
+
+def company_from(display, addr, subject_co):
+    """
+    שם החברה. **הנושא קודם**, כי הוא מה שהחברה עצמה כתבה.
+    אחריו שם התצוגה, ורק בסוף הדומיין.
+    """
+    if subject_co:
+        return subject_co
+    host = addr.split('@')[-1]
+    wrapper = next((h for h in _ATS_HOSTS if host.endswith(h)), None)
+    local = addr.split('@')[0]
+
+    if display and not _GENERIC_SENDER.match(display) and 'hiring team' not in display.lower():
+        return clean(display)
+    if wrapper:
+        left = host[: -len(wrapper)].strip('.')
+        label = left.split('.')[0] if left else ''
+        if label and label.lower() not in _NOT_A_COMPANY:
+            return label
+        return None
+    if not _GENERIC_SENDER.match(local):
+        return clean(local)
+    parts = host.split('.')
+    label = parts[-2] if len(parts) >= 2 else host
+    return None if label.lower() in _NOT_A_COMPANY else label
 
 
 def looks_like_confirmation(subject):
@@ -200,9 +208,10 @@ def harvest(days):
         mid = (msg['Message-ID'] or '').strip('<> ')
         if not mid:
             continue
+        role, subject_co = parse_subject(subject)
         found[mid] = {
-            'company': company_from(display, sender, subject),
-            'role': role_from(subject),
+            'company': company_from(display, sender, subject_co),
+            'role': role,
             'sent_at': when,
             'subject': subject,
             'sender': sender,
@@ -242,9 +251,24 @@ def main():
     for j in jobs:
         by_posting.setdefault(norm(j.get('company')) + '|' + title_key(j.get('title')), j['id'])
 
-    fresh, skipped = [], 0
+    fresh, skipped, unsure = [], 0, []
+    picked = set()
     for r in rows:
         ck = norm(r['company'])
+        # 15.11.2026, הכלל של שאול: "אם לא בטוח תוריד אותו אני רוצה רק
+        # דברים בטוחים". שורה בלי תפקיד או בלי חברה היא שורה שלא נדע
+        # על מה היא, ולכן היא מודפסת ולא נרשמת. אלה בעיקר אישורים
+        # גנריים של חברות השמה, "תודה על הגשת מועמדות", שלא נוקבים
+        # במשרה בכלל.
+        if not r['role'] or not ck:
+            unsure.append(r)
+            continue
+        # אותה חברה, אותו תפקיד, אותו יום, בשני מיילים: הגשה אחת.
+        sig = (ck, title_key(r['role']), r['sent_at'][:10])
+        if sig in picked:
+            skipped += 1
+            continue
+        picked.add(sig)
         if r['key'] in seen_threads:
             skipped += 1
             continue
@@ -270,13 +294,16 @@ def main():
         r['job_id'] = by_posting.get(ck + '|' + title_key(r['role'])) if r['role'] else None
         fresh.append(r)
 
-    print('already recorded: %d' % skipped)
+    print('already recorded or duplicate: %d' % skipped)
+    print('dropped, no role or no company: %d' % len(unsure))
+    for r in unsure:
+        print('  -  %s  %-26s %s' % (r['sent_at'][:10], (r['company'] or '?')[:26],
+                                     r['subject'][:52]))
     print('new: %d' % len(fresh))
     for r in fresh:
-        print('  %s  %-28s %-42s %s' % (
-            r['sent_at'][:10], (r['company'] or '?')[:28],
-            (r['role'] or '(תפקיד לא נקרא מהנושא)')[:42],
-            'linked' if r.get('job_id') else 'no job row'))
+        print('  %s  %-26s %-40s %s' % (
+            r['sent_at'][:10], (r['company'] or '?')[:26], (r['role'] or '')[:40],
+            'linked to a job row' if r.get('job_id') else 'no job row'))
 
     if not write:
         print('\ndry run. nothing written. run with --write to record.')
