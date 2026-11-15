@@ -70,6 +70,34 @@ export default async function Dashboard({
 
   const appliedIds = new Set((applied.data ?? []).map((a: any) => a.job_id).filter(Boolean));
 
+  // 15.11.2026, שאול: "יש משרות כפולות בחדר מצב ומתחת לרדאר (אלו אותן משרות)
+  // תשאיר אותן רק במתחת לרדאר".
+  //
+  // נמדד באותו רגע: תשע משרות פתוחות במתחת לרדאר, וכל ארבע עשרה שורות הרדאר
+  // נושאות שורת התאמה, ולכן כולן הופיעו גם כאן. **ושש מהן קיימות פעמיים
+  // ממש**: הסריקה הרגילה מצאה את אותה משרה בלינקדאין, בכתובת אחרת. הזיהוי
+  // במערכת הוא לפי כתובת, ולכן שתי כתובות הן שתי שורות.
+  //
+  // **לכן הסינון הוא לפי מפתח הפרסום ולא לפי הדגל `seo`.** סינון על הדגל
+  // לבדו היה משאיר כאן את התאומה מלינקדאין, ושאול היה ממשיך לראות את אותה
+  // משרה בשני המסכים ולחשוב שהתיקון לא עבד.
+  //
+  // ולמה הרדאר מנצח ולא הסריקה: בכל תשעת הצמדים שנמדדו התאומה היא מלינקדאין
+  // ואף אחת מהן אינה נושאת מפרסם, ולכן אין כאן מסלול "מפרסמים" שנאבד.
+  //
+  // **רק שורות רדאר פתוחות מסתירות.** שורה שהוא סגר במתחת לרדאר מפסיקה
+  // להסתיר, כי הסתרה לנצח על סמך שורה סגורה היא בדיוק החור השקט שהמסכים
+  // האלה כבר נפלו בו פעמיים.
+  const radarOpen = await sb
+    .from('jobs')
+    .select('company, title')
+    .eq('seo', true)
+    .is('dismissed_at', null)
+    .limit(500);
+  const radarKeys = new Set(
+    (radarOpen.data ?? []).map((j: any) => postingKey(j.company, j.title))
+  );
+
   // Today first; a week is the fallback, not the default. This page answers
   // "what is there to do this morning", anything older belongs on /jobs.
   async function freshJobs(days: number) {
@@ -101,7 +129,10 @@ export default async function Dashboard({
       merged.set(k, list);
     }
 
-    return [...merged.values()]
+    return [...merged.entries()]
+      // מה שפתוח במתחת לרדאר לא מוצג כאן, על כל עותקיו.
+      .filter(([k]) => !radarKeys.has(k))
+      .map(([, list]) => list)
       .filter((list) => !list.some((m) => appliedIds.has(m.jobs.id)))
       .map((list) => {
         const order = [...list].sort((a, b) => {
