@@ -609,7 +609,6 @@ async function WarmBody({
               id: r.id, company: r.company, title: r.title, cvId: r.cvId,
               url: r.url, foundFor: r.foundFor, applied: true,
             }}
-            open
           />
         </div>
       ))}
@@ -681,7 +680,6 @@ async function WarmBody({
                   job={{ id: j.id, company: j.company, title: j.title, cvId: m.cv_id,
                          url: j.url, foundFor: j.found_for,
                          applied: appliedIds.has(j.id) }}
-                  open
                 />
               </div>
             );

@@ -115,7 +115,6 @@ export default function AppliedList({ rows }: { rows: AppliedRow[] }) {
                 id: r.jobId, company: r.company, title: r.title, cvId: r.cvId,
                 url: r.url, foundFor: r.foundFor, applied: true,
               }}
-              open
             />
           </div>
         ))}

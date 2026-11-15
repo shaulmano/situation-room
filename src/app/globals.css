@@ -4,6 +4,9 @@
   --line:#D8DFE7; --hair:#E7ECF1;
   --accent:#9A6317; --accent-soft:#F2E6D2;
   --good:#2C7A5A; --good-soft:#DFEFE7;
+  /* 15.11.2026, שאול: "מה שמחכה לי לביצוע שם יהיה אדום ואחרי ביצוע
+     ירוק". עד היום לא היה כאן אדום בכלל, רק ירוק וכתום. */
+  --bad:#B3261E; --bad-soft:#F7DEDC;
   --warn:#9C6B12; --warn-soft:#F4E9D4;
   --crit:#A63A31; --crit-soft:#F6E1DF;
   /* The bar measures 59px, so 58 clipped the last row by a pixel — and more on a
@@ -17,6 +20,7 @@
     --line:#28313C; --hair:#222A34;
     --accent:#D79B45; --accent-soft:#332818;
     --good:#4FA882; --good-soft:#172C24;
+    --bad:#E8837C; --bad-soft:#3A1F1D;
     --warn:#D2A03F; --warn-soft:#2E2718;
     --crit:#D2665C; --crit-soft:#33201E;
   }

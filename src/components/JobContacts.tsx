@@ -84,24 +84,46 @@ export default function JobContacts(
     ? openFirst
     : [...openOnes.slice(0, cap), ...doneOnes];
   const hidden = openFirst.length - visible.length;
+  // כמה עוד מחכים לפנייה. זה מה שקובע אדום או ירוק, ואת הטקסט בשורה.
+  const waiting = openOnes.length;
 
   return (
     <details
       // 12.11.2026: במסך "דרך מישהו שאתה מכיר" הבלוק הזה הוא כל התוכן,
       // ולכן הוא נפתח לבד. בפיד הרגיל הוא נשאר מקופל.
+      //
+      // 15.11.2026, שאול ביטל את זה: **"אני רוצה שהשורות יהיו סגורות
+      // בדיפולט"**. עם שמונה כרטיסים פתוחים המסך הוא גלילה אחת ארוכה
+      // ואי אפשר לסרוק אותו בעין. `open` הוסר משלושת המקומות שהעבירו
+      // אותו, והשורה הסגורה נושאת עכשיו את כל מה שצריך כדי להחליט אם
+      // לפתוח אותה.
       open={open}
       style={{
         flex: '1 1 100%',
         marginTop: 8,
-        background: 'var(--raised)',
-        border: '1px solid var(--hair)',
+        // 15.11.2026, שאול: "מה שמחכה לי לביצוע שם יהיה אדום ואחרי ביצוע
+        // ירוק". הצבע יושב על הקופסה ולא רק על הטקסט, כי שורה סגורה
+        // צריכה להיקרא במבט אחד בלי לפתוח אותה.
+        background: waiting ? 'var(--bad-soft)' : 'var(--good-soft)',
+        border: '1px solid ' + (waiting ? 'var(--bad)' : 'var(--good)'),
         borderRadius: 6,
         padding: '8px 10px',
       }}
     >
-      <summary style={{ cursor: 'pointer', fontSize: '.8rem', fontWeight: 700, color: 'var(--good)' }}>
-        אתה מכיר שם {rows.length} {rows.length === 1 ? 'איש קשר' : 'אנשי קשר'}
-        {ranked.length > 1 && !agency && ' · הראשון הוא הכי שווה'}
+      <summary
+        style={{
+          cursor: 'pointer', fontSize: '.8rem', fontWeight: 700,
+          color: waiting ? 'var(--bad)' : 'var(--good)',
+        }}
+      >
+        {/* והטקסט אומר את אותו דבר כמו הצבע. צבע לבדו אינו מידע: הוא נעלם
+            בצילום מסך בשחור לבן, והוא לא נגיש למי שלא מבחין בו. */}
+        {waiting === 0
+          ? `פנית לכל ${rows.length === 1 ? 'מי שאתה מכיר שם' : rows.length + ' המכרים שם'}`
+          : waiting === 1
+            ? 'מכר אחד מחכה לפנייה'
+            : `${waiting} מכרים מחכים לפנייה`}
+        {ranked.length > 1 && !agency && waiting > 0 && ' · הראשון הוא הכי שווה'}
       </summary>
 
       {agency && (
