@@ -74,6 +74,44 @@ def bounced_up(url, target):
     return a.startswith(b + '/')
 
 
+def workday_api_url(url):
+    """הכתובת הפנימית ש-Workday עצמו שואל, או None אם זה לא Workday.
+
+    ‏15.11.2026. שאול שלח צילום של Senior Technical Project Manager
+    ב-Workday עם **"The page you are looking for doesn't exist"**, אחרי
+    שהבדיקה החדשה אמרה שהשורה חיה.
+
+    **הסיבה, נמדדה בדפדפן אמיתי:** עמוד המשרה מחזיר **200** עם 12,926
+    בתים, ואין בגוף שום סימן שהוא לא קיים. המשפט "doesn't exist" נכתב
+    על המסך בצד הלקוח. כלומר אין הפניה, אין 404, ושום בדיקה שמסתכלת על
+    ה-HTML לא תתפוס את זה. זה 404 רך, והוא הסוג השלישי שראינו היום.
+
+    **אבל ה-API שהעמוד עצמו נשען עליו כן אומר את האמת:**
+    `/wday/cxs/<tenant>/<site>/job/<rest>` החזיר **404** עם
+    `{"errorCode":"HTTP_404"}`. זאת הבדיקה.
+
+    הדייר הוא התווית הראשונה של המארח, `workday.wd5.myworkdayjobs.com`
+    נותן `workday`. האתר הוא המקטע שלפני `/job/`, אחרי שפה כמו `en-US`
+    אם היא מופיעה.
+    """
+    parts = urllib.parse.urlsplit(url)
+    if not parts.netloc.endswith('.myworkdayjobs.com'):
+        return None
+    tenant = parts.netloc.split('.')[0]
+    segs = [s for s in parts.path.split('/') if s]
+    if 'job' not in segs:
+        return None
+    i = segs.index('job')
+    if i < 1:
+        return None
+    site = segs[i - 1]
+    rest = segs[i + 1:]
+    if not rest:
+        return None
+    return '%s://%s/wday/cxs/%s/%s/job/%s' % (
+        parts.scheme, parts.netloc, tenant, site, '/'.join(rest))
+
+
 def posting_is_live(url, timeout=12):
     """האם הכתובת עדיין מובילה למודעה עצמה.
 
@@ -97,6 +135,19 @@ def posting_is_live(url, timeout=12):
     שהמשרה נסגרה, והורדת שורה אמיתית בגלל זה גרועה בהרבה משורה מתה אחת
     שנשארת. כל פסילה מודפסת עם הסיבה.
     """
+    # Workday הוא 404 רך: העמוד מחזיר 200 ו"doesn't exist" נכתב בצד הלקוח.
+    # ה-API שהעמוד נשען עליו הוא היחיד שאומר את האמת.
+    api = workday_api_url(url)
+    if api:
+        ok, why = _status_ok(api, timeout)
+        if not ok:
+            return False, 'workday api says %s' % why
+        return True, ''
+
+    return _status_ok(url, timeout)
+
+
+def _status_ok(url, timeout):
     req = urllib.request.Request(url, method='GET', headers={
         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) '
                       'AppleWebKit/537.36 (KHTML, like Gecko) '
