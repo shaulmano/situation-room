@@ -90,13 +90,13 @@ export default async function Dashboard({
   // האלה כבר נפלו בו פעמיים.
   const radarOpen = await sb
     .from('jobs')
-    .select('company, title')
+    .select('id, company, title')
     .eq('seo', true)
     .is('dismissed_at', null)
     .limit(500);
-  const radarKeys = new Set(
-    (radarOpen.data ?? []).map((j: any) => postingKey(j.company, j.title))
-  );
+  const radarRows = (radarOpen.data ?? []).filter((j: any) => !appliedIds.has(j.id));
+  const radarKeys = new Set(radarRows.map((j: any) => postingKey(j.company, j.title)));
+  const radarCount = radarRows.length;
 
   // Today first; a week is the fallback, not the default. This page answers
   // "what is there to do this morning", anything older belongs on /jobs.
@@ -323,8 +323,10 @@ export default async function Dashboard({
 
       <div className="screen-head">
         <h2>{source || 'חדשות היום'}</h2>
+        {/* 15.11.2026: הקישור "מתחת לרדאר" ירד מכאן. שאול: "ביקשתי קובייה
+            פה ולא קישור". שתי כניסות לאותו מסך, קישור קטן למעלה וקובייה
+            למטה, הן גם כפילות וגם הסיבה שהקובייה נקראה כקישור. */}
         <span className="more-group">
-          <Link className="more" href="/radar">מתחת לרדאר ←</Link>
           <Link className="more" href="/jobs">כל המשרות ←</Link>
         </span>
       </div>
@@ -377,10 +379,20 @@ export default async function Dashboard({
 
       {/* 14.11.2026, שאול סימן את הרווח הזה בצילום: "שים לי קובייה לחיצה
           לקישור פה". שורת השבבים נשברת לשתי שורות ומשאירה חצי שורה ריקה,
-          והקישור הקטן למעלה לא נראה כמו משהו שלוחצים עליו. */}
+          והקישור הקטן למעלה לא נראה כמו משהו שלוחצים עליו.
+
+          15.11.2026, שאול שוב, על אותו מקום: "ביקשתי קובייה פה ולא קישור".
+          הסיבה שזה נקרא כקישור היא צבעים ולא מבנה: הרקע היה `--raised`
+          על עמוד `--ground`, כלומר לבן על כמעט לבן, המסגרת `--hair` כמעט
+          בלתי נראית, והקו התחתון של העוגן נשאר. עכשיו זאת קובייה בטיפול
+          של `.kpi.hero`, עם מסגרת בצבע המבטא ועם מספר, שהוא גם מה שממלא
+          את הרווח שהוא סימן באדום. */}
       <Link className="radar-tile" href="/radar">
-        <b>מתחת לרדאר ←</b>
-        <span>משרות מעמודי הקריירה של החברות, שלא הגיעו לאף לוח</span>
+        <span className="rt-t">
+          <b>מתחת לרדאר ←</b>
+          <span>משרות מעמודי הקריירה של החברות, שלא הגיעו לאף לוח</span>
+        </span>
+        <span className="rt-n">{radarCount}</span>
       </Link>
 
       <p className="screen-note">

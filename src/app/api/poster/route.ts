@@ -45,15 +45,32 @@ export async function POST(req: NextRequest) {
   // ה-slug של הפרופיל. זאת עובדה אחת על אדם אחד.
   if (action === 'sent' && !undo) {
     const { data: jobs } = await sb
-      .from('jobs').select('recruiter_url').in('id', list);
+      .from('jobs').select('id, recruiter_url').in('id', list);
     const slug = (u?: string | null) =>
       ((u ?? '').match(/\/in\/([A-Za-z0-9\-_%]+)/)?.[1] ?? '').toLowerCase();
-    const slugs = [...new Set((jobs ?? []).map((j: any) => slug(j.recruiter_url)).filter(Boolean))];
-    for (const sg of slugs) {
+    // 15.11.2026. אורן אבן ענה "can you please send a link to the desired
+    // position" ולא היה מאיפה לקחת את הקישור. נמדד באותו בוקר: **אפס מתוך
+    // 64** אנשי קשר שסומן שפנה אליהם נשאו משרה.
+    //
+    // כאן המשרה ידועה בוודאות, היא המודעה שאותו אדם פרסם, והיא פשוט לא
+    // נכתבה. אותו דפוס שחוזר כאן בפעם החמישית: מידע שעבר במערכת ונזרק.
+    const first = new Map<string, string>();
+    for (const j of (jobs ?? []) as any[]) {
+      const sg = slug(j.recruiter_url);
+      if (sg && !first.has(sg)) first.set(sg, j.id);
+    }
+    for (const [sg, jobId] of first) {
       await sb.from('contacts')
         .update({ contacted_at: new Date().toISOString() })
         .ilike('linkedin_url', `%/in/${sg}%`)
         .is('contacted_at', null);
+      // בנפרד, ועל מי שכבר סומן פעם: תאריך הפנייה הראשונה לא נדרס, אבל
+      // שורה שאין עליה משרה כן מתמלאת. הצמדה של שניהם לאותו תנאי היא מה
+      // שהשאיר את השדה ריק על כל 64 השורות.
+      await sb.from('contacts')
+        .update({ last_job_id: jobId })
+        .ilike('linkedin_url', `%/in/${sg}%`)
+        .is('last_job_id', null);
     }
   }
 

@@ -110,6 +110,16 @@ export async function POST(req: NextRequest) {
       .is('contacted_at', null)
       .select('id');
     if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+    // 15.11.2026: התנאי `contacted_at is null` נכון לתאריך הפנייה, כי פנייה
+    // שנייה לא אמורה לדרוס את הראשונה. אבל הוא חל גם על המשרה, ולכן מי
+    // שסומן פעם אחת לא קיבל משרה לעולם. נמדד באותו בוקר: אפס מתוך 64.
+    // המשרה נכתבת בנפרד, ורק כשהיא חסרה.
+    if (typeof body.jobId === 'string' && body.jobId) {
+      await sb.from('contacts')
+        .update({ last_job_id: body.jobId })
+        .in('id', ids)
+        .is('last_job_id', null);
+    }
     return NextResponse.json({ ok: true, changed: (data ?? []).length });
   }
 

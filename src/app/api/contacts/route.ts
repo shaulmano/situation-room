@@ -113,8 +113,13 @@ export async function PATCH(req: NextRequest) {
     patch.contacted_at = body.contacted ? new Date().toISOString() : null;
     // 14.11.2026: על איזו משרה כתבת לו, כדי שההתראה על תגובה תדע לְמה הוא
     // עונה. ריק כשמבטלים סימון, אחרת נשארת משרה בלי פנייה.
-    patch.last_job_id = body.contacted && typeof body.jobId === 'string'
-      ? body.jobId : null;
+    //
+    // 15.11.2026, תיקון: נכתב רק כשבאמת נשלח מזהה משרה. קודם כל סימון בלי
+    // מזהה **אִפס** את השדה, ומסך "אישר חברות" מסמן בלי משרה בהגדרה, כי
+    // שם אין משרה בכלל. כלומר סימון שם היה מוחק בשקט את המשרה של מי שכבר
+    // פנית אליו על משרה.
+    if (!body.contacted) patch.last_job_id = null;
+    else if (typeof body.jobId === 'string' && body.jobId) patch.last_job_id = body.jobId;
   }
 
   const { error } = await serverClient().from('contacts').update(patch).eq('id', id);
