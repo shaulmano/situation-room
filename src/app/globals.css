@@ -242,7 +242,9 @@ a:focus-visible,button:focus-visible,input:focus-visible{outline:2px solid var(-
    שהשורה לא תקפוץ, ובאפור ולא באדום: זאת עובדה על המודעה ולא אזהרה. */
 .closed{
   flex:none;align-self:center;width:auto;white-space:nowrap;
-  padding:.42em .8em;font-size:.8rem;font-weight:700;border-radius:6px;
+  /* 15.11.2026: צר יותר. בהוספה הראשונה הוא דחק את ה-✕ לשורה נפרדת
+     ב-390 פיקסל, והוא נדחף לפינה ונראה כאילו הוא לא שייך לכרטיס. */
+  padding:.38em .62em;font-size:.76rem;font-weight:700;border-radius:6px;
   background:transparent;color:var(--muted);border:1px solid var(--line);
   cursor:pointer;
 }
