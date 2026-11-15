@@ -225,7 +225,16 @@ jobs:
           case "${{ inputs.mode }}" in
             boards_probe) python sync/boards.py probe "$TARGET" ;;
             boards_add)   python sync/boards.py add "$CONTENT" ;;
-            *)            python sync/boards.py read ;;
+            *)
+              # האבחון יוצא ל-stderr ו-stdout הוא JSON נקי, ולכן זה
+              # צינור ולא קובץ ביניים. seo_jobs מאמת כל שורה לפני
+              # הכתיבה גם כאן, כרשת ביטחון: משרה מהלוח אמורה להיות
+              # חיה בהגדרה, ומסלול שמניח ולא בודק הוא מה שהפיל כאן
+              # דברים לאורך כל 2026.
+              python sync/boards.py read > /tmp/boards.json
+              python sync/seo_jobs.py "$(cat /tmp/boards.json)"
+              python score.py missing
+              ;;
           esac
 
       - name: Applications from ATS confirmation mail

@@ -88,12 +88,12 @@ def comeet_positions(html):
         return []
     code, body = fetch(api)
     if code != 200:
-        print('    comeet api HTTP %s' % code)
+        print('    comeet api HTTP %s' % code, file=sys.stderr)
         return []
     try:
         data = json.loads(body)
     except Exception as e:
-        print('    comeet api not json: %s' % e)
+        print('    comeet api not json: %s' % e, file=sys.stderr)
         return []
     out = []
     for p in data if isinstance(data, list) else data.get('positions', []):
@@ -202,22 +202,27 @@ def cmd_add(payload):
     print('boards in: %d, new: %d' % (len(rows), added))
 
 
+def say(*a):
+    """אבחון ל-stderr, כדי ש-stdout יישאר JSON נקי לצינור."""
+    print(*a, file=sys.stderr)
+
+
 def cmd_read(limit=60):
     boards = sql("select id, company, url, source from boards "
                  "where dead_since is null order by coalesce(last_read_at, "
                  "'epoch'::timestamptz) asc limit %d" % limit) or []
-    print('boards to read: %d' % len(boards))
+    say('boards to read: %d' % len(boards))
     found = []
     for b in boards:
         try:
             code, html = fetch(b['url'])
         except Exception as e:
-            print('  %-28s fetch failed: %s' % (b['company'][:28], e))
+            say('  %-28s fetch failed: %s' % (b['company'][:28], e))
             sql("update boards set last_read_at = now(), last_ok = false "
                 "where id = %s" % q(b['id']))
             continue
         if code != 200:
-            print('  %-28s HTTP %s' % (b['company'][:28], code))
+            say('  %-28s HTTP %s' % (b['company'][:28], code))
             sql("update boards set last_read_at = now(), last_ok = false "
                 "where id = %s" % q(b['id']))
             continue
@@ -234,11 +239,11 @@ def cmd_read(limit=60):
                           'url': url, 'location': r['location'],
                           'source': b['source'] or 'Comeet', 'found_for': role})
             kept += 1
-        print('  %-28s %3d open, %d on target' % (b['company'][:28], len(rows), kept))
+        say('  %-28s %3d open, %d on target' % (b['company'][:28], len(rows), kept))
         sql("update boards set last_read_at = now(), last_ok = true, "
             "open_count = %d where id = %s" % (len(rows), q(b['id'])))
 
-    print('on target across all boards: %d' % len(found))
+    say('on target across all boards: %d' % len(found))
     print(json.dumps(found, ensure_ascii=False))
     return found
 
