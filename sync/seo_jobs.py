@@ -246,7 +246,11 @@ def sweep_open_rows(limit=40):
     if not gone:
         print('swept %d open radar rows, all still live' % len(rows))
         return
-    sql('update jobs set dismissed_at = now() where id in (%s)'
+    # 15.11.2026: גם `closed_at`. עד היום הסגירה האוטומטית נראתה במסד
+    # בדיוק כמו ✕ של שאול, ולכן אי אפשר היה להבדיל בין "הוא לא רצה"
+    # לבין "המודעה מתה". עכשיו הכפתור "נסגרה" והסריקה כותבים לאותה
+    # עמודה, כי הם אומרים את אותו דבר.
+    sql('update jobs set dismissed_at = now(), closed_at = now() where id in (%s)'
         % ','.join(q(g['id']) for g in gone))
     print('swept %d open radar rows, closed %d' % (len(rows), len(gone)))
 

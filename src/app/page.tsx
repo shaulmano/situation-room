@@ -9,6 +9,7 @@ import DismissAll from '@/components/DismissAll';
 import JobBrief from '@/components/JobBrief';
 import JobContacts from '@/components/JobContacts';
 import MarkApplied from '@/components/MarkApplied';
+import MarkClosed from '@/components/MarkClosed';
 import PriorApplied from '@/components/PriorApplied';
 import { loadApplied, priorApplication } from '@/lib/priorApplication';
 
@@ -486,6 +487,7 @@ export default async function Dashboard({
                   </a>
                 ))}
                 <MarkApplied id={j.id} cvId={m.cv_id} />
+                <MarkClosed id={j.id} ids={m.copies.map((c: any) => c.jobs.id)} />
                 <Dismiss id={j.id} ids={m.copies.map((c: any) => c.jobs.id)} />
                 <JobContacts
                   contacts={warm.get(companyKey(j.company)) ?? []}

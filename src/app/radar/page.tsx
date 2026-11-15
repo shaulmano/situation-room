@@ -3,6 +3,7 @@ import { serverClient } from '@/lib/server';
 import { jobAge } from '@/lib/age';
 import Dismiss from '@/components/Dismiss';
 import MarkApplied from '@/components/MarkApplied';
+import MarkClosed from '@/components/MarkClosed';
 import PriorApplied from '@/components/PriorApplied';
 import { loadApplied, priorApplication } from '@/lib/priorApplication';
 
@@ -136,6 +137,7 @@ export default async function Radar({
                   לעמוד המשרה
                 </a>
                 <MarkApplied id={j.id} />
+                <MarkClosed id={j.id} />
               </div>
             </div>
           );

@@ -237,6 +237,17 @@ a:focus-visible,button:focus-visible,input:focus-visible{outline:2px solid var(-
 }
 .mark:hover{background:var(--good-soft)}
 .mark:disabled{opacity:.6;cursor:default}
+
+/* 15.11.2026: "נסגרה", המודעה כבר לא קיימת. אותו גודל של "הוגשה" כדי
+   שהשורה לא תקפוץ, ובאפור ולא באדום: זאת עובדה על המודעה ולא אזהרה. */
+.closed{
+  flex:none;align-self:center;width:auto;white-space:nowrap;
+  padding:.42em .8em;font-size:.8rem;font-weight:700;border-radius:6px;
+  background:transparent;color:var(--muted);border:1px solid var(--line);
+  cursor:pointer;
+}
+.closed:hover{border-color:var(--muted);background:var(--raised)}
+.closed:disabled{opacity:.6;cursor:default}
 .row.job{gap:7px}
 
 .filters{display:flex;flex-wrap:wrap;gap:6px;margin:2px 0 12px}

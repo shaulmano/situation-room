@@ -10,6 +10,7 @@ import WarmTabs from '@/components/WarmTabs';
 import ReplyBanner, { type ReplyRow } from '@/components/ReplyBanner';
 import AppliedList, { type AppliedRow } from '@/components/AppliedList';
 import MarkApplied from '@/components/MarkApplied';
+import MarkClosed from '@/components/MarkClosed';
 import PriorApplied from '@/components/PriorApplied';
 import { buildPriorIndex, priorApplication } from '@/lib/priorApplication';
 import LinkedinQueue from '@/components/LinkedinQueue';
@@ -704,6 +705,7 @@ async function WarmBody({
                   </a>
                 )}
                 <MarkApplied id={j.id} cvId={m.cv_id} />
+                <MarkClosed id={j.id} ids={m.copies?.map((c: any) => c.jobs.id)} />
                 <Dismiss id={j.id} ids={m.copies.map((c: any) => c.jobs.id)} noRefresh />
 
                 <JobContacts
