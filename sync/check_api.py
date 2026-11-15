@@ -60,6 +60,27 @@ def main():
         print("If it names a column, the schema cache is stale and the whole")
         print("board query fails, which looks exactly like 'there is no data'.")
 
+    # 15.11.2026: מסך מכרים נפל ב"Application error" אחרי שנוספו שם שתי
+    # שליפות חדשות מ-contacts. בדיקה אחת שמכסה רק את מסך המשרות אינה
+    # מכסה את המסך שנשבר, ולכן כל שליפה שמסך מריץ נבדקת כאן בנפרד.
+    for label, sel in (
+        ('warm: replies banner',
+         'id,full_name,title,company,linkedin_url,reply_text,reply_url,'
+         'reply_draft,replied_at,last_job_id'),
+        ('warm: invite queue',
+         'id,full_name,title,company,linkedin_url,invite_accepted_at'),
+    ):
+        u = f"{base}/contacts?select={sel}&limit=1"
+        r2 = urllib.request.Request(u, headers={"apikey": anon,
+                                                "Authorization": f"Bearer {anon}"})
+        try:
+            with urllib.request.urlopen(r2, timeout=30) as resp:
+                rows = json.loads(resp.read().decode())
+            print(f"{label}: PostgREST accepted the select, {len(rows)} rows")
+        except urllib.error.HTTPError as e:
+            print(f"{label}: PostgREST refused it, HTTP {e.code}")
+            print('  ' + e.read().decode()[:300])
+
 
 if __name__ == "__main__":
     main()
