@@ -233,7 +233,7 @@ jobs:
               # דברים לאורך כל 2026.
               python sync/boards.py read > /tmp/boards.json
               python sync/seo_jobs.py "$(cat /tmp/boards.json)"
-              python score.py missing
+              python sync/score.py missing
               ;;
           esac
 
