@@ -77,6 +77,13 @@ export default function ReachList(
         </span>
       </div>
 
+      {/* 15.11.2026: הורדה אחת ביום. לינקדאין לא מקבלת קובץ מבחוץ,
+          ולכן זה מה שאפשר: הקובץ נכנס ל"אחרונים" של הטלפון, וכל
+          צירוף אחריו הוא שתי נגיעות. */}
+      <a className="apply" href="/api/reach/cv" download style={{ marginBottom: '.6rem' }}>
+        הורד את קורות החיים, פעם אחת להיום
+      </a>
+
       <p className="hint">
         הנוסח קבוע וזהה לכולם. <b>העתק</b>, <b>פתח בלינקדאין</b>, הדבק, צרף את{' '}
         <code>{cvFile}</code>, שלח, ואז <b>סמן שנשלח</b>.
