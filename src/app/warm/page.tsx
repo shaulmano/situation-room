@@ -11,6 +11,7 @@ import ReplyBanner, { type ReplyRow } from '@/components/ReplyBanner';
 import AppliedList, { type AppliedRow } from '@/components/AppliedList';
 import MarkApplied from '@/components/MarkApplied';
 import LinkedinQueue from '@/components/LinkedinQueue';
+import InviteQueue from '@/components/InviteQueue';
 import PosterQueue, { type PosterRow } from '@/components/PosterQueue';
 import Refresh from '@/components/Refresh';
 import WarmPicker, { type Pick } from '@/components/WarmPicker';
@@ -384,6 +385,32 @@ export default async function Warm({
     .order('replied_at', { ascending: true })
     .limit(20);
 
+  // "אישר חברות". 15.11.2026, שאול: "מי שמאשר או מאשרת חברות, לשלוח לה או
+  // לו מכתב להגשת קורות חיים".
+  //
+  // התור הוא בדיוק מי שאישר ועוד לא נשלח אליו. `contacted_at` הוא הסימון
+  // שמוריד מכאן, ולכן אותו כפתור "שנשלח" שבכל שאר הטאבים.
+  const { data: inviteRows } = await sb
+    .from('contacts')
+    .select('id, full_name, title, company, linkedin_url, invite_accepted_at')
+    .not('invite_accepted_at', 'is', null)
+    .is('contacted_at', null)
+    .is('skipped_at', null)
+    .order('invite_accepted_at', { ascending: false })
+    .limit(50);
+
+  const invites = ((inviteRows ?? []) as any[]).map((c) => ({
+    id: c.id,
+    name: c.full_name ?? '',
+    title: c.title ?? null,
+    company: c.company ?? null,
+    profile: c.linkedin_url ?? null,
+    days: c.invite_accepted_at
+      ? Math.max(0, Math.floor(
+          (Date.now() - new Date(c.invite_accepted_at).getTime()) / 864e5))
+      : 0,
+  }));
+
   const replyJobIds = [...new Set(
     ((replyRows ?? []) as any[]).map((r) => r.last_job_id).filter(Boolean))];
   const { data: replyJobs } = replyJobIds.length
@@ -651,6 +678,16 @@ export default async function Warm({
         + 'הקובץ שרשום בשורה, שלח בלינקדאין, ואז סמן "שנשלח" כדי שירד מהתור. '
         + 'חמישה עשר ביום זה כל התור בשלושה שבועות.',
       panel: <LinkedinQueue picks={picks} />,
+    },
+    {
+      id: 'invites',
+      label: 'אישר חברות',
+      count: invites.length,
+      note: 'מי שאישר את בקשת החברות שלך בלינקדאין ועוד לא קיבל ממך כלום. '
+        + 'האישור עצמו הוא העילה לכתוב, ולכן ההודעה כאן אישית ובלי משרה: '
+        + 'תודה, שתי שורות עליך, ושאלה אם יש אצלם משהו פתוח. העתק, צרף את '
+        + 'הקובץ שרשום, שלח בלינקדאין, וסמן "שנשלח".',
+      panel: <InviteQueue rows={invites} />,
     },
     {
       id: 'posters',

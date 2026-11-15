@@ -318,3 +318,52 @@ export function posterMessage(opts: {
   lines.push('', 'Thanks a lot,', 'Shaul');
   return lines.join('\n');
 }
+
+/**
+ * המכתב למי שאישר בקשת חברות.
+ *
+ * 15.11.2026, שאול: "מי שמאשר או מאשרת חברות, לשלוח לה או לו מכתב להגשת
+ * קורות חיים כמו שאני שולח לכולם. המכתב צריך להיות יותר אישי עם התעניינות
+ * למקרה שיש להם משרות פתוחות".
+ *
+ * **למה זה לא `referralMessage` ולא `posterMessage`.** שם יש משרה קונקרטית
+ * שהוא הגיש אליה, וההודעה נשענת עליה. כאן אין משרה בכלל: האדם אישר בקשה
+ * ותו לא, והעילה לכתוב היא האישור עצמו. הודעה שתמציא משרה תישמע מזויפת.
+ *
+ * ולכן המבנה הפוך: קודם תודה על האישור, אחר כך מי הוא בשתי שורות, ורק
+ * אז השאלה. הקובץ מצורף בלי להתנות אותו בכלום, כדי שגם מי שלא עונה יישאר
+ * איתו ביד.
+ *
+ * מגייסת מקבלת "אם יש אצלכם משהו פתוח", וכל אחד אחר מקבל "אם אתה שומע על
+ * משהו". לבקש ממי שאינו מגייס משרה שאין לו זה לבקש ממנו טובה שהוא לא
+ * יכול לתת.
+ */
+export function inviteMessage(opts: {
+  contactName: string;
+  title?: string | null;
+}): string {
+  const recruiter = isRecruiter(opts.title);
+  const lines = [
+    `Hi ${firstName(opts.contactName)},`,
+    '',
+    'Thanks for connecting.',
+    '',
+    'A short introduction: I have 25 years in QA and program management, '
+      + 'the last 15 of them leading teams, most recently as Head of QA and '
+      + 'Professional Services at Qmarkets.',
+    '',
+    recruiter
+      ? 'I am looking for my next role now, in QA leadership or project and '
+        + 'program management. If anything open on your side could be a fit, '
+        + 'I would be glad to hear about it.'
+      : 'I am looking for my next role now, in QA leadership or project and '
+        + 'program management. If you happen to hear of something that fits, '
+        + 'I would appreciate you keeping me in mind.',
+    '',
+    'My CV is attached either way.',
+    '',
+    'Thanks,',
+    'Shaul',
+  ];
+  return lines.join('\n');
+}
