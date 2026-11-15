@@ -20,10 +20,25 @@ Input: JSON on argv[1] or stdin, a list of
 
 Run: python sync/replies_mark.py '[{"name": "...", ...}]'
 """
+from datetime import datetime, timezone
 import json, os, re, sys
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from gmail_sync import sql, q
+
+
+# שבוע. שאול, 15.11.2026: "אני רוצה תגובות רק מהשבוע האחרון. מידע ישן
+# לא מעניין."
+#
+# **וזה מתנגש עם הסיבה שהקובץ הזה נכתב**, שמתועדת למעלה: לי צמח ענתה
+# ב-12.10 ושאול ראה את זה 33 יום אחרי. חלון של שבוע היה מפיל אותה.
+#
+# מה שהשתנה בינתיים: אותה סריקה אחורה כבר רצה והבאקלוג כולו רשום, והסוכן
+# רץ ארבע פעמים ביום. תגובה חדשה נתפסת תוך שעות, ולכן תגובה בת יותר
+# משבוע שמגיעה עכשיו היא כמעט תמיד שיחה ישנה שהסוכן גלל אליה, ולא תגובה
+# שפוספסה. **אם אי פעם תיפסק הריצה לשבועיים, הכלל הזה יסתיר בדיוק את מה
+# שהצטבר**, ואז צריך להרחיב אותו ידנית לפני שמפעילים מחדש.
+MAX_REPLY_AGE_DAYS = 7
 
 
 def norm(s):
@@ -154,6 +169,33 @@ def main():
         #
         # לכן הקיצוץ נעשה פעם אחת, באותו ביטוי, גם בשמירה וגם בהשוואה.
         at = r.get('at') or None
+
+        # **תגובה ישנה לא נכנסת.**
+        #
+        # 15.11.2026, שאול: "למה אני מקבל תגובות מלפני 70 יום?" ואחריו
+        # "אני רוצה תגובות רק מהשבוע האחרון. מידע ישן לא מעניין."
+        #
+        # נמדד: באותו יום ב-16:30 נכנסו ארבע תגובות מ-24.08 עד 01.09, בנות
+        # כ-77 יום, וכולן ברכות על התפקיד החדש ולא תגובות למשרה. הסוכן ירד
+        # עמוק יותר ברשימת השיחות, וכל שיחה ישנה שבה הצד השני כתב אחרון
+        # נראית לו כמו תגובה שממתינה.
+        #
+        # **הגבול כאן ולא במסך**, כי מסך לבדו משאיר את הכתיבה ואת הפוש.
+        # תגובה בלי תאריך כן נכנסת: היא כנראה חדשה, והסוכן פשוט לא הצליח
+        # לקרוא שעה.
+        if at:
+            try:
+                when = datetime.fromisoformat(str(at).replace('Z', '+00:00'))
+                if when.tzinfo is None:
+                    when = when.replace(tzinfo=timezone.utc)
+                old_days = (datetime.now(timezone.utc) - when).days
+                if old_days > MAX_REPLY_AGE_DAYS:
+                    print('  too old, skipped: %s, %d days' % (name[:40], old_days))
+                    miss += 1
+                    continue
+            except Exception as e:
+                print('  unreadable date, kept: %s, %s' % (name[:40], e))
+
         at_sql = 'least(%s::timestamptz, now())' % q(at) if at else 'null::timestamptz'
 
         # **הכל ב-format ואף %s בשאילתה הזאת.**
