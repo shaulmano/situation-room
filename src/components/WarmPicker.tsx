@@ -24,6 +24,8 @@ export type Pick = {
     cvId: string | null; foundFor: string | null; url: string | null;
     /** המשרה כבר הוגשה. משנה את ההודעה מ"יש משרה" ל"הגשתי למשרה". */
     applied?: boolean;
+    /** מתי הוגשה. ISO, או null אם עוד לא הוגשה. */
+    appliedAt?: string | null;
   };
   queued: {
     id: number;

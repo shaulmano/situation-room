@@ -134,6 +134,19 @@ async function WarmBody({
   }
 
   const appliedIds = new Set((appliedIdRows ?? []).map((a: any) => a.job_id));
+  // 15.11.2026, שאול: **"אין לי מושג מתי נשלחו הקורות חיים ואולי זה
+  // ממזמן"**, והוא סימן אנשים כ"מוותר" רק בגלל זה. נמדד: מתוך 556
+  // הגשות, **436 בנות יותר מחודש** ורק 91 מהשבועיים האחרונים. כלומר
+  // הוא צדק, ורוב התור באמת ישן.
+  //
+  // התאריך היה כאן כל הזמן: `sent_at` כבר נשלף בשורה הראשונה של
+  // השליפה הכפולה, ופשוט לא הועבר הלאה.
+  const appliedAtById = new Map<string, string>();
+  for (const a of (appliedIdRows ?? []) as any[]) {
+    if (!a?.job_id || !a?.sent_at) continue;
+    const prev = appliedAtById.get(a.job_id);
+    if (!prev || a.sent_at > prev) appliedAtById.set(a.job_id, a.sent_at);
+  }
 
   // ── הגשה טרייה היא הסיבה לפנות, לא הסיבה להסתיר ────────────────────────
   //
@@ -563,6 +576,7 @@ async function WarmBody({
           foundFor: m.jobs.found_for ?? null,
           url: m.jobs.url ?? null,
           applied: appliedIds.has(m.jobs.id),
+          appliedAt: appliedAtById.get(m.jobs.id) ?? null,
         },
         queued: queuedBy.get(`${c.id}|${m.jobs.id}`) ?? null,
         score: m.score ?? 0,

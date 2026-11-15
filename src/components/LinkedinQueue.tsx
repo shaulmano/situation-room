@@ -30,6 +30,14 @@ export default function LinkedinQueue({ picks }: { picks: Pick[] }) {
   // שני סוגי פנייה שונים לגמרי: למגייסת מבקשים להסתכל, ולעובד מבקשים
   // להעביר הלאה. הוא רוצה לעבוד על קבוצה אחת ברצף ולא לקפוץ ביניהן.
   const [who, setWho] = useState<'all' | 'recruiters' | 'others'>('all');
+  // 15.11.2026, שאול: "אין לי מושג מתי נשלחו הקורות חיים ואולי זה ממזמן",
+  // והוא סימן אנשים כ"מוותר" רק בגלל זה. נמדד: 436 מתוך 556 ההגשות בנות
+  // יותר מחודש, ורק 91 מהשבועיים האחרונים.
+  //
+  // **דלוק כברירת מחדל**, כי זאת הייתה הבעיה. כבוי מחזיר את כל התור.
+  // משרה שעוד לא הגשת אליה נשארת תמיד: שער הגיל בסריקה כבר שומר שהיא
+  // טרייה, ו"ישן" כאן מדבר על ההגשה ולא על המודעה.
+  const [freshOnly, setFreshOnly] = useState(true);
   // 13.11.2026: החיווי יושב על הכפתור ולא בראש הבלוק. שאול:
   // "לחיצה על העתק לא מראה סימן שלחצתי". בטלפון ראש הבלוק
   // כבר מחוץ למסך כשהוא לוחץ על שורה שביעית.
@@ -73,7 +81,18 @@ export default function LinkedinQueue({ picks }: { picks: Pick[] }) {
 
   // הספירה בלשוניות היא תמיד בתוך הפילוח שנבחר, אחרת "בתור 155" בזמן
   // שמוצגות שבע שורות הוא מספר שמשקר.
-  const inScope = all.filter(byWho);
+  const appliedDays = (p: Pick) => {
+    const at = p.job.appliedAt;
+    if (!at) return null;
+    return Math.max(0, Math.floor((Date.now() - new Date(at).getTime()) / 864e5));
+  };
+  const isFresh = (p: Pick) => {
+    const d = appliedDays(p);
+    return d === null || d <= 14;
+  };
+  const stale = all.filter(byWho).filter((p) => !isFresh(p)).length;
+
+  const inScope = all.filter(byWho).filter((p) => (freshOnly ? isFresh(p) : true));
   const skipped = inScope.filter(isSkipped);
   // מי שוויתרת עליו יוצא מכל השאר, וגם מאחוז המענה: הוא לא נשלח.
   const live = inScope.filter((p) => !isSkipped(p));
@@ -236,6 +255,16 @@ export default function LinkedinQueue({ picks }: { picks: Pick[] }) {
             <span className="n">{n}</span>
           </button>
         ))}
+        <button
+          type="button"
+          className={'filter' + (freshOnly ? ' on' : '')}
+          style={{ width: 'auto', flex: 'none' }}
+          title="מסתיר שורות שההגשה שלהן בת יותר משבועיים"
+          onClick={() => { setFreshOnly(!freshOnly); setShown(BATCH); }}
+        >
+          עד שבועיים
+          <span className="n">{stale}</span>
+        </button>
       </div>
       {/* חיפוש לפי שם, תפקיד או חברה. 13.11.2026: שאול ידע בדיוק למי
           הוא רוצה לכתוב ולא היה לו איך למצוא אותה בתוך 128 שורות. */}
@@ -305,6 +334,24 @@ export default function LinkedinQueue({ picks }: { picks: Pick[] }) {
             )}
             <div style={{ fontSize: '.78rem', margin: '4px 0 2px' }}>
               <b>המשרה:</b> {p.job.title} · {p.job.company}
+              {(() => {
+                const d = appliedDays(p);
+                if (d === null) {
+                  return (
+                    <span style={{ color: 'var(--muted)' }}>
+                      {' · '}עוד לא הגשת
+                    </span>
+                  );
+                }
+                return (
+                  <span style={{ color: d > 14 ? 'var(--bad)' : 'var(--muted)' }}>
+                    {' · '}
+                    {d === 0 ? 'הגשת היום'
+                      : d === 1 ? 'הגשת אתמול'
+                      : `הגשת לפני ${d} ימים`}
+                  </span>
+                );
+              })()}
             </div>
             {/* שורת הקובץ, באותו מבנה של "סרטון לצרף" במוקד: שם הקובץ
                 בדיוק כפי שהוא נקרא אצלו, כדי שלא יצטרך לנחש איזו גרסה. */}
