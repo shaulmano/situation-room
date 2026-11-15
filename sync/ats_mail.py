@@ -108,6 +108,24 @@ def sender_parts(raw):
     return safe_header(name).strip(), (addr or '').lower()
 
 
+# 15.11.2026: מיילים בעברית נושאים לפעמים charset=iso-8859-8-i, הכינוי
+# הלוגי של עברית ויזואלית. Python לא מכיר אותו, ו-make_header נופל
+# ב-LookupError על כל התיבה בגלל הודעה אחת. הקידוד זהה ל-iso-8859-8.
+codecs.register(
+    lambda name: codecs.lookup('iso-8859-8')
+    if name.replace('_', '-').lower() in ('iso-8859-8-i', 'iso-8859-8-e')
+    else None
+)
+
+
+def safe_header(raw):
+    """כותרת מפוענחת, ולעולם לא חריגה: קידוד אחד לא תקין לא מפיל סריקה."""
+    try:
+        return str(make_header(decode_header(raw or '')))
+    except Exception:
+        return raw or ''
+
+
 def clean(v):
     v = (v or '').strip(' .!,-–—\u200f\u200e')
     v = re.sub(r'\s+', ' ', v)
@@ -130,6 +148,9 @@ def parse_subject(subject):
         co = clean(g.get('co'))
         if role:
             role = re.sub(r'^(a|an|the)\s+', '', role, flags=re.I)
+            # "applying for the role of X at Y" -> X. בלי זה התפקיד יוצא
+            # "role of Technical Project Manager", וזה לא שם של תפקיד.
+            role = re.sub(r'^(role|position|job)\s+of\s+', '', role, flags=re.I)
             role = re.sub(r'\s+(position|role|job)$', '', role, flags=re.I)
             role = clean(role)
         # "applying for a position at X" אינו תפקיד בשם "position".
