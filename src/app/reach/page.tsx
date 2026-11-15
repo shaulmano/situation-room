@@ -2,7 +2,7 @@ import Link from 'next/link';
 import { serverClient } from '@/lib/server';
 import ReachList, { type ReachRow } from '@/components/ReachList';
 import {
-  DAILY_TARGET, WIDE_CV_FILE, bucketOf, eligible, israelDayStart,
+  DAILY_TARGET, WIDE_CV_FILE, bucketOf, displayName, eligible, israelDayStart,
   sortQueue, wideMessage, type ReachContact,
 } from '@/lib/wideReach';
 
@@ -53,7 +53,7 @@ export default async function Reach() {
   const queue = sortQueue(list.filter((c) => eligible(c)));
   const rows: ReachRow[] = queue.slice(0, left).map((c) => ({
     id: c.id,
-    name: c.full_name ?? '',
+    name: displayName(c.full_name),
     title: c.title ?? null,
     company: c.company ?? null,
     url: c.linkedin_url ?? null,

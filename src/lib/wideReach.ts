@@ -120,6 +120,17 @@ const TITLES = new Set([
   'דר', 'ד', 'עו', 'רו', 'פרופ',
 ]);
 
+/**
+ * השם המלא לתצוגה, בלי כוכביות ובלי אימוג'ים.
+ *
+ * 15.11.2026, שאול: "בלי הכוכבית ובלי אימוג׳י". זה נוגע גם להודעה וגם
+ * לכרטיס עצמו: "★Mor Barki★" על המסך נראה כמו תקלה.
+ */
+export function displayName(full?: string | null): string {
+  const cleaned = (full ?? '').replace(/[^\p{L}\p{M}\s'-]/gu, ' ').replace(/\s+/g, ' ').trim();
+  return cleaned || (full ?? '').trim();
+}
+
 export function firstName(full?: string | null): string {
   const cleaned = (full ?? '').replace(/[^\p{L}\p{M}\s'-]/gu, ' ').trim();
   for (const w of cleaned.split(/\s+/)) {
