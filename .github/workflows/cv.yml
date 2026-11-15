@@ -26,7 +26,7 @@ on:
   workflow_dispatch:
     inputs:
       mode:
-        description: 'fetch, render, audit, dismissals, migrate, query, checkapi, poster, replies, referrals, referral_pdf, referral_mark, ats_mail, ats_mail_write, mail_selftest, mail_test or mail_send'
+        description: 'fetch, render, audit, dismissals, migrate, query, checkapi, poster, replies, referrals, referral_pdf, referral_mark, ats_mail, ats_mail_write, boards, boards_add, boards_probe, mail_selftest, mail_test or mail_send'
         required: true
         default: 'fetch'
       migration:
@@ -211,6 +211,23 @@ jobs:
       #
       # `ats_mail` מדפיס בלבד. `ats_mail_write` רושם. ההפרדה היא כי 556
       # ההגשות הן המכנה של "0.4 אחוז", ושורה שגויה כאן מזייפת אותו.
+      # 15.11.2026: לוחות הקריירה של החברות. גוגל מגלה חברות, והלוח
+      # עצמו מגלה משרות, כי האינדקס של גוגל ללוחות ATS ישן מאוד.
+      - name: Company career boards
+        if: startsWith(inputs.mode, 'boards')
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+          SUPABASE_PROJECT_REF: ${{ secrets.SUPABASE_PROJECT_REF }}
+          CONTENT: ${{ inputs.content }}
+          TARGET: ${{ inputs.request_id }}
+        run: |
+          pip install curl_cffi >/dev/null 2>&1 || true
+          case "${{ inputs.mode }}" in
+            boards_probe) python sync/boards.py probe "$TARGET" ;;
+            boards_add)   python sync/boards.py add "$CONTENT" ;;
+            *)            python sync/boards.py read ;;
+          esac
+
       - name: Applications from ATS confirmation mail
         if: startsWith(inputs.mode, 'ats_mail')
         env:
