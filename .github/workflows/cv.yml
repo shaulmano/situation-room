@@ -26,7 +26,7 @@ on:
   workflow_dispatch:
     inputs:
       mode:
-        description: 'fetch, render, audit, dismissals, migrate, query, checkapi, poster, replies, referrals, referral_pdf, referral_mark, mail_selftest, mail_test or mail_send'
+        description: 'fetch, render, audit, dismissals, migrate, query, checkapi, poster, replies, referrals, referral_pdf, referral_mark, ats_mail, ats_mail_write, mail_selftest, mail_test or mail_send'
         required: true
         default: 'fetch'
       migration:
@@ -205,6 +205,26 @@ jobs:
       #
       # הסודות הם שלו ונוספו על ידו. הם לא מגיעים לשום מקום אחר, ושני
       # המצבים כאן הם היחידים שנוגעים בהם.
+      # 15.11.2026: הגשות שנעשו ישירות באתר החברה, מתוך מייל האישור.
+      # gmail_sync קורא רק את לינקדאין, ולכן אישור מ-Comeet או מ-Workday
+      # לא נקרא אף פעם. אותם סודות של Send mail, ואותה תיבה.
+      #
+      # `ats_mail` מדפיס בלבד. `ats_mail_write` רושם. ההפרדה היא כי 556
+      # ההגשות הן המכנה של "0.4 אחוז", ושורה שגויה כאן מזייפת אותו.
+      - name: Applications from ATS confirmation mail
+        if: startsWith(inputs.mode, 'ats_mail')
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+          SUPABASE_PROJECT_REF: ${{ secrets.SUPABASE_PROJECT_REF }}
+          GMAIL_ADDRESS: ${{ secrets.GMAIL_ADDRESS }}
+          GMAIL_APP_PASSWORD: ${{ secrets.GMAIL_APP_PASSWORD }}
+          DAYS: ${{ inputs.request_id }}
+        run: |
+          ARGS=""
+          if [ -n "$DAYS" ]; then ARGS="--days $DAYS"; fi
+          if [ "${{ inputs.mode }}" = "ats_mail_write" ]; then ARGS="$ARGS --write"; fi
+          python sync/ats_mail.py $ARGS
+
       - name: Send mail
         if: startsWith(inputs.mode, 'mail_')
         env:
