@@ -13,6 +13,8 @@
  * שיחה ולא בקשה. החמישה שאינם משם נוספו כשאישרו בקשה, כלומר גם הם.
  */
 
+import { isAgency } from '@/lib/pickContact';
+
 export type ReachBucket = 'recruiter' | 'peer' | 'senior';
 
 export type ReachContact = {
@@ -25,6 +27,8 @@ export type ReachContact = {
   wide_sent_at?: string | null;
   wide_skipped_at?: string | null;
   left_company_at?: string | null;
+  /** כבר קיימת איתו שיחה בלינקדאין. ראה migration 0048. */
+  li_seen_at?: string | null;
 };
 
 // מגייס ראשון, כי "VP People" הוא גיוס ולא בכיר לענייננו.
@@ -56,11 +60,40 @@ export const BUCKET_LABEL: Record<ReachBucket, string> = {
  */
 const RECENT_DAYS = 60;
 
+/**
+ * שם חברה שהוא בעצם עיסוק בהשמה, ולכן אינו חברה שמגייסת לעצמה.
+ *
+ * 15.11.2026, שאול: "אולי הפנייה צריכה להיות בשלב ראשון רק למגייסות של
+ * חברות עם שם החברה ולא סתם כאלו שמופיע להן מגייסת בטייטל."
+ *
+ * וזה בלט ברשימה: "ייעוץ עצמאי בתחומי HR", "Talent-HR" ו-"N.P.R HR"
+ * מול HP ונס טכנולוגיות. מגייסת בחברת השמה לא תביא אותו למשרה בחברה
+ * מסוימת, היא תכניס אותו למאגר.
+ */
+const AGENCY_NAME =
+  /(\bhr\b|recruit\w*|talent|staffing|sourcing|headhunt\w*|hunt\w*|manpower|outsourc\w*|placement|human resources|consult\w*|freelance|independiente|עצמאי\w*|השמה|גיוס|כוח אדם|משאבי אנוש|ייעוץ)/i;
+
+export function looksLikeAgency(company?: string | null): boolean {
+  const c = (company ?? '').trim();
+  if (!c) return true;          // בלי שם חברה אי אפשר לדעת, ולכן לא נכנס
+  // הרשימה המפורשת שכבר קיימת במערכת קודמת לתבנית: SQLink ו-GotFriends
+  // הם חברות השמה ואין בשמם שום מילה שמסגירה את זה.
+  if (isAgency(c)) return true;
+  return AGENCY_NAME.test(c);
+}
+
 export function eligible(c: ReachContact, now = Date.now()): boolean {
   if (!c.linkedin_url) return false;
   if (c.wide_sent_at || c.wide_skipped_at) return false;
   if (c.left_company_at) return false;
-  if (!bucketOf(c.title)) return false;
+  const bucket = bucketOf(c.title);
+  if (!bucket) return false;
+  // שיחה קיימת בלינקדאין פירושה שכבר כתב לו. 15.11.2026: "כולן כבר
+  // קיבלו ממני לפני כמה חודשים את ההודעה הראשונה... זה נראה לי סתם
+  // שליחה כי גם אז לא ענו לי."
+  if (c.li_seen_at) return false;
+  // **מגייס, רק אם הוא מגייס של חברה אמיתית.**
+  if (bucket === 'recruiter' && looksLikeAgency(c.company)) return false;
   if (c.contacted_at) {
     const days = (now - new Date(c.contacted_at).getTime()) / 864e5;
     if (days < RECENT_DAYS) return false;

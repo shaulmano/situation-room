@@ -26,7 +26,7 @@ on:
   workflow_dispatch:
     inputs:
       mode:
-        description: 'fetch, render, audit, dismissals, migrate, query, checkapi, poster, replies, referrals, referral_pdf, referral_mark, ats_mail, ats_mail_write, boards, boards_add, boards_probe, mail_selftest, mail_test or mail_send'
+        description: 'fetch, render, audit, dismissals, migrate, query, checkapi, poster, replies, referrals, referral_pdf, referral_mark, ats_mail, ats_mail_write, boards, boards_add, boards_probe, messaged, mail_selftest, mail_test or mail_send'
         required: true
         default: 'fetch'
       migration:
@@ -213,6 +213,15 @@ jobs:
       # ההגשות הן המכנה של "0.4 אחוז", ושורה שגויה כאן מזייפת אותו.
       # 15.11.2026: לוחות הקריירה של החברות. גוגל מגלה חברות, והלוח
       # עצמו מגלה משרות, כי האינדקס של גוגל ללוחות ATS ישן מאוד.
+      # 15.11.2026: מי שכבר יש איתו שיחה בלינקדאין. ראה 0048.
+      - name: Mark contacts with an existing LinkedIn thread
+        if: inputs.mode == 'messaged'
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+          SUPABASE_PROJECT_REF: ${{ secrets.SUPABASE_PROJECT_REF }}
+          CONTENT: ${{ inputs.content }}
+        run: python sync/messaged_mark.py "$CONTENT"
+
       - name: Company career boards
         if: startsWith(inputs.mode, 'boards')
         env:

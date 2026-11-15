@@ -24,7 +24,7 @@ export default async function Reach() {
   const [{ data: all, error }, { count: sentToday }] = await Promise.all([
     sb.from('contacts')
       .select('id, full_name, title, company, linkedin_url, contacted_at, '
-        + 'wide_sent_at, wide_skipped_at, left_company_at')
+        + 'wide_sent_at, wide_skipped_at, left_company_at, li_seen_at')
       .is('wide_sent_at', null)
       .is('wide_skipped_at', null)
       .not('linkedin_url', 'is', null)
