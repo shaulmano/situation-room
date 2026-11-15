@@ -27,6 +27,7 @@ Dream ו-Ori Sandbox.
     python sync/ats_mail.py --write    # רושם
     python sync/ats_mail.py --days 60  # חלון אחר, ברירת המחדל 30
 """
+import codecs
 import email
 import imaplib
 import os
@@ -75,6 +76,25 @@ _ROLE_PATTERNS = [
 _AT_COMPANY = re.compile(r'\bat\s+([A-Z0-9][^,!|]*?)\s*$')
 
 
+# 15.11.2026: מיילים בעברית נושאים לפעמים `charset=iso-8859-8-i`, שזה
+# הכינוי הלוגי של עברית ויזואלית. Python לא מכיר אותו ו-`make_header`
+# נופל ב-LookupError על כל התיבה בגלל הודעה אחת. הקידוד עצמו זהה
+# ל-iso-8859-8, ולכן זאת רק רישום של השם.
+codecs.register(
+    lambda name: codecs.lookup('iso-8859-8')
+    if name.replace('_', '-').lower() in ('iso-8859-8-i', 'iso-8859-8-e')
+    else None
+)
+
+
+def safe_header(raw):
+    """כותרת מפוענחת, ולעולם לא חריגה: קידוד אחד לא תקין לא מפיל סריקה."""
+    try:
+        return str(make_header(decode_header(raw or '')))
+    except Exception:
+        return (raw or '')
+
+
 def norm(s):
     """אותו צמצום של contacts.companyKey בצד הטייפסקריפט: אותיות וספרות בלבד."""
     flat = re.sub(r'[^0-9A-Za-z֐-׿]+', '', (s or '').lower())
@@ -88,7 +108,7 @@ def title_key(s):
 def sender_parts(raw):
     """(שם תצוגה, כתובת) מתוך הכותרת From."""
     name, addr = email.utils.parseaddr(raw or '')
-    return str(make_header(decode_header(name))).strip(), (addr or '').lower()
+    return safe_header(name).strip(), (addr or '').lower()
 
 
 def company_from(display, addr, subject):
@@ -166,7 +186,7 @@ def harvest(days):
         if not d or not d[0]:
             continue
         msg = email.message_from_bytes(d[0][1])
-        subject = str(make_header(decode_header(msg['Subject'] or '')))
+        subject = safe_header(msg['Subject'])
         if not looks_like_confirmation(subject):
             continue
         display, sender = sender_parts(msg['From'])
