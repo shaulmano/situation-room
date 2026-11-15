@@ -91,11 +91,30 @@ export default function InviteQueue({ rows }: { rows: Invite[] }) {
               <button type="button" className="apply" onClick={() => copy(r)}>
                 {copied[r.id] ? '✓ הועתק' : 'העתק הודעה'}
               </button>
-              {r.profile && (
-                <a className="iq-link" href={r.profile} target="_blank" rel="noreferrer">
-                  פתח פרופיל
-                </a>
-              )}
+              {/* 15.11.2026, שאול: "מה עם פתיחת לינקדאין למסך הודעות?"
+                  שני כפתורים ולא אחד, וזה בכוונה.
+
+                  **הודעות** פותח את תיבת ההודעות עצמה. זה מה שהוא ביקש
+                  מילולית, וזה עובד תמיד.
+
+                  **מצא את X** הוא חיפוש אנשים בדרגה ראשונה לפי השם, ונוחת
+                  עליו. בלי קישור לפרופיל אי אפשר לפתוח שיחה ישירה איתו,
+                  ולחמשת הראשונים אין קישור כי מהמייל נלקח רק השם.
+                  **כפתור שכתוב עליו "פתח שיחה" וינחת במקום אחר גרוע
+                  מכפתור שחסר**, 14.11, ולכן אין כאן כפתור כזה. */}
+              <a
+                className="iq-link" target="_blank" rel="noreferrer"
+                href="https://www.linkedin.com/messaging/"
+              >
+                הודעות
+              </a>
+              <a
+                className="iq-link" target="_blank" rel="noreferrer"
+                href={r.profile || 'https://www.linkedin.com/search/results/people/?keywords='
+                  + encodeURIComponent(r.name) + '&network=%5B%22F%22%5D'}
+              >
+                {r.profile ? 'פרופיל' : `מצא את ${r.name.split(/\s+/)[0]}`}
+              </a>
               <button type="button" className="iq-link" onClick={() => mark(r)}>
                 שנשלח
               </button>
