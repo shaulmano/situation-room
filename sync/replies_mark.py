@@ -164,19 +164,45 @@ def main():
         # TypeError בכל קריאה, הוורקפלו נפל אחרי "replies to record: 2",
         # ו-notify_push לא רץ בכלל. ערבוב של + ושל % באותו ביטוי הוא
         # מלכודת, ולכן אין כאן % בכלל.
+        # 15.11.2026, שאול: "אלו שענו לי וכתבת לי אני רוצה שתנסח לי גם
+        # תשובות ומציאה של מה שמבקשים". הנוסח נכתב על ידי מי שקרא את
+        # השרשור, כולל הקישור או הפרט שביקשו, והוא נשמר כאן ומוצג בבאנר
+        # עם כפתור העתקה. **לעולם לא נשלח לבד.**
+        #
+        # הוא נכתב באותה שורת UPDATE ולא בנפרד, בכוונה: טיוטה חייבת
+        # להתחלף יחד עם התגובה שהיא עונה לה. נוסח שנשאר מהתגובה הקודמת
+        # הוא תשובה נכונה לשאלה הלא נכונה, וזה גרוע מריק.
+        draft = (r.get('draft') or '')[:1200] or None
+
         changed = sql(
             ("update contacts set "
              "replied_at = coalesce({at}, replied_at, now()), "
-             "reply_text = {txt}, reply_url = {url}, "
+             "reply_text = {txt}, reply_url = {url}, reply_draft = {draft}, "
              "reply_done_at = null, reply_pushed_at = null "
              "where id = {cid} and ("
              "  replied_at is null"
              "  or ({at} is not null and replied_at < {at})"
              "  or coalesce(reply_text,'') <> coalesce({txt},'')"
              ") returning id").format(
-                at=at_sql, txt=q(txt),
+                at=at_sql, txt=q(txt), draft=q(draft),
                 url=q(r.get('url') or None), cid=q(cid))
         )
+
+        # **והשלמת נוסח לתגובה שכבר רשומה, בלי לפתוח אותה מחדש.**
+        #
+        # בשורה אחת זה היה מסוכן: כל תנאי שמוסיפים ל-UPDATE שלמעלה גורר
+        # איתו גם `reply_done_at = null` ו-`reply_pushed_at = null`,
+        # כלומר השלמת נוסח לתגובה ששאול כבר טיפל בה הייתה מחזירה אותה
+        # לבאנר ומוציאה עליה פוש שני. לכן זאת פקודה נפרדת שנוגעת בנוסח
+        # בלבד, ורק כשאין נוסח.
+        if not changed and draft:
+            filled = sql(
+                ("update contacts set reply_draft = {draft} "
+                 "where id = {cid} and coalesce(reply_draft,'') = '' "
+                 "returning id").format(draft=q(draft), cid=q(cid))
+            )
+            if filled:
+                print('  draft added: %s' % name[:46])
         if changed:
             hit += 1
             print('  %s' % name[:50])

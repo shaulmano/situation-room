@@ -379,7 +379,7 @@ export default async function Warm({
   const { data: replyRows } = await sb
     .from('contacts')
     .select('id, full_name, title, company, linkedin_url, reply_text, reply_url, '
-            + 'replied_at, last_job_id')
+            + 'reply_draft, replied_at, last_job_id')
     .not('replied_at', 'is', null)
     .is('reply_done_at', null)
     .order('replied_at', { ascending: true })
@@ -433,6 +433,7 @@ export default async function Warm({
       jobTitle: j?.title ?? null,
       jobCompany: j?.company ?? null,
       jobUrl: j?.url ?? null,
+      draft: r.reply_draft ?? null,
       days: r.replied_at
         ? Math.max(0, Math.floor((Date.now() - new Date(r.replied_at).getTime()) / 864e5))
         : 0,

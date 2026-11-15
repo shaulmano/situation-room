@@ -27,14 +27,31 @@ export type ReplyRow = {
   jobTitle: string | null;
   jobCompany: string | null;
   jobUrl: string | null;
+  /** נוסח תשובה מוכן, כולל מה שהם ביקשו. */
+  draft: string | null;
   /** לפני כמה ימים הוא ענה. */
   days: number;
 };
 
 export default function ReplyBanner({ rows }: { rows: ReplyRow[] }) {
   const [done, setDone] = useState<Record<string, boolean>>({});
+  const [copied, setCopied] = useState<Record<string, boolean>>({});
   const open = rows.filter((r) => !done[r.id]);
   if (open.length === 0) return null;
+
+  // 15.11.2026, שאול: "אלו שענו לי וכתבת לי אני רוצה שתנסח לי גם תשובות
+  // ומציאה של מה שמבקשים". מעתיק ושולח, כמו ב"אישר חברות". השליחה היא
+  // שלו, תמיד.
+  async function copy(r: ReplyRow) {
+    if (!r.draft) return;
+    try {
+      await navigator.clipboard.writeText(r.draft);
+    } catch {
+      return;
+    }
+    setCopied((cur) => ({ ...cur, [r.id]: true }));
+    setTimeout(() => setCopied((cur) => ({ ...cur, [r.id]: false })), 1800);
+  }
 
   // 14.11.2026: "אני כבר לא עובד בחברה" היא תגובה שתחזור. מי שעזב מפסיק
   // להיות מוצע כמכר בחברה הזאת, ונשאר איש קשר לכל דבר אחר.
@@ -136,7 +153,41 @@ export default function ReplyBanner({ rows }: { rows: ReplyRow[] }) {
               </div>
             )}
 
+            {/* הנוסח המוכן. הוא כולל בתוכו את מה שהם ביקשו, קישור למשרה
+                או פרט אחר, כי שאול מעתיק בלוק אחד ושולח ולא מרכיב הודעה
+                משני חלקים על המסך. */}
+            {r.draft ? (
+              <div style={{ marginTop: 8 }}>
+                <div style={{ fontSize: '.74rem', color: 'var(--muted)', marginBottom: 3 }}>
+                  נוסח מוכן לתשובה
+                </div>
+                <pre
+                  style={{
+                    margin: 0, padding: '9px 10px', whiteSpace: 'pre-wrap',
+                    fontFamily: 'inherit', fontSize: '.8rem', lineHeight: 1.5,
+                    background: 'var(--raised)', border: '1px solid var(--hair)',
+                    borderRadius: 6, direction: 'ltr', textAlign: 'left',
+                  }}
+                >
+                  {r.draft}
+                </pre>
+              </div>
+            ) : (
+              <div style={{ fontSize: '.74rem', color: 'var(--muted)', marginTop: 6 }}>
+                אין עדיין נוסח מוכן לתגובה הזאת. הסוכן כותב אותו כשהוא קורא
+                את השיחה, מהסריקה הבאה והלאה.
+              </div>
+            )}
+
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginTop: 8 }}>
+              {r.draft && (
+                <button
+                  type="button" className="apply" style={btn}
+                  onClick={() => copy(r)}
+                >
+                  {copied[r.id] ? '✓ הועתק' : 'העתק תשובה'}
+                </button>
+              )}
               {/* 14.11.2026. שאול: "פתח את השיחה לוקחת אותי לעמוד הפרופיל
                   שלו. זה לא טוב." הכפתור נפל לפרופיל כשלא היה קישור לשיחה,
                   ואמר משהו אחר ממה שהוא עשה. כפתור ששולח למקום אחר ממה
