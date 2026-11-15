@@ -78,7 +78,7 @@ export default async function Reach() {
     if (!b) { out.bucket++; continue; }
     if (c.first_pitch_at) { out.pitch++; continue; }
     if (c.li_seen_at) { out.thread++; continue; }
-    if (b === 'recruiter' && looksLikeAgency(c.company)) { out.agency++; continue; }
+    if (b === 'recruiter' && looksLikeAgency(c.company, c.title)) { out.agency++; continue; }
     // כל השערים האחרים עברו, ולכן מי שאינו זכאי כאן נפל על כלל 60 הימים.
     if (!eligible(c)) out.recent++;
   }

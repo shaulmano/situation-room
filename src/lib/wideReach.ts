@@ -75,12 +75,37 @@ const RECENT_DAYS = 60;
 const AGENCY_NAME =
   /(\bhr\b|recruit\w*|talent|staffing|sourcing|headhunt\w*|hunt\w*|manpower|outsourc\w*|placement|human resources|consult\w*|freelance|independiente|עצמאי\w*|השמה|גיוס|כוח אדם|משאבי אנוש|ייעוץ)/i;
 
-export function looksLikeAgency(company?: string | null): boolean {
+/**
+ * חברות השמה ששמן אינו מסגיר אותן, **בצד הזה בלבד**.
+ *
+ * 15.11.2026. `AGENCIES` ב-`pickContact` נושא אזהרה מפורשת: סימון שגוי
+ * של חברה אמיתית מוריד אנשי קשר אמיתיים ממסך המכרים, ולכן "ניחוש כאן
+ * גרוע מריק". הרשימה הזאת נפרדת ממנו כדי שתוספת כאן לא תיגע שם.
+ *
+ * נמדד על 25 השורות הראשונות של התור: Experis ו-Maof עברו את התבנית
+ * למעלה ושתיהן חברות השמה.
+ *
+ * **וקבוצת יעל וקורנטק לא נכנסו לכאן בכוונה.** הן בית תוכנה ואינטגרציה,
+ * כלומר בדיוק ארגון ה-IT המסורתי ש-`score.py` סופר כמעסיק מועדף. זאת
+ * אותה מלכודת שתועדה על 'חשמל': מילה שהיא גם שם של מעסיק אמיתי.
+ */
+const AGENCY_EXTRA = /(\bexperis\b|\bmaof\b|מאוף)/i;
+
+/**
+ * **והתפקיד נבדק גם הוא, לא רק שם החברה.**
+ * "Freelance Human Resources Consultant" אצל "עדי יגורי - הנחיית קבוצות
+ * ויחידים" הוא יועץ עצמאי ולא מגייס בחברה, ושם החברה לבדו לא מסגיר זאת.
+ */
+const AGENCY_TITLE = /(freelance|independent|self.?employed|עצמאי|יועצ\w*|consultant)/i;
+
+export function looksLikeAgency(company?: string | null, title?: string | null): boolean {
   const c = (company ?? '').trim();
   if (!c) return true;          // בלי שם חברה אי אפשר לדעת, ולכן לא נכנס
   // הרשימה המפורשת שכבר קיימת במערכת קודמת לתבנית: SQLink ו-GotFriends
   // הם חברות השמה ואין בשמם שום מילה שמסגירה את זה.
   if (isAgency(c)) return true;
+  if (AGENCY_EXTRA.test(c)) return true;
+  if (title && AGENCY_TITLE.test(title)) return true;
   return AGENCY_NAME.test(c);
 }
 
@@ -100,7 +125,7 @@ export function eligible(c: ReachContact, now = Date.now()): boolean {
   // בדיוק ההודעה הראשונה. ראה migration 0049.
   if (c.first_pitch_at) return false;
   // **מגייס, רק אם הוא מגייס של חברה אמיתית.**
-  if (bucket === 'recruiter' && looksLikeAgency(c.company)) return false;
+  if (bucket === 'recruiter' && looksLikeAgency(c.company, c.title)) return false;
   if (c.contacted_at) {
     const days = (now - new Date(c.contacted_at).getTime()) / 864e5;
     if (days < RECENT_DAYS) return false;
