@@ -89,7 +89,7 @@ const AGENCY_NAME =
  * כלומר בדיוק ארגון ה-IT המסורתי ש-`score.py` סופר כמעסיק מועדף. זאת
  * אותה מלכודת שתועדה על 'חשמל': מילה שהיא גם שם של מעסיק אמיתי.
  */
-const AGENCY_EXTRA = /(\bexperis\b|\bmaof\b|מאוף)/i;
+const AGENCY_EXTRA = /(\bexperis\b|\bmaof\b|מאוף|\bsee[.\-]?v\b|\bjobset\b)/i;
 
 /**
  * **והתפקיד נבדק גם הוא, לא רק שם החברה.**
