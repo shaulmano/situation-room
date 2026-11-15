@@ -51,53 +51,61 @@ def fetch(url, timeout=25):
 
 # ---------------------------------------------------------------- extraction
 
-def _json_blobs(html):
+def comeet_api(html):
     """
-    כל מה שנראה כמו JSON מוטמע בתוך תגית script.
+    הכתובת של ה-API של Comeet, מתוך עמוד הלוח עצמו.
 
-    **הרשימה אינה קישורים.** נמדד: הראנר מקבל 132 אלף בתים משורש לוח
-    של Comeet ובהם **אפס** קישורי /jobs/, בזמן שהדפדפן מציג רשימה
-    מלאה. אין גם קריאת API: נבדקה תעבורת הרשת של הדף ואין בה בקשה
-    לרשימת משרות. כלומר הנתונים יושבים ב-HTML עצמו, בתוך script.
+    **זאת הדרך הנכונה, ורגקס על HTML היא לא.** נמדד ב-15.11: הראנר
+    מקבל 132 אלף בתים משורש הלוח ובהם אפס קישורי /jobs/, ותעבורת הרשת
+    של הדף אינה כוללת בקשה לרשימת משרות. כלומר הנתונים מוטמעים בתוך
+    script, אבל לא בצורה יציבה שאפשר לסרוק.
+
+    מה שכן יושב שם בוודאות הוא `company_uid` ו-`token`, ואיתם ה-API
+    הרשמי מחזיר JSON נקי עם שם, מיקום וכתובת מלאה לכל משרה. בלי הטוקן
+    הוא מחזיר 400, וזה מה שנמדד בניסיון הראשון.
     """
-    for m in re.finditer(r'<script[^>]*>(.*?)</script>', html, re.S | re.I):
-        body = m.group(1)
-        if len(body) < 80:
-            continue
-        if 'position' not in body.lower() and 'job' not in body.lower():
-            continue
-        yield body
+    uid = re.search(r'"company_uid"\s*:\s*"([^"]+)"', html)
+    tok = re.search(r'"token"\s*:\s*"([^"]+)"', html)
+    if not uid or not tok:
+        return None
+    return ('https://www.comeet.co/careers-api/2.0/company/%s/positions?token=%s'
+            % (uid.group(1), tok.group(1)))
+
+
+def _loc_text(loc):
+    if isinstance(loc, str):
+        return loc
+    if not isinstance(loc, dict):
+        return ''
+    parts = [loc.get(k) for k in ('name', 'city', 'state', 'country')]
+    return ', '.join(dict.fromkeys([p for p in parts if p]))
 
 
 def comeet_positions(html):
-    """
-    משרות מתוך שורש לוח של Comeet.
-
-    הצורה שנמדדה: אובייקטים עם uid, name ו-location בתוך ה-script.
-    נשענים על השדות ולא על סדר, כי סדר משתנה.
-    """
+    """משרות פתוחות מלוח Comeet, דרך ה-API שהעמוד עצמו נשען עליו."""
+    api = comeet_api(html)
+    if not api:
+        return []
+    code, body = fetch(api)
+    if code != 200:
+        print('    comeet api HTTP %s' % code)
+        return []
+    try:
+        data = json.loads(body)
+    except Exception as e:
+        print('    comeet api not json: %s' % e)
+        return []
     out = []
-    seen = set()
-    for body in _json_blobs(html):
-        # אובייקט משרה שלם, לא רגקס על שדה בודד: שם בלי מיקום הוא
-        # שורה שאי אפשר לסנן לפי ישראל, וזה בדיוק מה שאסור להכניס.
-        for m in re.finditer(
-                r'\{[^{}]*?"uid"\s*:\s*"([^"]+)"[^{}]*?"name"\s*:\s*"([^"]+)"[^{}]*?\}',
-                body):
-            uid, name = m.group(1), m.group(2)
-            if uid in seen:
-                continue
-            blob = m.group(0)
-            loc = ''
-            lm = re.search(r'"location"\s*:\s*\{([^{}]*)\}', blob)
-            if lm:
-                parts = re.findall(r'"(?:name|city|country)"\s*:\s*"([^"]+)"', lm.group(1))
-                loc = ', '.join(dict.fromkeys(parts))
-            if not loc:
-                lm = re.search(r'"location"\s*:\s*"([^"]+)"', blob)
-                loc = lm.group(1) if lm else ''
-            seen.add(uid)
-            out.append({'uid': uid, 'title': name, 'location': loc})
+    for p in data if isinstance(data, list) else data.get('positions', []):
+        name = (p.get('name') or '').strip()
+        if not name:
+            continue
+        out.append({
+            'uid': p.get('uid') or p.get('url_comeet_hosted_page') or name,
+            'title': name,
+            'location': _loc_text(p.get('location')),
+            'url': p.get('url_comeet_hosted_page') or '',
+        })
     return out
 
 
@@ -171,8 +179,8 @@ def cmd_probe(url):
     print('positions found: %d' % len(rows))
     for r in rows[:40]:
         keep = role_of(r['title'])
-        print('  %-52s | %-28s | %s' % (
-            r['title'][:52], r['location'][:28],
+        print('  %-46s | %-26s | %s' % (
+            r['title'][:46], r['location'][:26],
             ('KEEP as ' + keep) if keep and in_israel(r['location']) else '-'))
 
 
@@ -219,8 +227,9 @@ def cmd_read(limit=60):
             role = role_of(r['title'])
             if not role or not in_israel(r['location']):
                 continue
-            url = (comeet_job_url(b['url'], r['title'], r['uid'])
-                   if 'comeet' in b['url'] else r['uid'])
+            url = r.get('url') or r['uid']
+            if not url.startswith('http'):
+                continue
             found.append({'title': r['title'], 'company': b['company'],
                           'url': url, 'location': r['location'],
                           'source': b['source'] or 'Comeet', 'found_for': role})
