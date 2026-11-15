@@ -1,7 +1,7 @@
 'use client';
 import { useState } from 'react';
 import { mutualsHref, peopleAtCompanyHref, type WarmContact } from '@/lib/contacts';
-import { referralMessage } from '@/lib/outreach';
+import { referralMessage , cvFamilyForTitle } from '@/lib/outreach';
 import { isAgency, rankContacts } from '@/lib/pickContact';
 
 // The block that sits under a job row when Shaul already knows someone at that
@@ -46,11 +46,16 @@ export type JobRef = {
   applied?: boolean;
 };
 
-// The three CVs, in the same ids the matcher uses.
+// גרסאות קורות החיים, באותם מזהים שהניקוד משתמש בהם.
+//
+// 15.11.2026: נוספה Release. היא קיימת במסד ויש לה קובץ, והיא פשוט לא
+// הייתה כאן, ולכן משרת Release קיבלה את הגרסה הלא נכונה בלי שום דרך
+// לבחור אחרת.
 const CVS: [string, string][] = [
   ['qa', 'QA'],
   ['program', 'תוכניות'],
   ['delivery', 'Delivery'],
+  ['release', 'Release'],
 ];
 
 export default function JobContacts(
@@ -196,7 +201,22 @@ function Contact({
   // but that pick is wrong often enough to matter: a Principal Product Manager
   // posting came through as delivery. Getting it wrong here is not a chip on a
   // row, it is the wrong file in a message to someone doing Shaul a favour.
-  const [cv, setCv] = useState<string>(job.cvId ?? 'qa');
+  // ברירת המחדל נגזרת מכותרת המשרה, ולא נופלת ל-QA.
+  //
+  // 15.11.2026, שאול על Senior Program Manager ב-Dream: "למה אתה מציע
+  // לפרסם קורות חיים QA כאשר מה שהגשתי זה פרוגרם?" ההגדרה הקודמת
+  // הייתה `job.cvId ?? 'qa'`, כלומר **כל משרה שלא נשא אותה מזהה גרסה
+  // קיבלה את גרסת ה-QA**, בלי שום סימן שמשהו לא בסדר. זה אותו דפוס
+  // שתוקן היום בתור הפנייה בלינקדאין: נפילה שקטה לברירת מחדל היא
+  // קובץ לא נכון ולא שגיאה.
+  //
+  // הכותרת מכריעה כשהיא אומרת משהו ברור, והמזהה מהניקוד משמש כשהיא
+  // לא. הוא עדיין עדיף במקום אחד: הוא יודע להבדיל בין program לבין
+  // project-release-manager, והכותרת לא.
+  const known = (id?: string | null) => (id && CVS.some(([k]) => k === id) ? id : null);
+  const [cv, setCv] = useState<string>(
+    known(cvFamilyForTitle(job.title)) ?? known(job.cvId) ?? 'qa'
+  );
   const [copied, setCopied] = useState(false);
   const [busy, setBusy] = useState(false);
   // ויתור. אופטימי, והשורה חוזרת אם הכתיבה נכשלה: שורה שנעלמה ולא נשמרה
