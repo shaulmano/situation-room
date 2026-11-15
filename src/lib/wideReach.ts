@@ -105,8 +105,29 @@ export function israelDayStart(now = new Date()): string {
   return new Date(Date.UTC(g('year'), g('month') - 1, g('day')) - offset).toISOString();
 }
 
+/**
+ * השם הפרטי, נקי.
+ *
+ * 15.11.2026: הראשון בתור נקרא בלינקדאין "★Mor Barki★", וההודעה
+ * הייתה יוצאת "Hi ★Mor,". אנשים שמים כוכביות, אימוג'ים ותארים בשם
+ * התצוגה, ולכן כל מה שאינו אות יורד לפני הפיצול.
+ *
+ * אם לא נשאר שם סביר, הפונקציה מחזירה ריק והנוסח נופל ל-"there".
+ * **עדיף בלי שם מאשר שם שגוי.**
+ */
+const TITLES = new Set([
+  'dr', 'mr', 'ms', 'mrs', 'miss', 'prof', 'professor', 'eng', 'adv', 'cpa',
+  'דר', 'ד', 'עו', 'רו', 'פרופ',
+]);
+
 export function firstName(full?: string | null): string {
-  return (full ?? '').trim().split(/\s+/)[0] || '';
+  const cleaned = (full ?? '').replace(/[^\p{L}\p{M}\s'-]/gu, ' ').trim();
+  for (const w of cleaned.split(/\s+/)) {
+    if (w.length < 2) continue;
+    if (TITLES.has(w.toLowerCase())) continue;
+    return w;
+  }
+  return '';
 }
 
 /**
