@@ -29,6 +29,7 @@ GitHub מסך "הפעל JavaScript" של 6,644 בתים ולא תוצאות, ב�
 import hashlib
 import json
 import os
+import re
 import sys
 import urllib.error
 import urllib.parse
@@ -44,6 +45,37 @@ def job_id(url):
 
 def _norm(u):
     return (u or '').split('?')[0].split('#')[0].rstrip('/')
+
+
+_LOCALE = re.compile(r'^[a-z]{2}-[A-Z]{2}$')
+
+
+def canonical_url(url):
+    """כתובת אחת לכל משרה, גם כשהלוח מגיש אותה בכמה כתובות.
+
+    ‏15.11.2026. שאול: **"אתה מציג לי משרות שכבר הגשתי אתמול"**, עם קישור
+    למשרה ב-Workday. מסך הרדאר כן מסנן משרות שהוגשו, ובכל זאת היא הופיעה.
+
+    **הסיבה: שתי שורות לאותה משרה.** אותו `JR-0094713` בדיוק, פעם
+    `/Workday/job/...` ופעם `/en-US/Workday/job/...`. הזיהוי במערכת הוא
+    לפי כתובת, ולכן מקטע השפה יצר משרה שנייה. הוא הגיש וסימן על אחת,
+    והתאומה נשארה על המסך כאילו לא נגע בה.
+
+    זה אותו דפוס שמתועד כ"אין איחוד כפילויות בין מקורות", אבל כאן הוא
+    קורה **בתוך מקור אחד**, ולכן אין שום דבר שמרמז עליו: אותו שם, אותה
+    חברה, אותו מזהה משרה.
+
+    מקטע שפה הוא `xx-XX` בלבד, והוא יורד רק מ-Workday, שם מדדנו ששתי
+    הצורות מגישות את אותה משרה.
+    """
+    parts = urllib.parse.urlsplit((url or '').strip())
+    if not parts.netloc.endswith('.myworkdayjobs.com'):
+        return (url or '').strip()
+    segs = [s for s in parts.path.split('/') if s]
+    if segs and _LOCALE.match(segs[0]):
+        segs = segs[1:]
+    return urllib.parse.urlunsplit(
+        (parts.scheme, parts.netloc, '/' + '/'.join(segs), '', ''))
 
 
 class _NoRedirect(urllib.request.HTTPRedirectHandler):
@@ -215,7 +247,9 @@ def main():
     clean = []
     seen = set()
     for r in rows:
-        url = (r.get('url') or '').strip()
+        # כתובת אחת לכל משרה לפני כל דבר אחר, אחרת אותה משרה נכנסת פעמיים.
+        url = canonical_url(r.get('url'))
+        r['url'] = url
         title = (r.get('title') or '').strip()
         if not url or not title or url in seen:
             continue
