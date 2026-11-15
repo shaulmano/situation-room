@@ -29,6 +29,8 @@ export type ReachContact = {
   left_company_at?: string | null;
   /** כבר קיימת איתו שיחה בלינקדאין. ראה migration 0048. */
   li_seen_at?: string | null;
+  /** קיבל את הפנייה הראשונה בגל מאי 2026. ראה migration 0049. */
+  first_pitch_at?: string | null;
 };
 
 // מגייס ראשון, כי "VP People" הוא גיוס ולא בכיר לענייננו.
@@ -92,6 +94,11 @@ export function eligible(c: ReachContact, now = Date.now()): boolean {
   // קיבלו ממני לפני כמה חודשים את ההודעה הראשונה... זה נראה לי סתם
   // שליחה כי גם אז לא ענו לי."
   if (c.li_seen_at) return false;
+  // **וגל מאי 2026 הוא פנייה לכל דבר.** 920 בקשות חברות יצאו אז עם
+  // הערה שאומרת "actively looking for my next role as a Senior Program
+  // Manager / QA Leader. Happy to send my CV if anything fits", כלומר
+  // בדיוק ההודעה הראשונה. ראה migration 0049.
+  if (c.first_pitch_at) return false;
   // **מגייס, רק אם הוא מגייס של חברה אמיתית.**
   if (bucket === 'recruiter' && looksLikeAgency(c.company)) return false;
   if (c.contacted_at) {

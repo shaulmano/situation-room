@@ -26,7 +26,7 @@ on:
   workflow_dispatch:
     inputs:
       mode:
-        description: 'fetch, render, audit, dismissals, migrate, query, checkapi, poster, replies, referrals, referral_pdf, referral_mark, ats_mail, ats_mail_write, boards, boards_add, boards_probe, messaged, mail_selftest, mail_test or mail_send'
+        description: 'fetch, render, audit, dismissals, migrate, query, checkapi, poster, replies, referrals, referral_pdf, referral_mark, ats_mail, ats_mail_write, boards, boards_add, boards_probe, messaged, pitched, mail_selftest, mail_test or mail_send'
         required: true
         default: 'fetch'
       migration:
@@ -221,6 +221,15 @@ jobs:
           SUPABASE_PROJECT_REF: ${{ secrets.SUPABASE_PROJECT_REF }}
           CONTENT: ${{ inputs.content }}
         run: python sync/messaged_mark.py "$CONTENT"
+
+      # 15.11.2026: גל מאי. אותו מצליב, עמודה אחרת. ראה 0049.
+      - name: Mark contacts pitched in the May wave
+        if: inputs.mode == 'pitched'
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+          SUPABASE_PROJECT_REF: ${{ secrets.SUPABASE_PROJECT_REF }}
+          CONTENT: ${{ inputs.content }}
+        run: python sync/messaged_mark.py "$CONTENT" first_pitch_at
 
       - name: Company career boards
         if: startsWith(inputs.mode, 'boards')

@@ -40,8 +40,29 @@ def looks_like_profile(s):
         ' ' not in s and '-' in s and len(s) > 5)
 
 
+# לאיזו עמודה מותר לכתוב, ומה התאריך שנכתב בה.
+#
+# 15.11.2026. אותו מצליב משרת עכשיו שני דברים שונים, ולכן העמודה היא
+# פרמטר ולא קבוע. **הרשימה סגורה בכוונה**: עמודה שמגיעה מהקלט ונכתבת
+# כמו שהיא היא גם חור אבטחה וגם טעות כתיב שמצליחה בשקט ולא כותבת כלום.
+#
+# `li_seen_at` נכתב ב-now(), כי הסוכן מדווח על שיחה שהוא רואה עכשיו.
+# `first_pitch_at` נכתב בתאריך קבוע של גל מאי: `outreach_done.txt` רושם
+# מה יצא ולא מתי, ותאריך מומצא לכל אדם גרוע מתאריך אחד שאומר את האמת,
+# "עד היום הזה הוא כבר קיבל את הפנייה". הקובץ עצמו נגמר ב-31.5.2026.
+COLUMNS = {
+    'li_seen_at': 'now()',
+    'first_pitch_at': "'2026-05-31'::timestamptz",
+}
+
+
 def main():
     raw = sys.argv[1] if len(sys.argv) > 1 else sys.stdin.read()
+    col = (sys.argv[2] if len(sys.argv) > 2 else '').strip() or 'li_seen_at'
+    if col not in COLUMNS:
+        raise SystemExit('unknown column %r, expected one of %s'
+                         % (col, ', '.join(sorted(COLUMNS))))
+    stamp = COLUMNS[col]
     try:
         names = json.loads(raw or '[]')
     except ValueError as e:
@@ -49,12 +70,13 @@ def main():
     if not isinstance(names, list):
         raise SystemExit('expected a list of names')
 
+    print('target column: %s' % col)
     print('conversation names in: %d' % len(names))
     if not names:
         print('nothing to do')
         return
 
-    known = sql("select id, full_name, linkedin_url, li_seen_at from contacts") or []
+    known = sql("select id, full_name, linkedin_url, %s from contacts" % col) or []
     by_name = {}
     by_slug = {}
     for c in known:
@@ -66,6 +88,9 @@ def main():
 
     hit = already = miss = 0
     ids = []
+    # אותו אדם יכול להגיע בקלט גם כ-slug וגם כשם, ובלי זה הוא נספר
+    # פעמיים ונכתב פעמיים באותה פקודה.
+    seen_ids = set()
     for n in names:
         key = str(n).strip()
         # קישור פרופיל או slug מצליבים בוודאות, ושם מצליב בקירוב. שתי
@@ -76,17 +101,21 @@ def main():
         if not who:
             miss += 1
             continue
-        if who.get('li_seen_at'):
+        if who.get(col):
             already += 1
             continue
+        if who['id'] in seen_ids:
+            already += 1
+            continue
+        seen_ids.add(who['id'])
         ids.append(who['id'])
         hit += 1
 
     # Batched, because a full sweep can carry hundreds of names.
     for i in range(0, len(ids), 200):
         chunk = ids[i:i + 200]
-        sql("update contacts set li_seen_at = now() where id in (%s)"
-            % ','.join(q(x) for x in chunk))
+        sql("update contacts set %s = %s where id in (%s)"
+            % (col, stamp, ','.join(q(x) for x in chunk)))
 
     print('marked %d, already marked %d, not in contacts %d' % (hit, already, miss))
 
