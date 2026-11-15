@@ -185,7 +185,12 @@ export function englishTitle(opts: {
       return domain ? `${domain[1]} ${en}` : en;
     }
   }
-  return FAMILY[opts.cvId ?? ''] ?? FAMILY.qa;
+  // 15.11.2026: גם כאן נפילה שקטה ל-QA, והפעם היא קובעת את **נוסח
+  // ההודעה** ולא רק את הקובץ. משרת Program בלי מזהה גרסה הייתה
+  // מתוארת לנמען כ-QA Manager.
+  return FAMILY[opts.cvId ?? '']
+    ?? FAMILY[cvFamilyForTitle(opts.jobTitle) ?? '']
+    ?? FAMILY.qa;
 }
 
 // מי שהוא עצמו מגייס.

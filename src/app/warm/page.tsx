@@ -13,6 +13,7 @@ import MarkApplied from '@/components/MarkApplied';
 import MarkClosed from '@/components/MarkClosed';
 import PriorApplied from '@/components/PriorApplied';
 import { buildPriorIndex, priorApplication } from '@/lib/priorApplication';
+import { cvFamilyForTitle } from '@/lib/outreach';
 import LinkedinQueue from '@/components/LinkedinQueue';
 import InviteQueue from '@/components/InviteQueue';
 import PosterQueue, { type PosterRow } from '@/components/PosterQueue';
@@ -557,9 +558,19 @@ async function WarmBody({
   const haveFile = new Map<string, string>();
   for (const c of (cvFiles ?? []) as any[]) haveFile.set(c.id, c.filename);
 
+  // כותרת לכל משרה, כדי שגרסת קורות החיים של שורה בתור לא תיפול
+  // בשקט ל-QA. 15.11.2026, שאול: "פעם שנייה היום".
+  const titleByJob = new Map<string, string>();
+  for (const m of (data ?? []) as any[]) {
+    if (m.jobs?.id && m.jobs?.title) titleByJob.set(m.jobs.id, m.jobs.title);
+  }
+
   const queuedBy = new Map<string, any>();
   for (const q of (queued ?? []) as any[]) {
-    const name = haveFile.get(q.cv_id ?? 'qa') ?? haveFile.get('qa');
+    const byTitle = cvFamilyForTitle(titleByJob.get(q.job_id) ?? null);
+    const name = haveFile.get(q.cv_id ?? '')
+      ?? haveFile.get(byTitle ?? '')
+      ?? haveFile.get('qa');
     queuedBy.set(`${q.contact_id}|${q.job_id}`, {
       id: q.id, status: q.status, subject: q.subject, body: q.body,
       filename: name ?? null,

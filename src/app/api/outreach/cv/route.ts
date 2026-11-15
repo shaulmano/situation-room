@@ -1,5 +1,6 @@
 import { NextResponse, type NextRequest } from 'next/server';
 import { serverClient } from '@/lib/server';
+import { cvFamilyForTitle } from '@/lib/outreach';
 
 // הקובץ שיצורף לפנייה, כדי שאפשר יהיה לקרוא אותו במסך לפני השליחה.
 //
@@ -14,7 +15,7 @@ export async function GET(req: NextRequest) {
   const sb = serverClient();
   const { data, error } = await sb
     .from('referrals')
-    .select('cv_id')
+    .select('cv_id, jobs(title)')
     .eq('id', id)
     .maybeSingle();
 
@@ -27,7 +28,12 @@ export async function GET(req: NextRequest) {
   const { data: cv } = await sb
     .from('cvs')
     .select('pdf_base64, filename')
-    .eq('id', data.cv_id ?? 'qa')
+    // 15.11.2026: לא נפילה שקטה ל-QA. **זה הקובץ שבאמת מצורף לפנייה**,
+    // ולכן כאן זה לא רק מראה אלא מה שהנמען מקבל. בלי מזהה גרסה,
+    // הכותרת של המשרה מכריעה.
+    .eq('id', data.cv_id
+      ?? cvFamilyForTitle((data as any)?.jobs?.title)
+      ?? 'qa')
     .maybeSingle();
 
   const b64 = cv?.pdf_base64 ?? null;
