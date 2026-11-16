@@ -1,5 +1,6 @@
 'use client';
 import { useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { mutualsHref, peopleAtCompanyHref, type WarmContact } from '@/lib/contacts';
 import { referralMessage , cvFamilyForTitle } from '@/lib/outreach';
 import { isAgency, rankContacts } from '@/lib/pickContact';
@@ -77,7 +78,11 @@ export default function JobContacts(
   // הגיוס, ובסוף מגייסת זוטרה. בחברת השמה מוצג אחד בלבד, כי שם כולם
   // מגייסים של אותה חברה ותשע פניות הן תשעה עותקים של אותה הודעה.
   const agency = isAgency(job.company);
-  const ranked = rankContacts(rows, job.title, agency);
+  // **מי שוויתרת עליו יוצא מהחישוב ולא רק מהתצוגה.** 16.11.2026, שאול:
+  // "ברגע שאני כותב לאנשי קשר ובוחר להתעלם מהאחרים זה לא סוגר לי את
+  // המשימה." השרת כבר סינן אותו (ראה `skipped` ב-`warm/page.tsx`), אבל
+  // כאן, בין הלחיצה לרענון הבא, הוא נשאר ברשימה והמשיך להיספר.
+  const ranked = rankContacts(rows.filter((c) => !c.skipped_at), job.title, agency);
   // מי שפנית אליו יורד לתחתית ולא נעלם, וגם לא נספר במכסה של השלושה
   // המוצגים: אחרת כרטיס שטיפלת בו היה חוסם את מי שעוד מחכה.
   const openFirst = [...ranked].sort(
@@ -194,6 +199,7 @@ function Contact({
   job: JobRef;
   onPatch: (fields: Partial<WarmContact>) => void;
 }) {
+  const router = useRouter();
   const [editing, setEditing] = useState(false);
   const [phone, setPhone] = useState(contact.phone ?? '');
   const [draft, setDraft] = useState<string | null>(null);
@@ -226,7 +232,11 @@ function Contact({
 
   async function skip() {
     setSkipped(true);
-    const ok = await save({ skipped: true }, {});
+    // 16.11.2026: **הפאטץ' היה ריק, וזה מה ששבר את סגירת המשימה.**
+    // השורה נעלמה מהמסך (`if (skipped) return null`) אבל הכרטיס שמעליה
+    // המשיך לספור אותה כמחכה לפנייה, ולכן הוא נשאר אדום ואמר
+    // "2 מכרים מחכים" אחרי שפנית לשניים וויתרת על השאר.
+    const ok = await save({ skipped: true }, { skipped_at: new Date().toISOString() });
     if (!ok) setSkipped(false);
   }
 
@@ -242,7 +252,13 @@ function Contact({
       body: JSON.stringify({ id: contact.id, ...fields }),
     }).catch(() => null);
     setBusy(false);
-    if (res?.ok) onPatch(applied);
+    if (res?.ok) {
+      onPatch(applied);
+      // **וגם הצד שרת מחושב מחדש.** בלי זה הספירה בטאב והרשימה שמתחתיה
+      // נחשבות בשני רגעים שונים: הטאב אמר "היום 0" בזמן שהכרטיס עדיין
+      // הוצג. 16.11.2026.
+      router.refresh();
+    }
     return !!res?.ok;
   }
 

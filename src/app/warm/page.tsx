@@ -627,35 +627,70 @@ async function WarmBody({
       || new Date(b.m.jobs.first_seen).getTime() - new Date(a.m.jobs.first_seen).getTime();
   });
 
+  /**
+   * שורה שאין בה למי לפנות יורדת מרשימת העבודה.
+   *
+   * 16.11.2026, שאול: **"ברגע שאני כותב לאנשי קשר ובוחר להתעלם מהאחרים
+   * זה לא סוגר לי את המשימה."**
+   *
+   * הטאב כבר ספר נכון (`openCount > 0`), והרשימה מתחתיו הציגה את הכל.
+   * לכן המסך אמר "היום 0" וכרטיס אחד בכל זאת ישב מתחתיו, וזה בדיוק
+   * המצב שבו אי אפשר לדעת אם סיימת.
+   *
+   * **וזה לא סותר את ההחלטה של 14.11**, "מי שפנית אליו נשאר בשורה ורק
+   * נצבע". היא על האדם בתוך הכרטיס, וזאת על הכרטיס עצמו. מה שטופל יורד
+   * לבלוק מקופל למטה, כמו בטאב "השבוע", ולא נמחק.
+   */
+  const todayOpen = todayApplied.filter((r) => r.openCount > 0);
+  const todayDone = todayApplied.filter((r) => r.openCount === 0);
+
+  const todayCard = (r: typeof todayApplied[number]) => (
+    <div
+      key={r.id}
+      style={{
+        background: 'var(--raised)', border: '1px solid var(--hair)',
+        borderRadius: 7, padding: 10,
+      }}
+    >
+      <div style={{ fontWeight: 700, fontSize: '.86rem' }}>{r.company}</div>
+      <div style={{ fontSize: '.78rem', color: 'var(--muted)' }}>{r.title}</div>
+      <JobContacts
+        contacts={r.people}
+        job={{
+          id: r.id, company: r.company, title: r.title, cvId: r.cvId,
+          url: r.url, foundFor: r.foundFor, applied: true,
+        }}
+      />
+    </div>
+  );
+
   const todayPanel = (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-      {todayApplied.length === 0 ? (
+      {todayOpen.length === 0 ? (
         <div className="empty">
-          <strong>לא הגשת היום למשרה בחברה שאתה מכיר בה מישהו</strong>
+          <strong>
+            {todayDone.length > 0
+              ? `סיימת את כל ${todayDone.length === 1 ? 'ההגשה של היום' : todayDone.length + ' ההגשות של היום'}`
+              : 'לא הגשת היום למשרה בחברה שאתה מכיר בה מישהו'}
+          </strong>
           <span>
-            ברגע שתסמן משרה כהוגשה, אם אתה מכיר שם מישהו היא תופיע כאן
-            עם ההודעה מוכנה.
+            {todayDone.length > 0
+              ? 'פנית או ויתרת על כל מי שאתה מכיר בחברות שהגשת להן היום.'
+              : 'ברגע שתסמן משרה כהוגשה, אם אתה מכיר שם מישהו היא תופיע כאן עם ההודעה מוכנה.'}
           </span>
         </div>
-      ) : todayApplied.map((r) => (
-        <div
-          key={r.id}
-          style={{
-            background: 'var(--raised)', border: '1px solid var(--hair)',
-            borderRadius: 7, padding: 10,
-          }}
-        >
-          <div style={{ fontWeight: 700, fontSize: '.86rem' }}>{r.company}</div>
-          <div style={{ fontSize: '.78rem', color: 'var(--muted)' }}>{r.title}</div>
-          <JobContacts
-            contacts={r.people}
-            job={{
-              id: r.id, company: r.company, title: r.title, cvId: r.cvId,
-              url: r.url, foundFor: r.foundFor, applied: true,
-            }}
-          />
-        </div>
-      ))}
+      ) : todayOpen.map(todayCard)}
+
+      {todayDone.length > 0 && (
+        <details>
+          <summary style={{ cursor: 'pointer', fontSize: '.78rem', color: 'var(--muted)' }}>
+            ◀ טופלו היום ({todayDone.length})
+          </summary>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginTop: 8 }}>
+            {todayDone.map(todayCard)}
+          </div>
+        </details>
+      )}
     </div>
   );
 
