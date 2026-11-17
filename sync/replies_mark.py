@@ -117,16 +117,35 @@ def main():
         print('nothing to do')
         return
 
-    known = sql("select id, full_name, company, email from contacts "
+    known = sql("select id, full_name, company, email, reply_url from contacts "
                 "where coalesce(full_name,'') <> ''")
-    by_name = {}
+
+    # **שם אינו מזהה. השרשור כן.**
+    #
+    # 17.11.2026, נמדד: ל-16 שמות יש שתי שורות, 32 שורות בסך הכל, והם
+    # אנשים שונים עם פרופילים שונים. "Hadas Raz" היא גם בוורינט וגם
+    # בגונג, ורק אחת מהן כתבה לו. התאמה לפי שם לבדה בוחרת לפי סדר השורות
+    # שהמסד מחזיר, שאינו מובטח, ולכן אותה תגובה יכולה לנחות בריצה אחת על
+    # שורה אחת ובריצה הבאה על אחותה, בלי שום סימן.
+    #
+    # כתובת השרשור יציבה: היא מזהה שיחה אחת בלינקדאין. מי שכבר נרשמה לו
+    # תגובה נושא אותה ב-`reply_url`, ולכן היא הקודמת לשם.
+    by_name, by_url, name_count = {}, {}, {}
     for c in known:
-        by_name.setdefault(norm(c['full_name']), c)
+        k = norm(c['full_name'])
+        name_count[k] = name_count.get(k, 0) + 1
+        by_name.setdefault(k, c)
+        if c.get('reply_url'):
+            by_url.setdefault(c['reply_url'].strip(), c)
 
     hit = miss = mails = created = 0
     for r in rows:
         name = (r.get('name') or '').strip()
-        who = by_name.get(norm(name))
+        who = by_url.get((r.get('url') or '').strip()) or by_name.get(norm(name))
+        if who and name_count.get(norm(name), 0) > 1:
+            print('  two contacts share this name, matched %s: %s'
+                  % ('by thread' if by_url.get((r.get('url') or '').strip())
+                     else 'by name, the first row', name[:40]))
         cid = who['id'] if who else None
         if not cid:
             # **מי שכתב לו ואינו באנשי הקשר נוצר, ולא נזרק.**
@@ -266,6 +285,29 @@ def main():
         answered = bool(r.get('answered'))
         closed = 'now()' if answered else 'null'
 
+        # **מה שפותח תגובה מחדש הוא שעה חדשה, ולא טקסט אחר.**
+        #
+        # 17.11.2026. שאול: "הריצה האחרונה החזירה לי שוב תגובה מהדס
+        # מאתמול." היא נרשמה שלוש פעמים באותו יום, וכל פעם יצא עליה פוש,
+        # על הודעה אחת מ-16.11 ב-09:41 שהוא כבר טיפל בה.
+        #
+        # הסיבה בפלטים עצמם: הסוכן לא תופס את אותה הודעה אותו דבר בכל
+        # ריצה. ב-09:40 ההודעה הייתה "מטורף", ב-12:48 היא הייתה שתי
+        # ההודעות האחרונות מחוברות ("כן. אצלנו מחייבים אותנו... מטורף"),
+        # וב-13:37 שוב "מטורף". **השעה הייתה זהה בכל שלוש**,
+        # 2026-11-16T09:41, והטקסט הוא מה שהתחלף.
+        #
+        # התנאי הישן השווה טקסט, ולכן כל התחלפות כזאת נראתה לו כתגובה
+        # חדשה: היא אפסה `reply_done_at` ו-`reply_pushed_at`, החזירה את
+        # השורה לבאנר והוציאה פוש. הסימון של שאול נמחק על ידי שינוי
+        # ניסוח של הקריאה, לא על ידי הודעה שהתקבלה.
+        #
+        # **ולכן ההכרעה היא על השעה.** הודעה חדשה באמת נושאת שעה חדשה,
+        # וזה מה שהחזיר את עמרי ינאי לחיים ב-14.11. קריאה אחרת של אותה
+        # הודעה נושאת אותה שעה, ואין שום סיבה להעיר עליה.
+        #
+        # טקסט נשאר קובע רק כשאין שעה בכלל, כי אז אין במה להכריע. זה
+        # נדיר: הסוכן קורא שעה כמעט תמיד.
         changed = sql(
             ("update contacts set "
              "replied_at = coalesce({at}, replied_at, now()), "
@@ -274,11 +316,23 @@ def main():
              "where id = {cid} and ("
              "  replied_at is null"
              "  or ({at} is not null and replied_at < {at})"
-             "  or coalesce(reply_text,'') <> coalesce({txt},'')"
+             "  or ({at} is null and coalesce(reply_text,'') <> coalesce({txt},''))"
              ") returning id").format(
                 at=at_sql, txt=q(txt), draft=q(draft),
                 url=q(r.get('url') or None), cid=q(cid))
         )
+
+        # **וקריאה טובה יותר של אותה הודעה כן נשמרת, בלי להעיר אותה.**
+        #
+        # הקריאה המחוברת של 12:48 החזיקה את מה שהדס כתבה לפני "מטורף",
+        # וזה מידע שעוזר. הוא נכתב על השורה, והשעה, הסימון שלו והפוש לא
+        # נוגעים. הנוסח לא נדרס: הוא נכתב לתגובה הזאת ממילא.
+        if not changed and txt:
+            sql(("update contacts set reply_text = {txt}, "
+                 "reply_url = coalesce({url}, reply_url) "
+                 "where id = {cid} and coalesce(reply_text,'') <> {txt} "
+                 "returning id").format(
+                    txt=q(txt), url=q(r.get('url') or None), cid=q(cid)))
 
         # **והשלמת נוסח לתגובה שכבר רשומה, בלי לפתוח אותה מחדש.**
         #
