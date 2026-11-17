@@ -26,7 +26,7 @@ on:
   workflow_dispatch:
     inputs:
       mode:
-        description: 'fetch, render, audit, dismissals, migrate, query, checkapi, poster, replies, referrals, referral_pdf, referral_mark, ats_mail, ats_mail_write, boards, boards_add, boards_probe, messaged, pitched, mail_selftest, mail_test or mail_send'
+        description: 'fetch, render, audit, dismissals, migrate, query, checkapi, poster, replies, referrals, referral_pdf, referral_mark, ats_mail, ats_mail_write, boards, boards_add, boards_probe, messaged, pitched, rejections, rejections_write, mail_selftest, mail_test or mail_send'
         required: true
         default: 'fetch'
       migration:
@@ -268,6 +268,22 @@ jobs:
           if [ -n "$DAYS" ]; then ARGS="--days $DAYS"; fi
           if [ "${{ inputs.mode }}" = "ats_mail_write" ]; then ARGS="$ARGS --write"; fi
           python sync/ats_mail.py $ARGS
+
+      # 17.11.2026: דחיות. אותו תבנית כמו ats_mail, ומאותה סיבה ההפרדה
+      # בין הרצה שמדפיסה לבין הרצה שכותבת.
+      - name: Rejections from mail
+        if: startsWith(inputs.mode, 'rejections')
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+          SUPABASE_PROJECT_REF: ${{ secrets.SUPABASE_PROJECT_REF }}
+          GMAIL_ADDRESS: ${{ secrets.GMAIL_ADDRESS }}
+          GMAIL_APP_PASSWORD: ${{ secrets.GMAIL_APP_PASSWORD }}
+          DAYS: ${{ inputs.request_id }}
+        run: |
+          ARGS=""
+          if [ -n "$DAYS" ]; then ARGS="--days $DAYS"; fi
+          if [ "${{ inputs.mode }}" = "rejections_write" ]; then ARGS="$ARGS --write"; fi
+          python sync/rejections.py $ARGS
 
       - name: Send mail
         if: startsWith(inputs.mode, 'mail_')
