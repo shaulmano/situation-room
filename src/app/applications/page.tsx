@@ -60,6 +60,7 @@ export default async function Applications({
   });
   const filtered = Boolean(status || range || month || needle);
   const FILTER_LABEL: Record<string, string> = {
+    rejected: 'נדחו',
     conversation: 'שיחות שהתקיימו',
     silent: 'ללא מענה',
     acknowledged: 'לינקדאין דיווח שנפתחו',
@@ -245,6 +246,32 @@ export default async function Applications({
       </p>
 
       <h2>{filtered ? 'ההגשות בחתך הזה' : 'אחרונות'}</h2>
+
+      {/* 17.11.2026, שאול: "בדף עצמו יהיה גם פילטר לפי נדחו". עד היום
+          הסינון לפי סטטוס היה קיים בכתובת אבל נגיש רק מאריח בדף הבית,
+          כלומר הוא היה שם ולא היה דרך להגיע אליו מכאן.
+
+          הספירה יושבת על כל ההגשות ולא על המסוננות, אחרת המספר על השבב
+          משתנה לפי מה שבחרת והוא מפסיק להיות עובדה. */}
+      <div className="filters">
+        <Link className={'filter' + (status ? '' : ' on')}
+              href={'/applications' + (range === 'week' ? '' : '?range=all')}>
+          הכל {all.length}
+        </Link>
+        {(['rejected', 'conversation', 'replied', 'silent'] as const)
+          .map((k) => {
+            const n = k === 'conversation'
+              ? all.filter((a) => Boolean(a.stage) || CONVERSATION.includes(a.status)).length
+              : all.filter((a) => a.status === k).length;
+            if (!n) return null;
+            return (
+              <Link key={k} className={'filter' + (status === k ? ' on' : '')}
+                    href={`/applications?status=${k}&range=all`}>
+                {FILTER_LABEL[k] ?? k} {n}
+              </Link>
+            );
+          })}
+      </div>
 
       {/* 9.11.2026: שאול אמר שהיו לו שיחות וראיון והוא לא מצליח לסמן. הסיבה
           לא הייתה הכפתורים אלא המציאה: המסך הציג 25 שורות מתוך 513, והשיחה

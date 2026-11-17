@@ -213,7 +213,10 @@ def main():
     apps = applications()
     print('applications on file: %d' % len(apps))
 
-    hit, already, miss = [], 0, []
+    # **הודעה אחת לכל הגשה.** נמדד 17.11: Axon, NICE, Ceva ו-D-Fend שלחו
+    # שתי דחיות לאותה משרה, ובלי הצמצום הזה הספירה אומרת 20 במקום 16
+    # ומדווחת עבודה שלא קרתה.
+    hit, already, miss, seen = [], 0, [], set()
     for r in rejects:
         a, why = match(r, apps)
         if not a:
@@ -222,6 +225,9 @@ def main():
         if a['status'] == 'rejected':
             already += 1
             continue
+        if a['id'] in seen:
+            continue
+        seen.add(a['id'])
         hit.append((r, a, why))
 
     print()
