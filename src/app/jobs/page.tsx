@@ -3,9 +3,10 @@ import { serverClient } from '@/lib/server';
 import { applyTarget, directLinks } from '@/lib/apply';
 import { jobAge } from '@/lib/age';
 import { companyKey, type WarmContact, contactsByCompanyKeys } from '@/lib/contacts';
-import { postingKey } from '@/lib/dedupe';
+import { duplicateCandidates, postingKey } from '@/lib/dedupe';
 import { loadApplied, priorApplication } from '@/lib/priorApplication';
 import PriorApplied from '@/components/PriorApplied';
+import DuplicateCheck from '@/components/DuplicateCheck';
 import Dismiss from '@/components/Dismiss';
 import DismissAll from '@/components/DismissAll';
 import JobBrief from '@/components/JobBrief';
@@ -100,6 +101,13 @@ export default async function Jobs({
     list.push(m);
     merged.set(k, list);
   }
+
+  // כל הכרטיסים הפתוחים, לפני כל סינון. בדיקת הכפילות חייבת לרוץ מול
+  // הלוח המלא: אם שאול מסנן לפי מקור, התאומה מהלוח השני נעלמת מהמסך
+  // ואיתה הסיבה שהשבב נדלק מלכתחילה. 17.11.2026.
+  const dupCards = [...merged.values()]
+    .filter((list) => !list.some((m) => appliedIds.has(m.jobs.id)))
+    .map((list) => list[0]);
 
   let picked = [...merged.values()]
     // Applied to through any one of its boards means applied to, full stop.
@@ -327,9 +335,7 @@ export default async function Jobs({
                       {m.copies.some((c: any) => c.jobs.manual) && (
                         <span className="chip warn">ידני</span>
                       )}
-                      {m.copies.some((c: any) => c.jobs.manual_dup) && (
-                        <span className="chip mute">כפול</span>
-                      )}
+                      {/* 17.11.2026: הוסר. ראה ההסבר ב-src/app/page.tsx. */}
                       {(() => {
                         const found = m.copies
                           .map((c: any) => c.jobs.found_for)
@@ -374,6 +380,10 @@ export default async function Jobs({
                 <MarkApplied id={j.id} cvId={m.cv_id} />
                 <MarkClosed id={j.id} ids={m.copies.map((c: any) => c.jobs.id)} />
                 <Dismiss id={j.id} ids={m.copies.map((c: any) => c.jobs.id)} />
+                <DuplicateCheck
+                  title={j.title}
+                  candidates={duplicateCandidates(dupCards, m)}
+                />
                 <JobContacts
                   contacts={warm.get(companyKey(j.company)) ?? []}
                   job={{ company: j.company, title: j.title, cvId: m.cv_id,

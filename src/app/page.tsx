@@ -3,7 +3,7 @@ import { serverClient } from '@/lib/server';
 import { applyTarget, directLinks } from '@/lib/apply';
 import { jobAge } from '@/lib/age';
 import { companyKey, type WarmContact, contactsByCompanyKeys } from '@/lib/contacts';
-import { postingKey } from '@/lib/dedupe';
+import { duplicateCandidates, postingKey } from '@/lib/dedupe';
 import Dismiss from '@/components/Dismiss';
 import DismissAll from '@/components/DismissAll';
 import JobBrief from '@/components/JobBrief';
@@ -11,6 +11,7 @@ import JobContacts from '@/components/JobContacts';
 import MarkApplied from '@/components/MarkApplied';
 import MarkClosed from '@/components/MarkClosed';
 import PriorApplied from '@/components/PriorApplied';
+import DuplicateCheck from '@/components/DuplicateCheck';
 import { loadApplied, priorApplication } from '@/lib/priorApplication';
 import { DAILY_TARGET, israelDayStart } from '@/lib/wideReach';
 
@@ -109,6 +110,26 @@ export default async function Dashboard({
   const radarRows = (radarOpen.data ?? []).filter((j: any) => !appliedIds.has(j.id));
   const radarKeys = new Set(radarRows.map((j: any) => postingKey(j.company, j.title)));
   const radarCount = radarRows.length;
+
+  /**
+   * כל מה שפתוח על הלוח, לצורך בדיקת כפילות בלבד.
+   *
+   * 17.11.2026. הדף הזה מציג את היום בלבד, והתאומה של משרה שנכנסה הבוקר
+   * יכולה להיות מלפני שבוע. בדיקה מול מה שמוצג על המסך הייתה מפספסת
+   * בדיוק את המקרה שבגללו זה נבנה: Infinidat הבוקר, מול תאומה מ-15.11.
+   *
+   * שליפה אחת, שדות קטנים, ובלי `matches`: זאת בדיקה על קיום שורה ולא
+   * על ניקוד, ומשרה בלי שורת התאמה היא עדיין משרה שקיימת.
+   */
+  const dupPool = await sb
+    .from('jobs')
+    .select('id, title, company, source, location, url, posted, first_seen, found_for')
+    .is('dismissed_at', null)
+    .gte('first_seen', ago(60))
+    .limit(3000);
+  const dupCards = (dupPool.data ?? [])
+    .filter((j: any) => !appliedIds.has(j.id))
+    .map((j: any) => ({ jobs: j }));
 
   // Today first; a week is the fallback, not the default. This page answers
   // "what is there to do this morning", anything older belongs on /jobs.
@@ -462,11 +483,12 @@ export default async function Dashboard({
                     {m.copies.some((c: any) => c.jobs.manual) && (
                       <span className="chip warn">ידני</span>
                     )}
-                    {/* "אם יש כפילות תסמן אותה ככפולה", שאול 10.11.2026:
-                        החיפוש הידני מצא אותה, אבל היא כבר הייתה כאן. */}
-                    {m.copies.some((c: any) => c.jobs.manual_dup) && (
-                      <span className="chip mute">כפול</span>
-                    )}
+                    {/* 17.11.2026: השבב "כפול" הוסר מכאן. `manual_dup` נדלק
+                        כשהחיפוש הממוקד מוצא משרה שהבוט כבר הביא, כלומר הוא
+                        שאלה על הסורקים ולא על שאול, ועל המסך הוא נקרא
+                        כאזהרה שאין מאחוריה כלום: באותו בוקר הוא סימן ארבע
+                        משרות חדשות, ולאף אחת מהן לא הייתה תאומה. העמודה
+                        נשארת למדידה. במקומו: DuplicateCheck למטה. */}
                     {(() => {
                       const found = m.copies
                         .map((c: any) => c.jobs.found_for)
@@ -507,6 +529,10 @@ export default async function Dashboard({
                 <MarkApplied id={j.id} cvId={m.cv_id} />
                 <MarkClosed id={j.id} ids={m.copies.map((c: any) => c.jobs.id)} />
                 <Dismiss id={j.id} ids={m.copies.map((c: any) => c.jobs.id)} />
+                <DuplicateCheck
+                  title={j.title}
+                  candidates={duplicateCandidates(dupCards, { jobs: j })}
+                />
                 <JobContacts
                   contacts={warm.get(companyKey(j.company)) ?? []}
                   job={{ company: j.company, title: j.title, cvId: m.cv_id,
