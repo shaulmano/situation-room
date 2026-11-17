@@ -248,11 +248,29 @@ def main():
         # הוא תשובה נכונה לשאלה הלא נכונה, וזה גרוע מריק.
         draft = (r.get('draft') or '')[:1200] or None
 
+        # **תגובה ששאול כבר ענה לה נרשמת, ולא מתריעה.**
+        #
+        # 17.11.2026. עד היום הסוכן פתח רק שיחות שבהן הצד השני שלח
+        # אחרון, ולכן **כל תגובה ששאול ענה לה תוך שעה נעלמה לגמרי**: היא
+        # לא נרשמה, לא הופיעה בשום מסך, ולא נספרה. זה מה שקרה להדס רז,
+        # שענתה ב-16.11 ב-09:41 ושאול ענה לה לפני הריצה של 10:31.
+        #
+        # **וזה מזייף את המספר שכל המערכת נשענת עליו.** "41 הודעות הביאו
+        # 3 תשובות" סופר רק את מי שהוא לא הספיק לענות לו, כלומר את
+        # התגובות שהכי פחות עניינו אותו.
+        #
+        # `answered` מסמן שהוא כבר ענה. השורה נרשמת עם `reply_done_at`
+        # ו-`reply_pushed_at` מלאים, ולכן אין פוש ואין באנר: `notify_push`
+        # שולח רק למי ש-`reply_pushed_at` ריק, והבאנר מציג רק מה שלא
+        # סומן כטופל. נשאר רק מה שרצינו, עדות שהתגובה הייתה.
+        answered = bool(r.get('answered'))
+        closed = 'now()' if answered else 'null'
+
         changed = sql(
             ("update contacts set "
              "replied_at = coalesce({at}, replied_at, now()), "
              "reply_text = {txt}, reply_url = {url}, reply_draft = {draft}, "
-             "reply_done_at = null, reply_pushed_at = null "
+             "reply_done_at = " + closed + ", reply_pushed_at = " + closed + " "
              "where id = {cid} and ("
              "  replied_at is null"
              "  or ({at} is not null and replied_at < {at})"
