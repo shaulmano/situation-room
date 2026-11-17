@@ -123,17 +123,49 @@ def main():
     for c in known:
         by_name.setdefault(norm(c['full_name']), c)
 
-    hit = miss = mails = 0
+    hit = miss = mails = created = 0
     for r in rows:
         name = (r.get('name') or '').strip()
         who = by_name.get(norm(name))
         cid = who['id'] if who else None
         if not cid:
-            # לא להמציא שורה. מי שלא באנשי הקשר הוא לא מכר של שאול, וייתכן
-            # שזה מגייס שפנה אליו מיוזמתו. הוא מדווח כאן ונעצר.
-            print('  not in contacts, skipped: %s' % name[:50])
-            miss += 1
-            continue
+            # **מי שכתב לו ואינו באנשי הקשר נוצר, ולא נזרק.**
+            #
+            # 17.11.2026. שאול: "אותו דבר קרה עם Michelle Simonov, ההודעה
+            # שלה לא הוצגה." היא לא הייתה באנשי הקשר, ולכן התגובה שלה
+            # דווחה ביומן ונעצרה שם: לא נרשמה, לא הוצגה באף מסך ולא
+            # הוציאה פוש.
+            #
+            # ההערה שעמדה כאן קודם אמרה "ייתכן שזה מגייס שפנה אליו
+            # מיוזמתו", **וזאת בדיוק הסיבה לשמור ולא לזרוק.** מגייסת
+            # שפותחת שיחה היא הדבר היקר ביותר שנכנס לתיבה, ורשימת הקשרים
+            # היא ייצוא ממאי שלא מכיר אף אחד שהגיע מאז.
+            #
+            # **ולמה זה לא סותר את "מגייסים צד שלישי לא נשמרים":** הכלל
+            # נכתב נגד גרידה של אנשים מהרשת. כאן אף אחד לא נגרד, אדם כתב
+            # לשאול בעצמו ויש ביניהם שיחה פתוחה. אותו צד מותר כמו מי
+            # שאישר בקשת חברות (15.11) והכתובת שנמסרה בתוך תגובה (14.11).
+            #
+            # **בלי חברה ובלי קישור פרופיל**, כי אין אותם בהודעה ואסור
+            # להמציא אותם. המשמעות היא שהשורה לא תיקשר לשום משרה ולא
+            # תיכנס לתור הפנייה הרחבה, שדורש `linkedin_url`. היא קיימת
+            # כדי שהתגובה תגיע למסך, וזה כל תפקידה.
+            new = sql(
+                "insert into contacts (full_name, source, note) "
+                "values (%s, 'inbound', %s) returning id"
+                % (q(name), q('כתב לשאול בלינקדאין ולא היה באנשי הקשר. '
+                              'נוצר אוטומטית מתגובה נכנסת.')))
+            if not new:
+                print('  could not create contact: %s' % name[:50])
+                miss += 1
+                continue
+            cid = new[0]['id']
+            created += 1
+            # **וגם `who` נבנה כאן.** בלעדיו `pick_email` בהמשך מקבל None
+            # ונופל ב-AttributeError, כלומר כל הריצה מתה על ההודעה
+            # הראשונה מאדם חדש. נתפס בבדיקה מקומית לפני הדחיפה.
+            who = {'id': cid, 'full_name': name, 'company': None, 'email': None}
+            print('  created from an inbound message: %s' % name[:50])
         # תגובה חדשה מחזירה שיחה שנסגרה.
         #
         # 14.11.2026, שאול: "ברגע שסימנתי שיחה כטופלה אתה לא תדע עליה ולא
@@ -273,8 +305,10 @@ def main():
     print('recorded %d, unchanged or skipped %d' % (hit, len(rows) - hit))
     if mails:
         print('email addresses learned from messages: %d' % mails)
+    if created:
+        print('(%d new contacts created from inbound messages)' % created)
     if miss:
-        print('(%d were not in contacts)' % miss)
+        print('(%d could not be matched or created)' % miss)
 
 
 if __name__ == '__main__':
