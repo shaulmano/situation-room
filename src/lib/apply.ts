@@ -51,7 +51,9 @@ export function applyTarget(job: {
 // in sync/jobs_sync.py: real people are not catalogued in this database.
 //
 // The ATS sources are already the company's own board, so they get neither.
-const COMPANY_BOARDS = new Set(['Comeet', 'Greenhouse', 'Ashby', 'SmartRecruiters']);
+// 18.11.2026: Lever נוסף כאן יחד עם כניסתו לסריקה. מודעה ב-Lever היא
+// כבר הלוח של החברה עצמה, ולכן "אתר החברה" מצביע על מה שפתוח ממילא.
+const COMPANY_BOARDS = new Set(['Comeet', 'Greenhouse', 'Ashby', 'SmartRecruiters', 'Lever']);
 
 export function directLinks(job: {
   title?: string | null;

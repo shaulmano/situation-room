@@ -26,6 +26,10 @@ const KNOWN: [string, string, string][] = [
   ['drushim',    'דרושים',      'Drushim'],
   ['comeet',     'Comeet',      'Comeet'],
   ['greenhouse', 'Greenhouse',  'Greenhouse'],
+  // 18.11.2026: נוסף יחד עם כניסתו לסריקה היומית. **מקור שאינו ברשימה
+  // הזאת אינו מופיע במסך בכלל**, גם כשהוא מכניס משרות, וזאת אותה מלכודת
+  // של CORE_ROLES במסך המשרות.
+  ['lever',      'Lever',       'Lever'],
   ['gotfriends', 'GotFriends',  'GotFriends'],
   ['experis',    'Experis',     'Experis'],
   ['dialog',     'Dialog',      'Dialog'],
