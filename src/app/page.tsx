@@ -53,8 +53,13 @@ export default async function Dashboard({
     sb.from('applications').select('sent_at').order('sent_at', { ascending: false }).limit(1),
     loadApplied(sb),
     // 15.11.2026: המכסה היומית של הפנייה הרחבה. ראה src/app/reach.
+    //
+    // 18.11.2026: **ויתור נספר גם הוא.** האריח כאן מראה את אותו מספר
+    // שהמסך מראה, ולכן הוא חייב לספור את אותן החלטות, אחרת האריח יאמר
+    // "נשארו 7" והמסך יאמר "סיימת".
     sb.from('contacts').select('id', { count: 'exact', head: true })
-      .gte('wide_sent_at', israelDayStart()),
+      .or('wide_sent_at.gte.' + israelDayStart()
+          + ',wide_skipped_at.gte.' + israelDayStart()),
     sb.from('contacts').select('imported_at').order('imported_at', { ascending: false }).limit(1),
     // שיחות וראיונות שנקבעו. מה שהיה אתמול נשאר יום אחד נוסף, כדי שראיון
     // שהתקיים הבוקר לא ייעלם מהמסך לפני שנרשם מה קרה בו.

@@ -21,7 +21,23 @@ export const dynamic = 'force-dynamic';
 export default async function Reach() {
   const sb = serverClient();
 
-  const [{ data: all, error }, { count: sentToday }] = await Promise.all([
+  // **המכסה היומית נספרת על החלטות, ולא על שליחות.**
+  //
+  // 18.11.2026. שאול: **"אני שולח הודעות בפניה רחבה מסמן מה נשלח ומה
+  // אני מוותר ועדיין ממשיכים להגיע לי עוד ועוד."**
+  //
+  // נמדד באותו בוקר: 18 נשלחו ו-**22 ויתורים**, כלומר 40 החלטות, והמסך
+  // עוד הציג שבעה. בשני הימים שלפניו היו ויתור אחד ושלושה, ולכן זה צף
+  // רק כשהוא התחיל להשתמש ב"מוותר" באמת.
+  //
+  // הסיבה: `left` נגזר מ-`wide_sent_at` בלבד. ויתור הוציא אדם מהתור
+  // ולא הקטין את המכסה, ולכן **כל ויתור שאב פנימה שם חדש**, בלי סוף.
+  // הספירה בצד הלקוח כן ספרה את שניהם, ולכן זה נראה תקין עד הטעינה
+  // הבאה, ואז המסך התמלא מחדש.
+  //
+  // ויתור הוא עבודה: הוא קרא שם, תפקיד וחברה והחליט. 25 החלטות ביום
+  // הן המכסה, ולא משנה לאיזה צד הן נפלו.
+  const [{ data: all, error }, { count: sentToday }, { count: skippedToday }] = await Promise.all([
     sb.from('contacts')
       .select('id, full_name, title, company, linkedin_url, contacted_at, '
         + 'wide_sent_at, wide_skipped_at, left_company_at, li_seen_at, first_pitch_at')
@@ -32,6 +48,9 @@ export default async function Reach() {
     sb.from('contacts')
       .select('id', { count: 'exact', head: true })
       .gte('wide_sent_at', israelDayStart()),
+    sb.from('contacts')
+      .select('id', { count: 'exact', head: true })
+      .gte('wide_skipped_at', israelDayStart()),
   ]);
 
   if (error) {
@@ -46,7 +65,9 @@ export default async function Reach() {
     );
   }
 
-  const done = sentToday ?? 0;
+  const sent = sentToday ?? 0;
+  const skipped = skippedToday ?? 0;
+  const done = sent + skipped;
   const left = Math.max(0, DAILY_TARGET - done);
 
   const list = (all ?? []) as unknown as ReachContact[];
@@ -111,7 +132,9 @@ export default async function Reach() {
         sample={wideMessage({ full_name: rows[0]?.name ?? 'Mor Barki' })}
         cvFile={WIDE_CV_FILE}
         target={DAILY_TARGET}
-        sentToday={done}
+        doneToday={done}
+        sentToday={sent}
+        skippedToday={skipped}
       />
     </main>
   );

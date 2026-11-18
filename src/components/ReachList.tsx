@@ -26,14 +26,20 @@ export type ReachRow = {
  * לדעת מתי גמרת איתה.
  */
 export default function ReachList(
-  { rows, sample, cvFile, target, sentToday }:
-  { rows: ReachRow[]; sample: string; cvFile: string; target: number; sentToday: number },
+  { rows, sample, cvFile, target, doneToday, sentToday, skippedToday }:
+  {
+    rows: ReachRow[]; sample: string; cvFile: string; target: number;
+    /** החלטות היום, שליחות וויתורים יחד. זה מה שמוריד את המכסה. */
+    doneToday: number;
+    sentToday: number;
+    skippedToday: number;
+  },
 ) {
   const [done, setDone] = useState<Set<string>>(new Set());
   const [copied, setCopied] = useState<string | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
 
-  const left = Math.max(0, target - sentToday - done.size);
+  const left = Math.max(0, target - doneToday - done.size);
   const live = rows.filter((r) => !done.has(r.id));
 
   async function mark(id: string, field: 'sent' | 'skipped') {
@@ -73,9 +79,18 @@ export default function ReachList(
       <div className="reach-count">
         <span className="rc-n">{left}</span>
         <span className="rc-t">
-          {left === 0 ? 'סיימת להיום' : left === 1 ? 'נשארה פנייה אחת' : 'פניות נשארו היום'}
+          {left === 0 ? 'סיימת להיום' : left === 1 ? 'נשארה החלטה אחת' : 'נשארו היום'}
         </span>
       </div>
+
+      {/* 18.11.2026: המספר לבדו לא אומר לו למה הוא ירד, ולכן ויתור נראה
+          כאילו לא נספר. הפירוט הוא התשובה לשאלה "למה ממשיכים להגיע עוד". */}
+      {doneToday > 0 && (
+        <p className="hint">
+          היום: <b>{sentToday}</b> נשלחו, <b>{skippedToday}</b> ויתרת.
+          {' '}שניהם נספרים מתוך {target}.
+        </p>
+      )}
 
       <p className="hint">
         הנוסח קבוע וזהה לכולם. <b>העתק</b>, <b>פתח בלינקדאין</b>, הדבק, צרף את{' '}
