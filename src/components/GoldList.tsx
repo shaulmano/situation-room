@@ -29,6 +29,7 @@ export default function GoldList(
   const [done, setDone] = useState<Set<string>>(new Set());
   const [copied, setCopied] = useState<string | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
+  const [gone, setGone] = useState<Set<string>>(new Set());
   const left = Math.max(0, target - doneToday - done.size);
   const live = rows.filter((r) => !done.has(r.id));
 
@@ -43,6 +44,20 @@ export default function GoldList(
     setBusy(null);
     if (!res || !res.ok) {
       setDone((p) => { const n = new Set(p); n.delete(id); return n; });
+      alert('לא נשמר. נסה שוב.');
+    }
+  }
+
+  // ויתור על איש קשר אחד. הוא יורד מיד וחוזר רק אם הכתיבה נכשלה.
+  async function skipPerson(id: string) {
+    setGone((p) => new Set(p).add(id));
+    const res = await fetch('/api/gold', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ contactId: id, skipped: true }),
+    }).catch(() => null);
+    if (!res || !res.ok) {
+      setGone((p) => { const n = new Set(p); n.delete(id); return n; });
       alert('לא נשמר. נסה שוב.');
     }
   }
@@ -81,7 +96,7 @@ export default function GoldList(
             {r.hiring && <span className="chip mute">מגייסת</span>}
           </div>
           <div className="reach-sub">
-            {r.people.length === 0 && r.jobs.length === 0
+            {r.people.filter((p) => !gone.has(p.id)).length === 0 && r.jobs.length === 0
               ? 'אין איש קשר ולא ידוע על משרה'
               : <>
                   {r.contactsTotal > 0 ? `${r.contactsTotal} מכרים שלך כאן` : 'אין איש קשר'}
@@ -114,7 +129,7 @@ export default function GoldList(
             </ul>
           )}
 
-          {r.people.map((p) => (
+          {r.people.filter((p) => !gone.has(p.id)).map((p) => (
             <div className="gold-person" key={p.id}>
               <div className="gold-pn">
                 <b>{p.name}</b>
@@ -130,6 +145,9 @@ export default function GoldList(
                     פתח בלינקדאין
                   </a>
                 )}
+                <button type="button" className="closed"
+                  title="לא רלוונטי. יירד ולא יחזור"
+                  onClick={() => skipPerson(p.id)}>מוותר</button>
               </div>
             </div>
           ))}

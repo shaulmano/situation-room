@@ -9,9 +9,16 @@ export const dynamic = 'force-dynamic';
  */
 export async function POST(req: NextRequest) {
   const body = await req.json().catch(() => null);
+  const now = new Date().toISOString();
+  // ויתור על איש קשר בודד, לא על כל החברה.
+  if (typeof body?.contactId === 'string' && typeof body?.skipped === 'boolean') {
+    const { error } = await serverClient().from('contacts')
+      .update({ gold_skipped_at: body.skipped ? now : null }).eq('id', body.contactId);
+    if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+    return NextResponse.json({ ok: true });
+  }
   const id = typeof body?.id === 'string' ? body.id : '';
   if (!id) return NextResponse.json({ error: 'missing id' }, { status: 400 });
-  const now = new Date().toISOString();
   const patch: Record<string, string | null> = { updated_at: now };
   let touched = false;
   if (typeof body?.done === 'boolean') { patch.gold_done_at = body.done ? now : null; touched = true; }

@@ -25,7 +25,8 @@ export default async function Gold() {
   const sb = serverClient();
 
   const { data: cs, error } = await sb.from('contacts')
-    .select('id, full_name, title, company, company_key, linkedin_url, email, phone, contacted_at')
+    .select('id, full_name, title, company, company_key, linkedin_url, email, phone, contacted_at, gold_skipped_at')
+    .is('gold_skipped_at', null)
     .is('left_company_at', null)
     .not('company_key', 'is', null)
     .not('linkedin_url', 'is', null)
