@@ -35,6 +35,12 @@ def quiet_pipeline():
     return None if int(n) else 'לא נכנסה אף משרה ב-24 השעות האחרונות'
 
 
+# מקורות ששאול הוריד בכוונה (דרושים 20.11, אולג'ובס 15.11, סקרט'ג'ובס 10.11).
+# הם מפסיקים להביא משרות כי כך רצינו, ולא כי הסורק נשבר, ולכן אסור שיפעילו
+# התראה. ההשוואה לפי חלק מהשם באותיות קטנות.
+DROPPED_ON_PURPOSE = ('drushim', 'alljobs', 'secretjobs')
+
+
 def sources_gone_quiet():
     """מקור שהביא בעבר ולא מביא בשבוע האחרון. זה הכישלון שחזר כל חודש."""
     rows = sql(
@@ -45,7 +51,9 @@ def sources_gone_quiet():
         "from jobs where on_target group by source"
     )
     dead = [r['source'] for r in rows
-            if int(r['before']) >= MIN_HISTORY and int(r['recent']) == 0]
+            if int(r['before']) >= MIN_HISTORY and int(r['recent']) == 0
+            and not any(d in (r['source'] or '').lower()
+                        for d in DROPPED_ON_PURPOSE)]
     for r in sorted(rows, key=lambda r: -int(r['recent'])):
         print(f"  {r['source']:<14} week {r['recent']:>4}  prev-30d {r['before']:>5}")
     if not dead:
