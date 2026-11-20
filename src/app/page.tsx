@@ -425,6 +425,15 @@ export default async function Dashboard({
           בלתי נראית, והקו התחתון של העוגן נשאר. עכשיו זאת קובייה בטיפול
           של `.kpi.hero`, עם מסגרת בצבע המבטא ועם מספר, שהוא גם מה שממלא
           את הרווח שהוא סימן באדום. */}
+      {/* 20.11.2026: חברות זהב, המסך העיקרי. נוסף לשאר ולא במקומו. */}
+      <Link className="radar-tile" href="/gold">
+        <span className="rt-t">
+          <b>חברות זהב ←</b>
+          <span>חברות שיש בהן מי שאתה מכיר, 40 ביום</span>
+        </span>
+        <span className="rt-n">★</span>
+      </Link>
+
       <Link className="radar-tile" href="/reach">
         <span className="rt-t">
           <b>פנייה רחבה ←</b>
