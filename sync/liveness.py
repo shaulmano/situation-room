@@ -46,9 +46,12 @@ def linkedin_state(url):
 
 def main():
     dry = "--dry" in sys.argv
-    cap = int(sys.argv[sys.argv.index("--max") + 1]) if "--max" in sys.argv else 120
+    cap = int(sys.argv[sys.argv.index("--max") + 1]) if "--max" in sys.argv else 200
+    # חברות שיש בהן מכר, וגם כל חברות זהב בגוש דן: משרה בחברה כזאת היא מה
+    # שמוקפץ בראש המסך, גם בלי מכר (שאול, 20.11: "דלת אחורית למישהו שם").
     ckeys = {r["company_key"] for r in sql(
-        "select distinct company_key from contacts where company_key is not null and company_key <> ''")}
+        "select distinct company_key from contacts where company_key is not null and company_key <> '' "
+        "union select distinct company_key from companies where region = 'gush_dan' and company_key <> ''")}
     jobs = sql(
         "select id, url, source, company, title, live_checked_at from jobs "
         "where on_target and dismissed_at is null and closed_at is null "

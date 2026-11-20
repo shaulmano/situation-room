@@ -77,7 +77,7 @@ export default async function Gold() {
   const fresh = Date.now() - 36 * 3600 * 1000;
   const isVerified = (j: any) => !!j.live_checked_at && new Date(j.live_checked_at).getTime() >= fresh;
   const hotKeys = [...jobsByKey.entries()]
-    .filter(([k, js]) => byKey.has(k) && js.some(isVerified))
+    .filter(([, js]) => js.some(isVerified))
     .map(([k]) => k);
   const hotIds: string[] = [];
   for (let i = 0; i < hotKeys.length; i += 100) {
@@ -195,7 +195,7 @@ export default async function Gold() {
       <p className="sub">
         בכל חברה: מכר אם יש, משרה אם ידועה, ואם אין כלום זה כתוב. רק גוש דן בשלב הזה. בכל גודל, מי שיש בה מכר קודם.
         {' '}{GOLD_DAILY} ביום, מכל הגדלים: {GOLD_QUOTA.S} קטנות, {GOLD_QUOTA.M} בינוניות, {GOLD_QUOTA.E} גדולות.
-        {hotIds.length > 0 && <> בראש הרשימה, בצבע, <b>{hotIds.length}</b> חברות שיש בהן משרה פתוחה ומכר שלך, מעל ה-{GOLD_DAILY}.</>}
+        {hotIds.length > 0 && <> בראש הרשימה, בצבע, <b>{hotIds.length}</b> חברות שיש בהן משרה פתוחה שאומתה, מעל ה-{GOLD_DAILY}.</>}
       </p>
       <GoldList rows={rows} target={GOLD_DAILY} doneToday={decided} />
       <p className="hint" style={{ marginTop: '1.2rem' }}>

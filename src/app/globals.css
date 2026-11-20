@@ -471,3 +471,4 @@ a.dup-title{text-decoration:underline;text-underline-offset:2px}
 /* חברה שיש בה משרה פתוחה ומכר שלך: מעל המכסה, ראשונה, בולטת. 20.11.2026. */
 .gold-hot{border:2px solid var(--accent);background:var(--accent-soft)}
 .gold-hot-chip{background:var(--accent);color:#fff;font-weight:700}
+.gold-chip{background:var(--accent);color:#fff;font-weight:700}

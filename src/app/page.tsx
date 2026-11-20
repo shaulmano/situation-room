@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import { serverClient } from '@/lib/server';
+import { goldKeySet } from '@/lib/gold';
 import { applyTarget, directLinks } from '@/lib/apply';
 import { jobAge } from '@/lib/age';
 import { companyKey, type WarmContact, contactsByCompanyKeys } from '@/lib/contacts';
@@ -211,6 +212,7 @@ export default async function Dashboard({
   if (onlyManual) picked = picked.filter(isManual);
   if (source) picked = picked.filter((m) => sourcesOf(m).includes(source));
   const rows = picked;
+  const goldKeys = await goldKeySet(sb, rows.flatMap((m: any) => m.copies.map((c: any) => companyKey(c.jobs.company))));
 
   // כמה מהמשרות שעל המסך הן בחברה שיש בה איש קשר שעוד לא פנית אליו.
   // נספר מתוך מה שכבר נטען, בלי שאילתה נוספת.
@@ -496,6 +498,9 @@ export default async function Dashboard({
                         שהוא עצמו ביקש. */}
                     {m.copies.some((c: any) => c.jobs.manual) && (
                       <span className="chip warn">ידני</span>
+                    )}
+                    {m.copies.some((c: any) => goldKeys.has(companyKey(c.jobs.company))) && (
+                      <span className="chip gold-chip">חברות זהב</span>
                     )}
                     {/* 17.11.2026: השבב "כפול" הוסר מכאן. `manual_dup` נדלק
                         כשהחיפוש הממוקד מוצא משרה שהבוט כבר הביא, כלומר הוא

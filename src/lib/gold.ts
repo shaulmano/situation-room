@@ -78,3 +78,19 @@ export function goldMessage(opts: {
     'Shaul',
   ].join('\n');
 }
+
+/**
+ * אילו מפתחות חברה מבין הנתונים הם חברות זהב (גוש דן, במאגר). משמש את
+ * מסך הבית ומסך המשרות כדי לסמן משרה שמופיעה גם שם. 20.11.2026, שאול:
+ * "כל משרה שמופיעה גם בתוצאות סריקה וגם במשרת זהב תסומן".
+ */
+export async function goldKeySet(sb: any, keys: string[]): Promise<Set<string>> {
+  const uniq = [...new Set(keys.filter(Boolean))];
+  const out = new Set<string>();
+  for (let i = 0; i < uniq.length; i += 100) {
+    const { data } = await sb.from('companies').select('company_key')
+      .eq('region', 'gush_dan').in('company_key', uniq.slice(i, i + 100));
+    for (const r of (data ?? []) as any[]) out.add(r.company_key);
+  }
+  return out;
+}

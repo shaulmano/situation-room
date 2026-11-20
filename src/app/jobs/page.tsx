@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import { serverClient } from '@/lib/server';
+import { goldKeySet } from '@/lib/gold';
 import { applyTarget, directLinks } from '@/lib/apply';
 import { jobAge } from '@/lib/age';
 import { companyKey, type WarmContact, contactsByCompanyKeys } from '@/lib/contacts';
@@ -161,6 +162,7 @@ export default async function Jobs({
   if (source) picked = picked.filter((m) => sourcesOf(m).includes(source));
   // No cut. A day is a day; truncating it just hides the tail.
   const rows = picked;
+  const goldKeys = await goldKeySet(sb, rows.flatMap((m: any) => m.copies.map((c: any) => companyKey(c.jobs.company))));
 
   // Every copy of every row on screen, so that closing the set closes the
   // duplicates too rather than leaving them to come back under another board.
@@ -334,6 +336,9 @@ export default async function Jobs({
                           מהחיפוש הממוקד הראתה את שם התפקיד ולא את התג. */}
                       {m.copies.some((c: any) => c.jobs.manual) && (
                         <span className="chip warn">ידני</span>
+                      )}
+                      {m.copies.some((c: any) => goldKeys.has(companyKey(c.jobs.company))) && (
+                        <span className="chip gold-chip">חברות זהב</span>
                       )}
                       {/* 17.11.2026: הוסר. ראה ההסבר ב-src/app/page.tsx. */}
                       {(() => {
