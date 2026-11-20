@@ -16,7 +16,7 @@ export type GoldRow = {
   contactsTotal: number;
   peopleHref: string | null;
   cvFile: string;
-  jobs: { id: string; title: string; url: string | null; source: string | null }[];
+  jobs: { id: string; title: string; url: string | null; source: string | null; verified: boolean }[];
   people: { id: string; name: string; title: string | null; url: string | null; message: string }[];
 };
 
@@ -127,6 +127,7 @@ export default function GoldList(
                     ? <a href={j.url} target="_blank" rel="noreferrer">{j.title}</a>
                     : j.title}
                   {j.source && <span className="mute"> · {j.source}</span>}
+                  {!j.verified && <span className="mute"> · לא אומתה, בדוק לפני</span>}
                 </li>
               ))}
             </ul>

@@ -179,3 +179,21 @@ jobs:
           SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
           SUPABASE_PROJECT_REF: ${{ secrets.SUPABASE_PROJECT_REF }}
         run: python sync/companies_sync.py
+
+  liveness:
+    # מאמת שמשרות בחברות שיש בהן מכר עדיין פתוחות. כל שעתיים מ-pg_cron.
+    # סגורה רק לפי ראיה: "No longer accepting applications" או 404. שגיאת
+    # רשת או חסימה אינן ראיה, והמשרה נשארת לא מאומתת.
+    if: github.event_name == 'schedule' || inputs.job == 'liveness' || inputs.job == 'all'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Verify open jobs
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+          SUPABASE_PROJECT_REF: ${{ secrets.SUPABASE_PROJECT_REF }}
+        run: python sync/liveness.py
