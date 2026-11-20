@@ -56,7 +56,9 @@ export default async function Gold() {
   const { data: jobsRaw } = await sb.from('jobs')
     .select('id, title, company, url, source, found_for, first_seen, live_checked_at')
     .eq('on_target', true)
-    .is('dismissed_at', null)
+    // ✕ במסכים הרגילים לא מוריד משרה מכאן (שאול, 20.11.2026: "שלא תוריד").
+    // הוא לא מגיש מהמשרה אלא דרך מכר, ולכן סגירה שם אינה סגירה כאן.
+    // מה שמוריד אותה: אימות שנסגרה, או "מוותר" על החברה.
     .is('closed_at', null)
     .gte('first_seen', since)
     .order('first_seen', { ascending: false })

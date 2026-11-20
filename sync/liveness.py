@@ -54,7 +54,7 @@ def main():
         "union select distinct company_key from companies where region = 'gush_dan' and company_key <> ''")}
     jobs = sql(
         "select id, url, source, company, title, live_checked_at from jobs "
-        "where on_target and dismissed_at is null and closed_at is null "
+        "where on_target and closed_at is null "
         "and first_seen > now() - interval '60 days' "
         "and (live_checked_at is null or live_checked_at < now() - interval '6 hours') "
         "order by live_checked_at nulls first, first_seen desc limit 4000")
