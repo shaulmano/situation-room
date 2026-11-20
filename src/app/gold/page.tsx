@@ -83,6 +83,7 @@ export default async function Gold() {
   for (let i = 0; i < hotKeys.length; i += 100) {
     const { data: hc } = await sb.from('companies').select('id')
       .in('company_key', hotKeys.slice(i, i + 100))
+      .eq('region', 'gush_dan')
       .is('gold_done_at', null)
       .is('gold_skipped_at', null);
     hotIds.push(...((hc ?? []) as any[]).map((r) => r.id));
@@ -110,6 +111,7 @@ export default async function Gold() {
       const { data, error: pe } = await sb.from('companies')
         .select('id, company_key, region')
         .eq('size_class', cls)
+        .eq('region', 'gush_dan')
         .is('gold_done_at', null)
         .is('gold_skipped_at', null)
         .order('id')
@@ -191,7 +193,7 @@ export default async function Gold() {
         <Link className="more" href="/">← חדר המצב</Link>
       </div>
       <p className="sub">
-        בכל חברה: מכר אם יש, משרה אם ידועה, ואם אין כלום זה כתוב. בכל גודל, מי שיש בה מכר קודם ואחריה גוש דן.
+        בכל חברה: מכר אם יש, משרה אם ידועה, ואם אין כלום זה כתוב. רק גוש דן בשלב הזה. בכל גודל, מי שיש בה מכר קודם.
         {' '}{GOLD_DAILY} ביום, מכל הגדלים: {GOLD_QUOTA.S} קטנות, {GOLD_QUOTA.M} בינוניות, {GOLD_QUOTA.E} גדולות.
         {hotIds.length > 0 && <> בראש הרשימה, בצבע, <b>{hotIds.length}</b> חברות שיש בהן משרה פתוחה ומכר שלך, מעל ה-{GOLD_DAILY}.</>}
       </p>
