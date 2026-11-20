@@ -38,7 +38,7 @@ on:
   workflow_dispatch:
     inputs:
       job:
-        description: 'rejections | invites | all'
+        description: 'rejections | invites | replies_mail | all'
         required: false
         default: 'all'
 
@@ -120,3 +120,41 @@ jobs:
           GMAIL_ADDRESS: ${{ secrets.GMAIL_ADDRESS }}
           GMAIL_APP_PASSWORD: ${{ secrets.GMAIL_APP_PASSWORD }}
         run: python sync/invites_scan.py --days 2 --write
+
+  replies_mail:
+    # מי כתב לשאול בלינקדאין, מתוך מייל ההתראה. רץ כל שעה, מ-pg_cron
+    # ב-Supabase ולא מהקרון של GitHub (migration 0057). **המייל אינו מכיל
+    # את תוכן ההודעה**, ולכן הפוש אומר מי כתב ולא מה. הסוכן שקורא את
+    # הלינקדאין עצמו נשאר לקריאה ולניסוח, ואינו תנאי לכך שהוא יֵדע.
+    if: github.event_name == 'schedule' || inputs.job == 'replies_mail' || inputs.job == 'all'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install dependencies
+        run: pip install --quiet cryptography
+      - name: Record who wrote
+        id: mail
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+          SUPABASE_PROJECT_REF: ${{ secrets.SUPABASE_PROJECT_REF }}
+          GMAIL_ADDRESS: ${{ secrets.GMAIL_ADDRESS }}
+          GMAIL_APP_PASSWORD: ${{ secrets.GMAIL_APP_PASSWORD }}
+        run: |
+          set -o pipefail
+          python sync/replies_mail.py --days 2 --write | tee out.txt
+          N=$(sed -n 's/^recorded \([0-9]\{1,\}\)$/\1/p' out.txt | tail -1)
+          echo "recorded=${N:-0}" >> "$GITHUB_OUTPUT"
+      # notify_push בוחר לבד את מי שעדיין לא הוכרז עליו (reply_pushed_at
+      # ריק), ולכן אפשר להפעיל אותו גם בריצה שלא רשמה כלום, אבל אין טעם.
+      - name: Announce
+        if: steps.mail.outputs.recorded != '0'
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+          SUPABASE_PROJECT_REF: ${{ secrets.SUPABASE_PROJECT_REF }}
+          VAPID_PUBLIC_KEY: ${{ secrets.VAPID_PUBLIC_KEY }}
+          VAPID_PRIVATE_KEY: ${{ secrets.VAPID_PRIVATE_KEY }}
+        run: python sync/notify_push.py replies
