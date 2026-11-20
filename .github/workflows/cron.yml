@@ -41,6 +41,10 @@ on:
         description: 'rejections | invites | replies_mail | all'
         required: false
         default: 'all'
+      backfill:
+        description: 'true: record the mail history only, no banner and no push (replies_mail)'
+        required: false
+        default: 'false'
 
 concurrency:
   group: situation-room-cron
@@ -145,7 +149,7 @@ jobs:
           GMAIL_APP_PASSWORD: ${{ secrets.GMAIL_APP_PASSWORD }}
         run: |
           set -o pipefail
-          python sync/replies_mail.py --days 2 --write | tee out.txt
+          python sync/replies_mail.py --days 2 --write ${{ inputs.backfill == 'true' && '--seen' || '' }} | tee out.txt
           N=$(sed -n 's/^recorded \([0-9]\{1,\}\)$/\1/p' out.txt | tail -1)
           echo "recorded=${N:-0}" >> "$GITHUB_OUTPUT"
       # notify_push בוחר לבד את מי שעדיין לא הוכרז עליו (reply_pushed_at

@@ -95,6 +95,9 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument('--days', type=int, default=2)
     ap.add_argument('--write', action='store_true')
+    # רישום בלבד, בלי באנר ובלי פוש. להרצה הראשונה: המייל אינו יודע ששאול
+    # כבר ענה, ובלי זה כל שיחה שהוא טיפל בה בימים האחרונים הייתה חוזרת.
+    ap.add_argument('--seen', action='store_true')
     a = ap.parse_args()
     rows = harvest(a.days)
     for r in rows:
@@ -135,10 +138,11 @@ def main():
         at = 'least(%s::timestamptz, now())' % q(r['at'].isoformat())
         changed = sql(
             ("update contacts set replied_at = {at}, reply_text = {txt}, "
-             "reply_draft = null, reply_done_at = null, reply_pushed_at = null "
+             "reply_draft = null, reply_done_at = {closed}, reply_pushed_at = {closed} "
              "where id = {cid} and (replied_at is null "
              "or {at} > replied_at + interval '" + REOPEN_GAP + "') "
-             "returning id").format(at=at, txt=q(TEXT), cid=q(who['id'])))
+             "returning id").format(at=at, txt=q(TEXT), cid=q(who['id']),
+                    closed='now()' if a.seen else 'null'))
         if changed:
             recorded += 1
             print('  recorded: %s' % r['name'][:40])
