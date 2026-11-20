@@ -1,0 +1,101 @@
+name: Scheduled jobs
+
+# העבודות שרצו עד 20.11.2026 כסוכני Claude מתוזמנים, ועכשיו רצות כקוד.
+#
+# **הרקע, בלשונו של שאול:** "אני רוצה אפס תלות או קרוב לזה בטוקנים של
+# קלוד. גם אם אני מחר מחליט לרוץ כל שעה על כל דבר."
+#
+# המכסה שלו הגיעה ל-96% ב-17.11, סוכן נכשל עליה ב-20.11 ב-13:23 עם
+# USAGE_LIMIT_REACHED, והיעד הוא לרדת מ-Max ל-Pro, שהוא כחמישית
+# מהמכסה. **סוכן שאין בו שיקול דעת היה תקורה ולא מנוע**: הוא שלח
+# פקודה אחת וקרא יומן, בזמן שכל העבודה האמיתית יושבת כאן ב-sync/.
+#
+# **ומה שנשאר על Claude בכוונה**, ואל תעביר אותו לכאן: כתיבת קורות
+# חיים לפי משרה, שליחת הפניות דרך מכרים, וניסוח תשובות למי שענה
+# בלינקדאין. שם יש כתיבה בשמו של שאול, ושם המודל הוא העבודה עצמה.
+#
+# **המשימות המתוזמנות עצמן לא נמחקות.** 20.11, שאול: "את כל הסוכנים
+# לא תמחק אלא תסגור אותם למקרה שנרצה". הן נשארות מושהות, וזה גם הכלל
+# המתועד מ-JobSearchNotify: משימה שהוסרה היא תשתית שנמחקה.
+
+on:
+  schedule:
+    # **למה הקרון של GitHub כאן, אחרי שתועד שהוא לא אמין.**
+    #
+    # מה שנמדד כשבור היה **כל חצי שעה**: ב-2.11 יצאו שלוש ריצות מתוך
+    # שש עשרה, ובלילה שאחריו שתיים מתוך ארבעים ושמונה. GitHub מצנזר
+    # וורקפלו בתדירות גבוהה, ולא כל רשומת קרון בנפרד. עבודה שרצה
+    # **פעם ביום** אינה באותו משטר.
+    #
+    # ולכן זה גם מה שמאפשר להתחיל בלי שאול: שעון אמיתי ב-pg_cron
+    # דורש טוקן של GitHub בתוך Supabase, וזאת פעולה שרק הוא יכול
+    # לעשות. הוא נדרש רק לעבודות התכופות, ולא לזאת.
+    #
+    # 05:17 UTC הוא 07:17 בישראל בחורף. **הקרון של GitHub הוא UTC בלבד
+    # ואין בו אזור זמן**, ולכן בקיץ זה יזוז ל-08:17. לסריקה יומית עם
+    # חלון של ארבעה עשר יום זה לא משנה כלום.
+    - cron: '17 5 * * *'
+  workflow_dispatch:
+    inputs:
+      job:
+        description: 'rejections'
+        required: false
+        default: 'rejections'
+
+concurrency:
+  group: situation-room-cron
+  cancel-in-progress: false
+
+jobs:
+  rejections:
+    # מי החליט לא להמשיך, מתוך המייל.
+    #
+    # היה trig_01BufmaJGfKFBgt58aSD5Xcd, "חדר המצב: דחיות שהגיעו
+    # במייל". הפרומפט שלו אמר על עצמו "זאת פקודה אחת, אין כאן שיקול
+    # דעת ואין מה לנסח", וזה היה מדויק: כל הזיהוי יושב ב-
+    # `sync/rejections.py`, ברשימת נוסחים מפורשת, והסוכן רק הפעיל אותו.
+    if: github.event_name == 'schedule' || inputs.job == 'rejections'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: pip install --quiet cryptography
+
+      # **חלון של ארבעה עשר יום ולא של תשעים.** הריצה הראשונה ב-17.11
+      # כבר כיסתה את ההיסטוריה, ומכאן זאת תוספת יומית. שבועיים ולא יום
+      # כדי שריצה שנכשלה לא תפיל אף דחייה.
+      #
+      # ההתאמה שמרנית בכוונה: רק חברה וגם תפקיד, או הגשה פתוחה אחת
+      # באותה חברה. דחייה שלא הוכרעה אינה נכתבת, וזה תקין ולא תקלה.
+      # 610 ההגשות הן המכנה של "0.4 אחוז להגשה קרה", וסימון שגוי כאן
+      # מסמן משרה חיה כמתה ומזייף את המספר.
+      - name: Mark the applications that were rejected
+        id: sweep
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+          SUPABASE_PROJECT_REF: ${{ secrets.SUPABASE_PROJECT_REF }}
+          GMAIL_ADDRESS: ${{ secrets.GMAIL_ADDRESS }}
+          GMAIL_APP_PASSWORD: ${{ secrets.GMAIL_APP_PASSWORD }}
+        run: |
+          set -o pipefail
+          python sync/rejections.py --days 14 --write | tee out.txt
+          # "recorded N" is the script's own last line. Nothing else prints it.
+          N=$(sed -n 's/^recorded \([0-9]\{1,\}\)$/\1/p' out.txt | tail -1)
+          echo "recorded=${N:-0}" >> "$GITHUB_OUTPUT"
+
+      # **רק כשנרשם משהו.** אפס פירושו שתיקה מוחלטת, בלי פוש ובלי
+      # סיכום, בדיוק כמו שהסוכן התנהג.
+      - name: Announce, only if something was recorded
+        if: steps.sweep.outputs.recorded != '0'
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+          SUPABASE_PROJECT_REF: ${{ secrets.SUPABASE_PROJECT_REF }}
+          VAPID_PUBLIC_KEY: ${{ secrets.VAPID_PUBLIC_KEY }}
+          VAPID_PRIVATE_KEY: ${{ secrets.VAPID_PRIVATE_KEY }}
+        run: python sync/notify_push.py rejections "${{ steps.sweep.outputs.recorded }}"

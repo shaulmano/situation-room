@@ -174,6 +174,34 @@ def main():
         print("no push subscriptions")
         return
 
+    # 20.11.2026: מצב שנולד כשסוכן הדחיות עבר לקוד.
+    #
+    # עד כאן הסוכן הוא שהחליט אם להתריע, לפי השורה "recorded N" ביומן.
+    # עכשיו הוורקפלו קורא את אותה שורה ומעביר אותה לכאן, ולכן המספר מגיע
+    # כארגומנט ולא נשלף מהמסד: אין ב-`applications` עמודה שמסמנת שיצא
+    # פוש, ולהמציא אחת רק בשביל זה היה שינוי סכימה על כלום.
+    #
+    # **אפס פירושו שתיקה מוחלטת**, כמו בכל השאר כאן. הוורקפלו לא קורא
+    # לזה בכלל כשלא נרשמה אף דחייה.
+    if mode == "rejections":
+        try:
+            n = int(sys.argv[2])
+        except (IndexError, ValueError):
+            print("rejections mode needs a count")
+            return
+        if n <= 0:
+            print("nothing to announce")
+            return
+        send_to_all(subs, {
+            "title": "נדחתה הגשה" if n == 1 else "%d הגשות נדחו" % n,
+            "body": "סומן מתוך המייל. מסך ההגשות, הסינון נדחו",
+            "url": "/applications?status=rejected",
+            "tag": "rejections",
+            "count": n,
+        })
+        print("announced %d rejections" % n)
+        return
+
     if mode == "replies":
         body, rows = reply_body()
         if not body:
