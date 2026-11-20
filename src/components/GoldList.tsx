@@ -127,7 +127,6 @@ export default function GoldList(
                     ? <a href={j.url} target="_blank" rel="noreferrer">{j.title}</a>
                     : j.title}
                   {j.source && <span className="mute"> · {j.source}</span>}
-                  {!j.verified && <span className="mute"> · לא אומתה, בדוק לפני</span>}
                 </li>
               ))}
             </ul>

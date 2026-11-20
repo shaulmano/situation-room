@@ -63,9 +63,14 @@ export default async function Gold() {
     .gte('first_seen', since)
     .order('first_seen', { ascending: false })
     .limit(4000);
+  const fresh = Date.now() - 48 * 3600 * 1000;
+  const isVerified = (j: any) => !!j.live_checked_at && new Date(j.live_checked_at).getTime() >= fresh;
   const jobsByKey = new Map<string, any[]>();
   for (const j of (jobsRaw ?? []) as any[]) {
     if (appliedIds.has(j.id)) continue;
+    // **חד חד ערכי** (שאול, 20.11.2026: "עוד משרה שלא קיימת יותר"). משרה
+    // מוצגת כאן רק אם אומתה כפתוחה בשעות האחרונות. לא אומתה: לא מוצגת.
+    if (!isVerified(j)) continue;
     const k = companyKey(j.company);
     if (!k) continue;
     const arr = jobsByKey.get(k) ?? [];
@@ -75,9 +80,7 @@ export default async function Gold() {
   // **"משרה פתוחה" רק אם אומתה.** 20.11.2026 שאול הראה את Fetcherr:
   // לינקדאין אמרה "No longer accepting applications" והמסך הציג אותה
   // כמשרה פתוחה בצבע בולט. עכשיו הקפצה דורשת אימות מהשעות האחרונות,
-  // ומשרה שלא אומתה מוצגת, אבל מסומנת "לא אומתה".
-  const fresh = Date.now() - 36 * 3600 * 1000;
-  const isVerified = (j: any) => !!j.live_checked_at && new Date(j.live_checked_at).getTime() >= fresh;
+  // ומשרה שלא אומתה אינה מוצגת בכלל.
   const hotKeys = [...jobsByKey.entries()]
     .filter(([, js]) => js.some(isVerified))
     .map(([k]) => k);

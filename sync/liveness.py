@@ -1,123 +1,124 @@
-"""Verify that open jobs at companies Shaul knows people in are still open.
+"""Verify, job by job, that an open job is really open. Three answers only.
 
-A job counts as dead only on positive evidence: LinkedIn says it no longer
-accepts applications, or the board redirects away / returns 404. A network
-error or a block is never evidence, so such a job is simply left unchecked.
+live    : positive evidence the posting is open (an apply button on the page).
+closed  : positive evidence it is closed ("No longer accepting applications",
+          404/410, or the board redirects up to its root).
+unknown : anything else. Rate limits (429), login walls and network errors are
+          never evidence, so the job stays unverified and is retried later.
 
-Run: python sync/liveness.py [--dry] [--max N]
+LinkedIn answers 429 to bursts, so requests are paced and a throttled run stops
+early instead of guessing. Measured 20.11.2026: 123 of 200 pages came back 429
+when fetched back to back, and the same pages answer when spaced out.
+
+Run: python sync/liveness.py [--dry] [--max N] [--diag]
 """
-import os, re, subprocess, sys
+import os, re, subprocess, sys, time
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from gmail_sync import sql, q
-from seo_jobs import posting_is_live
+from seo_jobs import posting_is_live, workday_api_url
 
 LEGAL = re.compile(r"(ltd|limited|inc|incorporated|llc|corp|corporation|gmbh|בעמ)$")
 UA = ("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
       "(KHTML, like Gecko) Chrome/124.0 Safari/537.36")
 CLOSED = re.compile(r"no longer accepting applications|closed-job|job is no longer available", re.I)
+APPLY = re.compile(r"apply-button|top-card-layout__cta|jobs-apply-button", re.I)
+PAUSE = 3.0      # seconds between jobs
+RETRY_WAIT = 25  # after a 429
 
 
 def key(name):
     return LEGAL.sub("", re.sub(r"[\W_]+", "", (name or "").lower()))
 
 
-def linkedin_state(url):
-    """returns 'closed', 'live' or None when we could not tell."""
-    m = re.search(r"linkedin\.com/jobs/view/(?:.*?-)?(\d{6,})", url or "")
-    if not m:
-        return None
-    page = "https://www.linkedin.com/jobs/view/" + m.group(1)
+def _get(url):
     out = subprocess.run(
-        ["curl", "-s", "-L", "--max-time", "20", "-A", UA, "-w", "\n%{http_code}", page],
+        ["curl", "-s", "-L", "--max-time", "20", "-A", UA, "-w", "\n%{http_code}", url],
         capture_output=True, text=True, encoding="utf-8", errors="replace").stdout or ""
     body, _, code = out.rpartition("\n")
-    if code in ("404", "410"):
+    return code, body
+
+
+def linkedin_state(url):
+    """returns ('closed'|'live'|None, throttled)"""
+    m = re.search(r"linkedin\.com/jobs/view/(?:.*?-)?(\d{6,})", url or "")
+    if not m:
+        return None, False
+    jid = m.group(1)
+    throttled = False
+    for attempt in range(3):
+        throttled = False
+        for page in ("https://www.linkedin.com/jobs/view/" + jid,
+                     "https://www.linkedin.com/jobs-guest/jobs/api/jobPosting/" + jid):
+            code, body = _get(page)
+            if code in ("404", "410"):
+                return "closed", False
+            if code == "429":
+                throttled = True
+                continue
+            if code != "200":
+                continue
+            if CLOSED.search(body):
+                return "closed", False
+            if APPLY.search(body):
+                return "live", False
+        if not throttled:
+            return None, False
+        time.sleep(RETRY_WAIT * (attempt + 1))
+    return None, True
+
+
+def other_state(url):
+    ok, why = posting_is_live(url)
+    if not ok:
+        print("  closed (%s)" % why)
         return "closed"
-    if code != "200" or len(body) < 2000:
-        return None
-    if CLOSED.search(body):
-        return "closed"
-    # a real job page names the job; anything else (login wall) is not evidence
-    if "top-card" in body or "show-more-less-html" in body or "topcard" in body:
+    if why == "HTTP 200" or (why == "" and workday_api_url(url)):
         return "live"
     return None
 
 
-def diag(todo):
-    """Probe three ways of reading a LinkedIn job page, to see which one works from here."""
-    try:
-        from curl_cffi import requests as cf
-    except Exception as e:
-        cf = None
-        print("curl_cffi missing: %s" % e)
-    for j in todo[:14]:
-        m = re.search(r"linkedin\.com/jobs/view/(?:.*?-)?(\d{6,})", j["url"] or "")
-        if not m:
-            continue
-        jid = m.group(1)
-        rows = []
-        for name, url in (("view", "https://www.linkedin.com/jobs/view/" + jid),
-                          ("api", "https://www.linkedin.com/jobs-guest/jobs/api/jobPosting/" + jid)):
-            out = subprocess.run(
-                ["curl", "-s", "-L", "--max-time", "20", "-A", UA, "-w", "\n%{http_code}", url],
-                capture_output=True, text=True, encoding="utf-8", errors="replace").stdout or ""
-            body, _, code = out.rpartition("\n")
-            rows.append("curl-%s %s len=%d closed=%s apply=%s" % (
-                name, code, len(body), bool(CLOSED.search(body)), "apply-button" in body or "top-card-layout__cta" in body))
-            if cf:
-                try:
-                    r = cf.get(url, impersonate="chrome124", timeout=20)
-                    b = r.text
-                    rows.append("cffi-%s %s len=%d closed=%s apply=%s" % (
-                        name, r.status_code, len(b), bool(CLOSED.search(b)), "apply-button" in b or "top-card-layout__cta" in b))
-                except Exception as e:
-                    rows.append("cffi-%s error %s" % (name, str(e)[:60]))
-        print("DIAG %s | %s | %s" % (jid, j["title"][:40], " ; ".join(rows)))
-
-
 def main():
     dry = "--dry" in sys.argv
-    cap = int(sys.argv[sys.argv.index("--max") + 1]) if "--max" in sys.argv else 200
-    # חברות שיש בהן מכר, וגם כל חברות זהב בגוש דן: משרה בחברה כזאת היא מה
-    # שמוקפץ בראש המסך, גם בלי מכר (שאול, 20.11: "דלת אחורית למישהו שם").
+    cap = int(sys.argv[sys.argv.index("--max") + 1]) if "--max" in sys.argv else 150
+    # חברות שיש בהן מכר, וגם כל חברות זהב בגוש דן.
     ckeys = {r["company_key"] for r in sql(
         "select distinct company_key from contacts where company_key is not null and company_key <> '' "
         "union select distinct company_key from companies where region = 'gush_dan' and company_key <> ''")}
     jobs = sql(
-        "select id, url, source, company, title, live_checked_at from jobs "
-        "where on_target and closed_at is null "
+        "select id, url, source, company, title from jobs "
+        "where on_target and closed_at is null and coalesce(url,'') <> '' "
         "and first_seen > now() - interval '60 days' "
-        "and (live_checked_at is null or live_checked_at < now() - interval '6 hours') "
-        "order by live_checked_at nulls first, first_seen desc limit 4000")
+        "and (live_checked_at is null or live_checked_at < now() - interval '24 hours') "
+        "and (live_tried_at is null or live_tried_at < now() - interval '1 hour') "
+        "order by live_checked_at is not null, live_tried_at nulls first, first_seen desc limit 4000")
     todo = [j for j in jobs if key(j["company"]) in ckeys][:cap]
     print("candidates %d of %d" % (len(todo), len(jobs)))
-    if "--diag" in sys.argv:
-        unk = [j for j in todo if "linkedin.com" in (j["url"] or "") and linkedin_state(j["url"]) is None]
-        print("unknown via plain curl: %d" % len(unk))
-        diag(unk)
-        return
-    closed = live = unknown = 0
-    for j in todo:
+    live = closed = unknown = 0
+    for n, j in enumerate(todo):
         url = j["url"] or ""
-        state = linkedin_state(url) if "linkedin.com" in url else None
-        if state is None and "linkedin.com" not in url and url:
-            ok, why = posting_is_live(url)
-            state = "live" if ok else "closed"
-            if not ok:
-                print("  closed (%s): %s" % (why, j["title"]))
-        if state is None:
-            unknown += 1
-            continue
+        throttled = False
+        if "linkedin.com" in url:
+            state, throttled = linkedin_state(url)
+        else:
+            state = other_state(url)
+        if not dry:
+            sql("update jobs set live_tried_at = now() where id = %s" % q(j["id"]))
         if state == "closed":
             closed += 1
             print("  closed: %s | %s" % (j["company"], j["title"]))
             if not dry:
                 sql("update jobs set closed_at = now(), live_checked_at = now() where id = %s" % q(j["id"]))
-        else:
+        elif state == "live":
             live += 1
             if not dry:
                 sql("update jobs set live_checked_at = now() where id = %s" % q(j["id"]))
+        else:
+            unknown += 1
+        if throttled:
+            print("throttled by LinkedIn after %d jobs, stopping this run" % (n + 1))
+            break
+        time.sleep(PAUSE)
     print("checked: live %d, closed %d, unknown %d" % (live, closed, unknown))
 
 
