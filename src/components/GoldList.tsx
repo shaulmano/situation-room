@@ -3,6 +3,8 @@ import { useState } from 'react';
 
 export type GoldRow = {
   id: string;
+  /** יש בה משרה פתוחה ומכר שלך. מעל המכסה, ראשונה, בצבע בולט. */
+  hot: boolean;
   name: string;
   sizeRange: string | null;
   sizeClass: string | null;
@@ -87,8 +89,9 @@ export default function GoldList(
       )}
 
       {live.map((r) => (
-        <div className="row gold-row" key={r.id}>
+        <div className={'row gold-row' + (r.hot ? ' gold-hot' : '')} key={r.id}>
           <div className="reach-who">
+            {r.hot && <span className="chip gold-hot-chip">משרה פתוחה</span>}
             <b>{r.name}</b>
             {r.sizeRange && <span className="chip mute">{r.sizeRange} עובדים</span>}
             {r.gushDan && <span className="chip mute">גוש דן</span>}

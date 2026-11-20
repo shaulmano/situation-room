@@ -48,11 +48,43 @@ export default async function Gold() {
     byKey.set(c.company_key, arr);
   }
 
+  // משרות פתוחות, בלי מה שכבר הוגש. נשלפות לפני הבחירה, כי חברה שיש בה
+  // משרה פתוחה ומכר שלך נכנסת לתור של היום מעל המכסה, ראשונה.
+  const { rows: applied } = await loadApplied(sb);
+  const appliedIds = new Set(applied.map((a: any) => a.job_id).filter(Boolean));
+  const since = new Date(Date.now() - 60 * 86400000).toISOString();
+  const { data: jobsRaw } = await sb.from('jobs')
+    .select('id, title, company, url, source, found_for, first_seen')
+    .eq('on_target', true)
+    .is('dismissed_at', null)
+    .gte('first_seen', since)
+    .order('first_seen', { ascending: false })
+    .limit(4000);
+  const jobsByKey = new Map<string, any[]>();
+  for (const j of (jobsRaw ?? []) as any[]) {
+    if (appliedIds.has(j.id)) continue;
+    const k = companyKey(j.company);
+    if (!k) continue;
+    const arr = jobsByKey.get(k) ?? [];
+    arr.push(j);
+    jobsByKey.set(k, arr);
+  }
+  const hotKeys = [...jobsByKey.keys()].filter((k) => byKey.has(k));
+  const hotIds: string[] = [];
+  for (let i = 0; i < hotKeys.length; i += 100) {
+    const { data: hc } = await sb.from('companies').select('id')
+      .in('company_key', hotKeys.slice(i, i + 100))
+      .is('gold_done_at', null)
+      .is('gold_skipped_at', null);
+    hotIds.push(...((hc ?? []) as any[]).map((r) => r.id));
+  }
+  const hotSet = new Set(hotIds);
+
   // המאגר כולו, בלי מה שכבר הוחלט עליו. נשלף בעמודים, כי PostgREST מגביל
   // שורות לשליפה. רק מה שנדרש לדירוג, ואת הפרטים שולפים רק ל-50 שנבחרו.
   const day = israelDayStart().slice(0, 10);
   const dayStart = israelDayStart();
-  const pickedIds: string[] = [];
+  const pickedIds: string[] = [...hotIds];
   const decidedBy: Record<string, number> = { S: 0, M: 0, E: 0 };
   for (const cls of ['S', 'M', 'E'] as const) {
     const [d1, d2] = await Promise.all([
@@ -82,6 +114,7 @@ export default async function Gold() {
         );
       }
       for (const r of (data ?? []) as any[]) {
+        if (hotSet.has(r.id)) continue;
         pool.push({ id: r.id, n: r.company_key ? (byKey.get(r.company_key)?.length ?? 0) : 0, gush: r.region === 'gush_dan' });
       }
       if (!data || data.length < 1000) break;
@@ -101,31 +134,9 @@ export default async function Gold() {
   const classOrder: Record<string, number> = { E: 0, M: 1, S: 2 };
   const ranked = ((picked ?? []) as GoldCompany[])
     .map((c) => ({ c, n: c.company_key ? (byKey.get(c.company_key)?.length ?? 0) : 0 }))
-    .sort((x, y) => (y.n - x.n)
+    .sort((x, y) => ((hotSet.has(y.c.id) ? 1 : 0) - (hotSet.has(x.c.id) ? 1 : 0)) || (y.n - x.n)
       || ((x.c.region === 'gush_dan' ? 0 : 1) - (y.c.region === 'gush_dan' ? 0 : 1))
       || ((classOrder[x.c.size_class ?? ''] ?? 3) - (classOrder[y.c.size_class ?? ''] ?? 3)));
-
-  // משרות פתוחות בחברות שנבחרו, בלי מה שכבר הוגש.
-  const { rows: applied } = await loadApplied(sb);
-  const appliedIds = new Set(applied.map((a: any) => a.job_id).filter(Boolean));
-  const since = new Date(Date.now() - 60 * 86400000).toISOString();
-  const { data: jobsRaw } = await sb.from('jobs')
-    .select('id, title, company, url, source, found_for, first_seen')
-    .eq('on_target', true)
-    .is('dismissed_at', null)
-    .gte('first_seen', since)
-    .order('first_seen', { ascending: false })
-    .limit(4000);
-  const wanted = new Set(ranked.map((x) => x.c.company_key));
-  const jobsByKey = new Map<string, any[]>();
-  for (const j of (jobsRaw ?? []) as any[]) {
-    if (appliedIds.has(j.id)) continue;
-    const k = companyKey(j.company);
-    if (!wanted.has(k)) continue;
-    const arr = jobsByKey.get(k) ?? [];
-    arr.push(j);
-    jobsByKey.set(k, arr);
-  }
 
   const rows: GoldRow[] = ranked.map(({ c, n }) => {
     const jobs = jobsByKey.get(c.company_key) ?? [];
@@ -135,6 +146,7 @@ export default async function Gold() {
     const cvId = top ? (cvFamilyForTitle(top.title) ?? 'project-release-manager') : null;
     return {
       id: c.id,
+      hot: hotSet.has(c.id),
       name: c.name,
       sizeRange: c.size_range,
       sizeClass: c.size_class,
@@ -172,6 +184,7 @@ export default async function Gold() {
       <p className="sub">
         בכל חברה: מכר אם יש, משרה אם ידועה, ואם אין כלום זה כתוב. בכל גודל, מי שיש בה מכר קודם ואחריה גוש דן.
         {' '}{GOLD_DAILY} ביום, מכל הגדלים: {GOLD_QUOTA.S} קטנות, {GOLD_QUOTA.M} בינוניות, {GOLD_QUOTA.E} גדולות.
+        {hotIds.length > 0 && <> בראש הרשימה, בצבע, <b>{hotIds.length}</b> חברות שיש בהן משרה פתוחה ומכר שלך, מעל ה-{GOLD_DAILY}.</>}
       </p>
       <GoldList rows={rows} target={GOLD_DAILY} doneToday={decided} />
       <p className="hint" style={{ marginTop: '1.2rem' }}>
