@@ -12,6 +12,7 @@ export type GoldRow = {
   careers: string | null;
   hiring: boolean;
   contactsTotal: number;
+  peopleHref: string | null;
   cvFile: string;
   jobs: { id: string; title: string; url: string | null; source: string | null }[];
   people: { id: string; name: string; title: string | null; url: string | null; message: string }[];
@@ -80,13 +81,20 @@ export default function GoldList(
             {r.hiring && <span className="chip mute">מגייסת</span>}
           </div>
           <div className="reach-sub">
-            {r.contactsTotal} מכרים שלך כאן
-            {r.jobs.length > 0 ? `, ${r.jobs.length} משרות פתוחות` : ', אין משרה ידועה'}
+            {r.people.length === 0 && r.jobs.length === 0
+              ? 'אין איש קשר ולא ידוע על משרה'
+              : <>
+                  {r.contactsTotal > 0 ? `${r.contactsTotal} מכרים שלך כאן` : 'אין איש קשר'}
+                  {r.jobs.length > 0 ? `, ${r.jobs.length} משרות פתוחות` : ', לא ידוע על משרה'}
+                </>}
           </div>
 
           <div className="gold-links">
             {r.website && <a href={r.website} target="_blank" rel="noreferrer">אתר</a>}
             {r.careers && <a href={r.careers} target="_blank" rel="noreferrer">דף קריירה</a>}
+            {r.people.length === 0 && r.peopleHref && (
+              <a href={r.peopleHref} target="_blank" rel="noreferrer">אנשי החברה בלינקדאין</a>
+            )}
             <a
               href={'https://www.linkedin.com/jobs/search/?keywords=' + encodeURIComponent(r.name)}
               target="_blank" rel="noreferrer"
@@ -130,7 +138,7 @@ export default function GoldList(
 
           <div className="reach-acts">
             <button type="button" className="apply" disabled={busy === r.id}
-              onClick={() => mark(r.id, 'done')}>סמן שנשלח</button>
+              onClick={() => mark(r.id, 'done')}>{r.people.length ? 'סמן שנשלח' : 'סמן שטופלה'}</button>
             <button type="button" className="closed" disabled={busy === r.id}
               title="לא רלוונטי. יירד מהתור ולא יחזור"
               onClick={() => mark(r.id, 'skipped')}>מוותר</button>

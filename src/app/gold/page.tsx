@@ -1,12 +1,12 @@
 import Link from 'next/link';
 import { serverClient } from '@/lib/server';
 import GoldList, { type GoldRow } from '@/components/GoldList';
-import { companyKey, type WarmContact } from '@/lib/contacts';
+import { companyKey, peopleAtCompanyHref, type WarmContact } from '@/lib/contacts';
 import { rankContacts, isAgency } from '@/lib/pickContact';
 import { cvFamilyForTitle, cvFileFor } from '@/lib/outreach';
 import { israelDayStart, WIDE_CV_FILE } from '@/lib/wideReach';
 import { loadApplied } from '@/lib/priorApplication';
-import { GOLD_DAILY, goldMessage, goldOrder, type GoldCompany } from '@/lib/gold';
+import { GOLD_DAILY, GOLD_QUOTA, goldMessage, goldRank, type GoldCompany } from '@/lib/gold';
 
 export const dynamic = 'force-dynamic';
 
@@ -47,40 +47,62 @@ export default async function Gold() {
     byKey.set(c.company_key, arr);
   }
 
-  // PostgREST מגביל שורות לשליפה, ולכן החברות נשלפות במקבצים לפי מפתח.
-  const keys = [...byKey.keys()];
-  const companies: GoldCompany[] = [];
-  for (let i = 0; i < keys.length; i += 120) {
-    const { data, error: ce } = await sb.from('companies')
-      .select('id, name, company_key, size_class, size_range, region, city, website, careers_url, is_hiring')
-      .in('company_key', keys.slice(i, i + 120))
-      .is('gold_done_at', null)
-      .is('gold_skipped_at', null);
-    if (ce) {
-      return (
-        <main>
-          <div className="head"><h1>חברות זהב</h1><Link className="more" href="/">← חדר המצב</Link></div>
-          <div className="alert">שגיאה בשליפת החברות: {ce.message}</div>
-        </main>
-      );
+  // המאגר כולו, בלי מה שכבר הוחלט עליו. נשלף בעמודים, כי PostgREST מגביל
+  // שורות לשליפה. רק מה שנדרש לדירוג, ואת הפרטים שולפים רק ל-50 שנבחרו.
+  const day = israelDayStart().slice(0, 10);
+  const dayStart = israelDayStart();
+  const pickedIds: string[] = [];
+  const decidedBy: Record<string, number> = { S: 0, M: 0, E: 0 };
+  for (const cls of ['S', 'M', 'E'] as const) {
+    const [d1, d2] = await Promise.all([
+      sb.from('companies').select('id', { count: 'exact', head: true })
+        .eq('size_class', cls).gte('gold_done_at', dayStart),
+      sb.from('companies').select('id', { count: 'exact', head: true })
+        .eq('size_class', cls).gte('gold_skipped_at', dayStart),
+    ]);
+    decidedBy[cls] = (d1.count ?? 0) + (d2.count ?? 0);
+    const slots = Math.max(0, GOLD_QUOTA[cls] - decidedBy[cls]);
+    if (!slots) continue;
+    const pool: { id: string; n: number; gush: boolean }[] = [];
+    for (let from = 0; ; from += 1000) {
+      const { data, error: pe } = await sb.from('companies')
+        .select('id, company_key, region')
+        .eq('size_class', cls)
+        .is('gold_done_at', null)
+        .is('gold_skipped_at', null)
+        .order('id')
+        .range(from, from + 999);
+      if (pe) {
+        return (
+          <main>
+            <div className="head"><h1>חברות זהב</h1><Link className="more" href="/">← חדר המצב</Link></div>
+            <div className="alert">שגיאה בשליפת החברות: {pe.message}</div>
+          </main>
+        );
+      }
+      for (const r of (data ?? []) as any[]) {
+        pool.push({ id: r.id, n: r.company_key ? (byKey.get(r.company_key)?.length ?? 0) : 0, gush: r.region === 'gush_dan' });
+      }
+      if (!data || data.length < 1000) break;
     }
-    companies.push(...((data ?? []) as GoldCompany[]));
+    pool.sort((x, y) => goldRank(x, y, day));
+    pickedIds.push(...pool.slice(0, slots).map((x) => x.id));
   }
 
-  const dayStart = israelDayStart();
-  const [{ count: doneToday }, { count: skippedToday }, { count: pool }] = await Promise.all([
-    sb.from('companies').select('id', { count: 'exact', head: true }).gte('gold_done_at', dayStart),
-    sb.from('companies').select('id', { count: 'exact', head: true }).gte('gold_skipped_at', dayStart),
-    sb.from('companies').select('id', { count: 'exact', head: true }),
-  ]);
-  const decided = (doneToday ?? 0) + (skippedToday ?? 0);
+  const decided = decidedBy.S + decidedBy.M + decidedBy.E;
   const left = Math.max(0, GOLD_DAILY - decided);
 
-  const ranked = companies
-    .map((c) => ({ c, n: byKey.get(c.company_key)?.length ?? 0 }))
-    .filter((x) => x.n > 0)
-    .sort(goldOrder)
-    .slice(0, left);
+  const { data: picked } = pickedIds.length
+    ? await sb.from('companies')
+        .select('id, name, company_key, size_class, size_range, region, city, website, careers_url, is_hiring')
+        .in('id', pickedIds)
+    : { data: [] as any[] };
+  const classOrder: Record<string, number> = { E: 0, M: 1, S: 2 };
+  const ranked = ((picked ?? []) as GoldCompany[])
+    .map((c) => ({ c, n: c.company_key ? (byKey.get(c.company_key)?.length ?? 0) : 0 }))
+    .sort((x, y) => (y.n - x.n)
+      || ((x.c.region === 'gush_dan' ? 0 : 1) - (y.c.region === 'gush_dan' ? 0 : 1))
+      || ((classOrder[x.c.size_class ?? ''] ?? 3) - (classOrder[y.c.size_class ?? ''] ?? 3)));
 
   // משרות פתוחות בחברות שנבחרו, בלי מה שכבר הוגש.
   const { rows: applied } = await loadApplied(sb);
@@ -108,6 +130,7 @@ export default async function Gold() {
     const jobs = jobsByKey.get(c.company_key) ?? [];
     const top = jobs[0] ?? null;
     const people = rankContacts(byKey.get(c.company_key) ?? [], top?.title, isAgency(c.name)).slice(0, 3);
+    const peopleHref = peopleAtCompanyHref(c.name, null);
     const cvId = top ? (cvFamilyForTitle(top.title) ?? 'project-release-manager') : null;
     return {
       id: c.id,
@@ -120,6 +143,7 @@ export default async function Gold() {
       careers: c.careers_url,
       hiring: c.is_hiring,
       contactsTotal: n,
+      peopleHref,
       cvFile: top ? cvFileFor(cvId, top.title) : WIDE_CV_FILE,
       jobs: jobs.slice(0, 4).map((j) => ({ id: j.id, title: j.title, url: j.url, source: j.source })),
       people: people.map((p) => ({
@@ -145,8 +169,8 @@ export default async function Gold() {
         <Link className="more" href="/">← חדר המצב</Link>
       </div>
       <p className="sub">
-        חברות שיש בהן מי שאתה מכיר, מהסדר: הכי הרבה מכרים, גוש דן, גודל.
-        {' '}{GOLD_DAILY} ביום. במאגר {pool ?? 0} חברות, ובהן {byKey.size} מפתחות עם מכר.
+        בכל חברה: מכר אם יש, משרה אם ידועה, ואם אין כלום זה כתוב. בכל גודל, מי שיש בה מכר קודם ואחריה גוש דן.
+        {' '}{GOLD_DAILY} ביום, מכל הגדלים: {GOLD_QUOTA.S} קטנות, {GOLD_QUOTA.M} בינוניות, {GOLD_QUOTA.E} גדולות.
       </p>
       <GoldList rows={rows} target={GOLD_DAILY} doneToday={decided} />
       <p className="hint" style={{ marginTop: '1.2rem' }}>

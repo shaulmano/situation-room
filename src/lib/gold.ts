@@ -1,10 +1,35 @@
 import { englishCompany, isRecruiter, referralMessage } from '@/lib/outreach';
 import { firstName } from '@/lib/wideReach';
 
-/** כמה חברות ביום. שאול, 20.11.2026: "טופ 30 עד 40". */
-export const GOLD_DAILY = 40;
+/**
+ * כמה חברות ביום, ובאיזה תמהיל. 20.11.2026, שאול: "50 חברות מכל הסוגים,
+ * וכולם בלי יוצא מהכלל. ה-50 יהיו מיקס של כל הגדלים."
+ * S עד 50 עובדים, M 51 עד 200, E מעל 200.
+ */
+export const GOLD_QUOTA: Record<string, number> = { S: 20, M: 15, E: 15 };
+export const GOLD_DAILY = 50;
 
-const SIZE_ORDER: Record<string, number> = { E: 0, M: 1, S: 2 };
+function hash(s: string): number {
+  let h = 2166136261;
+  for (let i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 16777619); }
+  return h >>> 0;
+}
+
+/**
+ * סדר בתוך גודל: מי שיש בה מכרים קודם (הכי הרבה קודם), אחריה גוש דן,
+ * ואחר כך סדר שמתחלף כל יום, כדי שכל החברות ייגמרו בלי שהכי גדולה
+ * בשמה תחכה לנצח. הסדר יציב לאורך היום, ולכן שורה שנסגרה לא מערבבת
+ * את השאר.
+ */
+export function goldRank(
+  a: { id: string; n: number; gush: boolean },
+  b: { id: string; n: number; gush: boolean },
+  day: string,
+): number {
+  if (b.n !== a.n) return b.n - a.n;
+  if (a.gush !== b.gush) return a.gush ? -1 : 1;
+  return hash(day + a.id) - hash(day + b.id);
+}
 
 export type GoldCompany = {
   id: string;
@@ -18,21 +43,6 @@ export type GoldCompany = {
   careers_url: string | null;
   is_hiring: boolean;
 };
-
-/**
- * סדר החברות: מי שיש בה הכי הרבה מכרים קודם, אחריה גוש דן, אחריה גודל.
- * הצעד הראשון הוא רק מכרים. חברה בלי מכר אינה נכנסת לכאן בשלב הזה.
- */
-export function goldOrder(a: { c: GoldCompany; n: number }, b: { c: GoldCompany; n: number }): number {
-  if (b.n !== a.n) return b.n - a.n;
-  const ra = a.c.region === 'gush_dan' ? 0 : 1;
-  const rb = b.c.region === 'gush_dan' ? 0 : 1;
-  if (ra !== rb) return ra - rb;
-  const sa = SIZE_ORDER[a.c.size_class ?? ''] ?? 3;
-  const sb = SIZE_ORDER[b.c.size_class ?? ''] ?? 3;
-  if (sa !== sb) return sa - sb;
-  return a.c.name.localeCompare(b.c.name);
-}
 
 /**
  * הודעה לאיש קשר בחברה. יש משרה פתוחה: אותו נוסח של הפניות דרך מכרים.
