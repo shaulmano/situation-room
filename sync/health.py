@@ -38,7 +38,7 @@ def quiet_pipeline():
 # מקורות ששאול הוריד בכוונה (דרושים 20.11, אולג'ובס 15.11, סקרט'ג'ובס 10.11).
 # הם מפסיקים להביא משרות כי כך רצינו, ולא כי הסורק נשבר, ולכן אסור שיפעילו
 # התראה. ההשוואה לפי חלק מהשם באותיות קטנות.
-DROPPED_ON_PURPOSE = ('drushim', 'alljobs', 'secretjobs')
+DROPPED_ON_PURPOSE = ('drushim', 'alljobs', 'secretjobs', 'gotfriends', 'malam')
 
 
 def sources_gone_quiet():
