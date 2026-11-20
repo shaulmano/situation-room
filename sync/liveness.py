@@ -44,6 +44,38 @@ def linkedin_state(url):
     return None
 
 
+def diag(todo):
+    """Probe three ways of reading a LinkedIn job page, to see which one works from here."""
+    try:
+        from curl_cffi import requests as cf
+    except Exception as e:
+        cf = None
+        print("curl_cffi missing: %s" % e)
+    for j in todo[:14]:
+        m = re.search(r"linkedin\.com/jobs/view/(?:.*?-)?(\d{6,})", j["url"] or "")
+        if not m:
+            continue
+        jid = m.group(1)
+        rows = []
+        for name, url in (("view", "https://www.linkedin.com/jobs/view/" + jid),
+                          ("api", "https://www.linkedin.com/jobs-guest/jobs/api/jobPosting/" + jid)):
+            out = subprocess.run(
+                ["curl", "-s", "-L", "--max-time", "20", "-A", UA, "-w", "\n%{http_code}", url],
+                capture_output=True, text=True, encoding="utf-8", errors="replace").stdout or ""
+            body, _, code = out.rpartition("\n")
+            rows.append("curl-%s %s len=%d closed=%s apply=%s" % (
+                name, code, len(body), bool(CLOSED.search(body)), "apply-button" in body or "top-card-layout__cta" in body))
+            if cf:
+                try:
+                    r = cf.get(url, impersonate="chrome124", timeout=20)
+                    b = r.text
+                    rows.append("cffi-%s %s len=%d closed=%s apply=%s" % (
+                        name, r.status_code, len(b), bool(CLOSED.search(b)), "apply-button" in b or "top-card-layout__cta" in b))
+                except Exception as e:
+                    rows.append("cffi-%s error %s" % (name, str(e)[:60]))
+        print("DIAG %s | %s | %s" % (jid, j["title"][:40], " ; ".join(rows)))
+
+
 def main():
     dry = "--dry" in sys.argv
     cap = int(sys.argv[sys.argv.index("--max") + 1]) if "--max" in sys.argv else 200
@@ -60,6 +92,11 @@ def main():
         "order by live_checked_at nulls first, first_seen desc limit 4000")
     todo = [j for j in jobs if key(j["company"]) in ckeys][:cap]
     print("candidates %d of %d" % (len(todo), len(jobs)))
+    if "--diag" in sys.argv:
+        unk = [j for j in todo if "linkedin.com" in (j["url"] or "") and linkedin_state(j["url"]) is None]
+        print("unknown via plain curl: %d" % len(unk))
+        diag(unk)
+        return
     closed = live = unknown = 0
     for j in todo:
         url = j["url"] or ""
