@@ -38,9 +38,9 @@ on:
   workflow_dispatch:
     inputs:
       job:
-        description: 'rejections'
+        description: 'rejections | invites | all'
         required: false
-        default: 'rejections'
+        default: 'all'
 
 concurrency:
   group: situation-room-cron
@@ -54,7 +54,7 @@ jobs:
     # במייל". הפרומפט שלו אמר על עצמו "זאת פקודה אחת, אין כאן שיקול
     # דעת ואין מה לנסח", וזה היה מדויק: כל הזיהוי יושב ב-
     # `sync/rejections.py`, ברשימת נוסחים מפורשת, והסוכן רק הפעיל אותו.
-    if: github.event_name == 'schedule' || inputs.job == 'rejections'
+    if: github.event_name == 'schedule' || inputs.job == 'rejections' || inputs.job == 'all'
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
@@ -99,3 +99,24 @@ jobs:
           VAPID_PUBLIC_KEY: ${{ secrets.VAPID_PUBLIC_KEY }}
           VAPID_PRIVATE_KEY: ${{ secrets.VAPID_PRIVATE_KEY }}
         run: python sync/notify_push.py rejections "${{ steps.sweep.outputs.recorded }}"
+
+  invites:
+    # מי אישר בקשת חברות בלינקדאין. היה סוכן "אישר חברות", שחיפש ב-Gmail דרך
+    # מחבר והפעיל את `invites_mark.py`. החילוץ מהמייל יושב עכשיו ב-
+    # `sync/invites_scan.py`. **יומיים ולא יום**, כדי שריצה שנכשלה לא תפיל
+    # אף אחד, וכתיבה חוזרת מדלגת על מי שכבר מסומן.
+    if: github.event_name == 'schedule' || inputs.job == 'invites' || inputs.job == 'all'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Record LinkedIn invite acceptances from the mailbox
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+          SUPABASE_PROJECT_REF: ${{ secrets.SUPABASE_PROJECT_REF }}
+          GMAIL_ADDRESS: ${{ secrets.GMAIL_ADDRESS }}
+          GMAIL_APP_PASSWORD: ${{ secrets.GMAIL_APP_PASSWORD }}
+        run: python sync/invites_scan.py --days 2 --write
