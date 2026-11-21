@@ -1,5 +1,6 @@
 'use client';
 import MarkApplied from './MarkApplied';
+import GoldSkipJob from './GoldSkipJob';
 import { useState } from 'react';
 
 export type GoldRow = {
@@ -135,7 +136,7 @@ export default function GoldList(
                   <> · מפרסם: <a href={j.recruiterUrl} target="_blank" rel="noreferrer">{j.recruiterName || 'פתח פרופיל'}</a></>
                 )}
               </div>
-              <div className="gold-acts one"><MarkApplied id={j.id} internal /></div>
+              <div className="gold-acts"><MarkApplied id={j.id} internal /><GoldSkipJob id={j.id} /></div>
             </div>
           ))}
 

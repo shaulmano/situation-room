@@ -72,6 +72,7 @@ export default async function Gold() {
     // הוא לא מגיש מהמשרה אלא דרך מכר, ולכן סגירה שם אינה סגירה כאן.
     // מה שמוריד אותה: אימות שנסגרה, או "מוותר" על החברה.
     .is('closed_at', null)
+    .is('gold_skipped_at', null)
     .gte('first_seen', since)
     .order('first_seen', { ascending: false })
     .limit(4000);
