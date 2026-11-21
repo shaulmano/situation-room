@@ -18,8 +18,8 @@ LEGAL = {"ltd", "limited", "inc", "incorporated", "llc", "corp", "corporation", 
 GENERIC = {
     "technologies", "technology", "tech", "systems", "system", "software", "security", "cyber", "labs", "lab",
     "israel", "ai", "io", "com", "group", "networks", "network", "solutions", "semiconductor", "semiconductors",
-    "global", "international", "holdings", "studios", "studio", "medical", "digital", "data", "cloud",
-    "innovation", "innovations", "robotics", "engineering", "il", "app", "apps", "platform", "financial",
+    "global", "international", "holdings", "studios", "studio",
+    "innovation", "innovations", "robotics", "engineering", "il", "app", "apps", "platform",
     "טכנולוגיות", "מערכות", "ישראל", "תוכנה", "קבוצת", "בעמ",
 }
 MIN = 4
@@ -44,7 +44,7 @@ def variants(name):
     return out
 
 
-SUFFIXES = ("ai", "io", "com", "labs", "security", "technologies", "systems", "software")
+SUFFIXES = ("ai", "io", "labs", "security", "technologies", "systems", "software")
 
 
 def compatible(a, b):
@@ -55,7 +55,8 @@ def compatible(a, b):
     if not ta or not tb:
         return False
     if ta <= tb or tb <= ta:
-        return True
+        # the extra words must be generic: "Peak" is not "Peak Medical"
+        return (ta ^ tb) <= GENERIC
     ja, jb = "".join(sorted(ta)), "".join(sorted(tb))
     return any(jb == ja + x or ja == jb + x for x in SUFFIXES)
 
