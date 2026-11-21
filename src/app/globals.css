@@ -302,6 +302,9 @@ a:focus-visible,button:focus-visible,input:focus-visible{outline:2px solid var(-
   /* The hero owns row one; the other three share row two. Two columns left the
      third tile alone in a row with a hole beside it. */
   .kpis{grid-template-columns:repeat(3,1fr);gap:7px}
+  .kpis.k4{grid-template-columns:repeat(4,1fr);gap:6px}
+  .kpis.k4 .kpi{padding:10px 6px}
+  .kpis.k4 .kpi-l{font-size:.6rem}
   .kpi.hero{grid-column:1/-1}
   .kpi{padding:10px 9px}
   .kpi-l{font-size:.64rem;line-height:1.25}

@@ -309,7 +309,7 @@ export default async function Dashboard({
         </div>
       )}
 
-      <div className="kpis">
+      <div className="kpis k4">
         <Link className="kpi hero" href="/applications?status=conversation">
           {/* היעד היה ל-15/10 והתאריך עבר. אריח שמראה "0 ימים נותרו" לנצח
               הוא לא מדידה, ולכן אחרי שהתאריך חלף הוא מציג רק את המספר. */}
@@ -330,6 +330,10 @@ export default async function Dashboard({
         <Link className="kpi" href="/applications?status=silent">
           <div className="kpi-l">ללא מענה</div>
           <div className="kpi-v">{silent.count ?? 0}</div>
+        </Link>
+        <Link className="kpi" href="/applications">
+          <div className="kpi-l">הוגשו פנימית</div>
+          <div className="kpi-v">{internalN.week}</div>
         </Link>
       </div>
 
