@@ -153,7 +153,7 @@ export default async function Applications({
     qa: 'QA', program: 'ניהול פרויקטים', delivery: 'גרסאות ו‑Delivery',
   };
   const CH_LABEL: Record<string, string> = {
-    linkedin: 'לינקדאין', form: 'טופס באתר', email: 'מייל ישיר',
+    linkedin: 'לינקדאין', form: 'טופס באתר', email: 'מייל ישיר', internal: 'הוגש פנימית',
   };
   const byCv = breakdown((a) => CV_LABEL[a.cv_id] ?? a.cv_id);
   const byChannel = breakdown((a) => CH_LABEL[a.channel] ?? a.channel);

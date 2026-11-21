@@ -2,7 +2,7 @@
 import { useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 
-export default function MarkApplied({ id, cvId }: { id: string; cvId?: string }) {
+export default function MarkApplied({ id, cvId, internal }: { id: string; cvId?: string; internal?: boolean }) {
   const router = useRouter();
   const [done, setDone] = useState(false);
   const [pending, start] = useTransition();
@@ -16,7 +16,7 @@ export default function MarkApplied({ id, cvId }: { id: string; cvId?: string })
     const res = await fetch('/api/jobs/applied', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ id, cv_id: cvId }),
+      body: JSON.stringify({ id, cv_id: cvId, internal: !!internal }),
     }).catch(() => null);
 
     if (!res || !res.ok) {
@@ -35,9 +35,11 @@ export default function MarkApplied({ id, cvId }: { id: string; cvId?: string })
   return (
     <button
       type="button" className="mark" onClick={mark} disabled={done || pending}
-      title="סמן כהוגשה — יעבור למסך ההגשות עם תאריך היום"
+      title={internal
+        ? 'סמן כהוגש פנימית, דרך מי שעובד שם. יעבור למסך ההגשות ויספר כהגשה פנימית'
+        : 'סמן כהוגשה — יעבור למסך ההגשות עם תאריך היום'}
     >
-      {done ? '✓ נרשם' : 'הוגשה'}
+      {done ? '✓ נרשם' : internal ? 'הוגש פנימית' : 'הוגשה'}
     </button>
   );
 }

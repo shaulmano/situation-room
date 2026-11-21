@@ -753,6 +753,7 @@ async function WarmBody({
                   </a>
                 )}
                 <MarkApplied id={j.id} cvId={m.cv_id} />
+                <MarkApplied id={j.id} cvId={m.cv_id} internal />
                 <MarkClosed id={j.id} ids={m.copies?.map((c: any) => c.jobs.id)} />
                 <Dismiss id={j.id} ids={m.copies.map((c: any) => c.jobs.id)} noRefresh />
 

@@ -6,6 +6,7 @@ import MarkApplied from '@/components/MarkApplied';
 import MarkClosed from '@/components/MarkClosed';
 import PriorApplied from '@/components/PriorApplied';
 import { loadApplied, priorApplication } from '@/lib/priorApplication';
+import { internalApplied } from '@/lib/internalApplied';
 
 export const dynamic = 'force-dynamic';
 
@@ -41,6 +42,7 @@ export default async function Radar({
   searchParams: { source?: string };
 }) {
   const sb = serverClient();
+  const internalN = await internalApplied(sb);
   const source = searchParams.source ?? '';
 
   // 15.11.2026: גם הכותרת והחברה. הרדאר מביא מלוחות ATS, ואותה משרה
@@ -76,6 +78,7 @@ export default async function Radar({
         חיפוש בוליאני אחד בגוגל על פני כל פלטפורמות הגיוס, פעם ביום. אלה משרות
         שיושבות בעמוד הקריירה של החברה ולא הגיעו לשום לוח, ולכן הסריקה הרגילה
         לא יכלה למצוא אותן.
+        {' '}הוגשו פנימית: <b>{internalN.today}</b> היום, <b>{internalN.week}</b> בשבוע, <b>{internalN.total}</b> בסך הכל.
       </p>
 
       {error && (
@@ -137,6 +140,7 @@ export default async function Radar({
                   לעמוד המשרה
                 </a>
                 <MarkApplied id={j.id} />
+                <MarkApplied id={j.id} internal />
                 <MarkClosed id={j.id} />
               </div>
             </div>

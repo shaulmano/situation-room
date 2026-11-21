@@ -28,7 +28,7 @@ async function fetchPoster(jobId: string) {
 // Applying happens on someone else's site, so nothing can observe it. This is
 // the one thing only Shaul can tell the system, and it has to cost one tap.
 export async function POST(req: NextRequest) {
-  const { id, cv_id } = await req.json();
+  const { id, cv_id, internal } = await req.json();
   if (!id) return NextResponse.json({ error: 'missing id' }, { status: 400 });
 
   const sb = serverClient();
@@ -47,7 +47,8 @@ export async function POST(req: NextRequest) {
     cv_id: cv_id ?? null,
     company: job.company,
     role: job.title,
-    channel: job.source === 'LinkedIn' ? 'linkedin' : 'form',
+    // 'internal': הוגש דרך מי שעובד שם (21.11.2026, "הקו החדש הוא לשלוח פנימית")
+    channel: internal ? 'internal' : job.source === 'LinkedIn' ? 'linkedin' : 'form',
     sent_at: new Date().toISOString(),
     status: 'sent',
     // Keeps the Gmail backfill from inserting a duplicate for the same posting.
@@ -57,6 +58,12 @@ export async function POST(req: NextRequest) {
   if (error && !error.message.includes('duplicate')) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
+  // כבר סומנה הוגשה והוא מבהיר שזה היה פנימית: מתקנים את הערוץ, לא יוצרים שורה שנייה.
+  if (error && internal) {
+    await sb.from('applications').update({ channel: 'internal' }).eq('gmail_thread_id', `manual:${job.id}`);
+  }
+  // הגשה פנימית אינה צריכה מפרסם: הפנייה היא למי שעובד שם.
+  if (internal) return NextResponse.json({ ok: true });
 
   // רק ללינקדאין ורק אם אין כבר מפרסם שמור. אין טעם לשלוח ראנר על משרה
   // שהסריקה כבר הביאה את המפרסם שלה.

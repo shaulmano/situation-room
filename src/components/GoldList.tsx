@@ -1,4 +1,5 @@
 'use client';
+import MarkApplied from './MarkApplied';
 import { useState } from 'react';
 
 export type GoldRow = {
@@ -134,6 +135,7 @@ export default function GoldList(
                   {j.source && <span className="mute"> · {j.source}</span>}
                   {j.location && <span className="mute"> · {j.location}</span>}
                   {j.verifiedAt && <span className="mute"> · אומתה {ago(j.verifiedAt)}</span>}
+                  {' '}<MarkApplied id={j.id} internal />
                 </li>
               ))}
             </ul>

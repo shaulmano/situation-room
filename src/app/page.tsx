@@ -15,6 +15,7 @@ import PriorApplied from '@/components/PriorApplied';
 import DuplicateCheck from '@/components/DuplicateCheck';
 import { loadApplied, priorApplication } from '@/lib/priorApplication';
 import { DAILY_TARGET, israelDayStart } from '@/lib/wideReach';
+import { internalApplied } from '@/lib/internalApplied';
 
 export const dynamic = 'force-dynamic';
 
@@ -214,6 +215,7 @@ export default async function Dashboard({
   if (onlyManual) picked = picked.filter(isManual);
   if (source) picked = picked.filter((m) => sourcesOf(m).includes(source));
   const rows = picked;
+  const internalN = await internalApplied(sb);
   const goldKeys = await goldKeySet(sb, rows.flatMap((m: any) => m.copies.map((c: any) => companyKey(c.jobs.company))));
 
   // כמה מהמשרות שעל המסך הן בחברה שיש בה איש קשר שעוד לא פנית אליו.
@@ -464,6 +466,7 @@ export default async function Dashboard({
             ? `${rows.length} מ־${source} היום, ולא הגשת אליהן.`
             : `${rows.length} נסרקו היום ולא הגשת אליהן.`
           : 'הסריקה של היום לא החזירה משרות חדשות על המטרה.'}
+        {' '}הוגשו פנימית: <b>{internalN.today}</b> היום, <b>{internalN.week}</b> בשבוע, <b>{internalN.total}</b> בסך הכל.
       </p>
 
       {rows.length === 0 ? (
@@ -548,6 +551,7 @@ export default async function Dashboard({
                   </a>
                 ))}
                 <MarkApplied id={j.id} cvId={m.cv_id} />
+                <MarkApplied id={j.id} cvId={m.cv_id} internal />
                 <MarkClosed id={j.id} ids={m.copies.map((c: any) => c.jobs.id)} />
                 <Dismiss id={j.id} ids={m.copies.map((c: any) => c.jobs.id)} />
                 <DuplicateCheck

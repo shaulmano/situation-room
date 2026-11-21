@@ -8,6 +8,7 @@ import { israelDayStart, WIDE_CV_FILE } from '@/lib/wideReach';
 import { loadApplied } from '@/lib/priorApplication';
 import { GOLD_DAILY, GOLD_QUOTA, goldMessage, goldRank, loadAliases, type GoldCompany } from '@/lib/gold';
 import { jobPlace } from '@/lib/jobLocation';
+import { internalApplied } from '@/lib/internalApplied';
 
 export const dynamic = 'force-dynamic';
 
@@ -155,6 +156,7 @@ export default async function Gold() {
   const decided = decidedBy.S + decidedBy.M + decidedBy.E;
   const left = Math.max(0, GOLD_DAILY - decided);
 
+  const internalN = await internalApplied(sb);
   const { count: closedDay } = await sb.from('jobs').select('id', { count: 'exact', head: true })
     .gte('closed_at', new Date(Date.now() - 24 * 3600 * 1000).toISOString());
 
@@ -221,6 +223,9 @@ export default async function Gold() {
       <p className="hint">
         אימות משרות בחברות שיש בהן מכר: <b>{watchedVerified}</b> אומתו כפתוחות ב-48 השעות האחרונות מתוך <b>{watched}</b>,
         {' '}<b>{Math.max(0, watched - watchedVerified)}</b> ממתינות לאימות (לא מוצגות עד שיאומתו), <b>{closedDay ?? 0}</b> נסגרו ב-24 השעות האחרונות.
+      </p>
+      <p className="hint">
+        הוגשו פנימית: <b>{internalN.today}</b> היום, <b>{internalN.week}</b> בשבוע, <b>{internalN.total}</b> בסך הכל.
       </p>
       <GoldList rows={rows} target={GOLD_DAILY} doneToday={decided} />
       <p className="hint" style={{ marginTop: '1.2rem' }}>
