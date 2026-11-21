@@ -479,9 +479,9 @@ a.dup-title{text-decoration:underline;text-underline-offset:2px}
 .gold-chip{background:var(--accent);color:#fff;font-weight:700}
 
 /* חברות זהב, פריסה חדשה (21.11.2026): בלוק לכל חברה, צבע מתחלף, כפתורים מיושרים.
-   טלפון לאורך: עמודה אחת. מחשב: שתי עמודות. */
+   טלפון לאורך: בלוקים בצבעים. מחשב: רשימה רגילה, עמודה אחת, בלי צבעים (שאול, 21.11: "ביקשתי ככה רק בטלפון"). */
 .gold-grid{display:grid;grid-template-columns:1fr;gap:.9rem}
-@media (min-width:900px){.gold-grid{grid-template-columns:repeat(2,1fr);align-items:start}}
+
 .gold-card{border:1px solid;border-radius:12px;padding:.85rem;display:flex;flex-direction:column;gap:.65rem;min-width:0}
 .gold-card.c0{background:#E8F2FA;border-color:#B4D0E6}
 .gold-card.c1{background:#FBF3D3;border-color:#E3CF86}
@@ -499,3 +499,18 @@ a.dup-title{text-decoration:underline;text-underline-offset:2px}
   padding:.35rem .4rem;font-size:.8rem;line-height:1.2;text-align:center;border-radius:8px;margin:0}
 .gold-more summary{cursor:pointer;font-size:.78rem;color:var(--muted);padding:.2rem 0}
 .gold-more .gold-links{margin:.4rem 0 0}
+
+/* מחשב: חזרה לרשימה הרגילה. כל חברה שורה אחת, בלי צבעי רקע, וכפתורים קטנים בצד. */
+@media (min-width:900px){
+  .gold-card.c0,.gold-card.c1{background:var(--card,#fff);border-color:var(--hair,#e3e6ea)}
+  .gold-card.gold-hot{background:var(--accent-soft)}
+  .gold-card{gap:.4rem;padding:.8rem .9rem}
+  .gold-sec{background:transparent;border-top:1px solid var(--hair,#e3e6ea);border-radius:0;padding:.5rem 0;
+    display:grid;grid-template-columns:minmax(0,1fr) auto;column-gap:1rem;row-gap:.15rem;align-items:center}
+  .gold-sec h4{display:none}
+  .gold-sec > .gold-acts{grid-column:2;grid-row:1 / span 2}
+  .gold-sec > :not(.gold-acts){grid-column:1}
+  .gold-acts,.gold-acts.three,.gold-acts.one{display:flex;gap:.4rem;flex:none}
+  .gold-acts > *{width:auto;min-height:30px;padding:.2rem .8rem;font-size:.78rem}
+  .gold-more{border-top:1px solid var(--hair,#e3e6ea);padding-top:.3rem}
+}
