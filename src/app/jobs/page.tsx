@@ -80,6 +80,8 @@ export default async function Jobs({
     query = query
       .eq('jobs.on_target', true)
       .is('jobs.dismissed_at', null)
+      // סגורה לפי אימות: מוסתרת בתצוגה הרגילה, ונשארת בתצוגת הכל (showAll)
+      .is('jobs.closed_at', null)
       .gte('jobs.first_seen', since);
   }
 

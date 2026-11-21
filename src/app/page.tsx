@@ -148,6 +148,8 @@ export default async function Dashboard({
       )
       .eq('jobs.on_target', true)
       .is('jobs.dismissed_at', null)
+      // משרה שהאימות מצא סגורה לא מוצגת (21.11.2026: כ-350 נסגרו בלילה אחד)
+      .is('jobs.closed_at', null)
       .gte('jobs.first_seen', ago(days))
       .order('first_seen', { ascending: false, referencedTable: 'jobs' })
       .limit(900);
