@@ -35,3 +35,23 @@ export function jobPlace(location: string | null | undefined): JobPlace {
   if (OUT.some((w) => s.includes(w))) return 'out';
   return 'unknown';
 }
+
+// עברית ואנגלית לאותה עיר, כדי שאיחוד כפילויות לא יפספס "תל אביב" מול "Tel Aviv".
+const HE_EN: Record<string, string> = {
+  'תל אביב': 'tel aviv', 'רמת גן': 'ramat gan', 'גבעתיים': 'givatayim', 'בני ברק': 'bnei brak', 'פתח תקווה': 'petah tikva',
+  'petach tikva': 'petah tikva', 'הרצליה': 'herzliya', 'רעננה': 'raanana', "ra'anana": 'raanana', 'כפר סבא': 'kfar saba',
+  'הוד השרון': 'hod hasharon', 'נתניה': 'netanya', 'ראשון לציון': 'rishon', 'rishon lezion': 'rishon', 'רחובות': 'rehovot',
+  'חולון': 'holon', 'בת ים': 'bat yam', 'ראש העין': 'rosh haayin', "rosh ha'ayin": 'rosh haayin', 'לוד': 'lod',
+};
+
+/**
+ * שם העיר המנורמל (באנגלית) כשהיא מוכרת בגוש דן, ריק אם המיקום כללי או לא מוכר.
+ * משמש לאיחוד כפילויות: אותה חברה, אותה כותרת, אותה עיר.
+ */
+export function cityOf(location: string | null | undefined): string {
+  const s = (location ?? '').toLowerCase();
+  if (!s.trim()) return '';
+  const hit = IN.find((w) => s.includes(w));
+  if (!hit) return '';
+  return HE_EN[hit] ?? hit;
+}

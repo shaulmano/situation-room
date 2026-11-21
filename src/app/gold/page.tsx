@@ -7,7 +7,8 @@ import { cvFamilyForTitle, cvFileFor } from '@/lib/outreach';
 import { israelDayStart, WIDE_CV_FILE } from '@/lib/wideReach';
 import { loadApplied } from '@/lib/priorApplication';
 import { GOLD_DAILY, GOLD_QUOTA, goldMessage, goldRank, loadAliases, type GoldCompany } from '@/lib/gold';
-import { jobPlace } from '@/lib/jobLocation';
+import { jobPlace, cityOf } from '@/lib/jobLocation';
+import { postingKey } from '@/lib/dedupe';
 import { internalApplied } from '@/lib/internalApplied';
 
 export const dynamic = 'force-dynamic';
@@ -71,12 +72,29 @@ export default async function Gold() {
     .limit(4000);
   const fresh = Date.now() - 48 * 3600 * 1000;
   const isVerified = (j: any) => !!j.live_checked_at && new Date(j.live_checked_at).getTime() >= fresh;
+  // **כפילויות (21.11.2026):** אותה חברה, אותה כותרת ואותה עיר היא משרה אחת גם
+  // אם יש לה שתי כתובות (לינקדאין ואתר החברה). אם תאומה אחת הוגשה, כולן הוגשו.
+  // עיר לא מוכרת ("Israel") מתאחדת עם כל עיר, כי זה אותו מודעה בניסוח כללי יותר.
+  const twinKey = (j: any) => postingKey(j.company, j.title);
+  const appliedTwins = new Map<string, string[]>();
+  for (const j of (jobsRaw ?? []) as any[]) {
+    if (!appliedIds.has(j.id)) continue;
+    const arr = appliedTwins.get(twinKey(j)) ?? [];
+    arr.push(cityOf(j.location));
+    appliedTwins.set(twinKey(j), arr);
+  }
+  const twinApplied = (j: any) => {
+    const cities = appliedTwins.get(twinKey(j));
+    if (!cities) return false;
+    const c = cityOf(j.location);
+    return cities.some((x) => !x || !c || x === c);
+  };
   const jobsByKey = new Map<string, any[]>();
   // לשורת השקיפות: משרות בחברות שיש בהן מכר, כמה אומתו וכמה ממתינות.
   let watched = 0;
   let watchedVerified = 0;
   for (const j of (jobsRaw ?? []) as any[]) {
-    if (appliedIds.has(j.id)) continue;
+    if (appliedIds.has(j.id) || twinApplied(j)) continue;
     const wk = companyKey(j.company);
     if (wk && byKey.has(resolve(wk))) { watched++; if (isVerified(j)) watchedVerified++; }
     // מיקום המשרה, לא רק החברה. 'out' לא מוצג, 'unknown' מוצג עם המיקום.
@@ -90,6 +108,22 @@ export default async function Gold() {
     const arr = jobsByKey.get(k) ?? [];
     arr.push(j);
     jobsByKey.set(k, arr);
+  }
+  // איחוד תאומות בתוך כל חברה: אותה כותרת ואותה עיר (או עיר לא ידועה) הן שורה אחת
+  // עם כל המקורות שלה. נשארת זו שאומתה אחרונה.
+  for (const [k, js] of jobsByKey) {
+    const out: any[] = [];
+    for (const j of js) {
+      const t = twinKey(j);
+      const c = cityOf(j.location);
+      const twin = out.find((o) => twinKey(o) === t && (!cityOf(o.location) || !c || cityOf(o.location) === c));
+      if (!twin) { out.push({ ...j, sources: [j.source] }); continue; }
+      if (j.source && !twin.sources.includes(j.source)) twin.sources.push(j.source);
+      if (new Date(j.live_checked_at ?? 0) > new Date(twin.live_checked_at ?? 0)) {
+        const sources = twin.sources; Object.assign(twin, j); twin.sources = sources;
+      }
+    }
+    jobsByKey.set(k, out);
   }
   // **"משרה פתוחה" רק אם אומתה.** 20.11.2026 שאול הראה את Fetcherr:
   // לינקדאין אמרה "No longer accepting applications" והמסך הציג אותה
@@ -192,7 +226,7 @@ export default async function Gold() {
       contactsTotal: n,
       peopleHref,
       cvFile: top ? cvFileFor(cvId, top.title) : WIDE_CV_FILE,
-      jobs: jobs.slice(0, 4).map((j) => ({ id: j.id, title: j.title, url: j.url, source: j.source, verified: isVerified(j), verifiedAt: j.live_checked_at ?? null, location: j.location ?? null })),
+      jobs: jobs.slice(0, 4).map((j) => ({ id: j.id, title: j.title, url: j.url, source: (j.sources ?? [j.source]).filter(Boolean).join(' + '), verified: isVerified(j), verifiedAt: j.live_checked_at ?? null, location: j.location ?? null })),
       people: people.map((p) => ({
         id: p.id,
         name: p.full_name,
