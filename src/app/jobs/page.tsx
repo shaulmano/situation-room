@@ -64,7 +64,7 @@ export default async function Jobs({
     .from('matches')
     .select(
       'score, cv_id, reasons, red_flags, ' +
-      'jobs!inner(id, title, company, source, location, url, first_seen, posted, on_target, dismissed_at, manual, found_for, manual_dup)'
+      'jobs!inner(id, title, company, source, location, url, first_seen, posted, on_target, dismissed_at, manual, found_for, manual_dup, recruiter_name, recruiter_url)'
     )
     // Newest first. The score still picks which CV fits and produces the match
     // reasons, but it does not order the feed: with no job descriptions every
@@ -356,6 +356,14 @@ export default async function Jobs({
                       {(() => {
                         const a = jobAge(j.posted, j.first_seen);
                         return a ? <span className={`chip age ${a.tone}`}>{a.label}</span> : null;
+                      })()}
+                      {(() => {
+                        const rj = m.copies.map((c: any) => c.jobs).find((x: any) => x.recruiter_url);
+                        return rj ? (
+                          <a className="chip ok" href={rj.recruiter_url} target="_blank" rel="noreferrer">
+                            מפרסם: {rj.recruiter_name || 'פתח פרופיל'}
+                          </a>
+                        ) : null;
                       })()}
                       {why.map((r) => <span className="chip ok" key={r}>{r}</span>)}
                       {flags.slice(0, 1).map((f) => <span className="chip crit" key={f}>{f}</span>)}

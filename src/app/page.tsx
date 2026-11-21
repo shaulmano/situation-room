@@ -145,7 +145,7 @@ export default async function Dashboard({
       .from('matches')
       .select(
         'score, cv_id, reasons, ' +
-        'jobs!inner(id, title, company, source, location, url, first_seen, posted, on_target, dismissed_at, found_for, manual, manual_dup)'
+        'jobs!inner(id, title, company, source, location, url, first_seen, posted, on_target, dismissed_at, found_for, manual, manual_dup, recruiter_name, recruiter_url)'
       )
       .eq('jobs.on_target', true)
       .is('jobs.dismissed_at', null)
@@ -531,6 +531,14 @@ export default async function Dashboard({
                     {(() => {
                       const a = jobAge(j.posted, j.first_seen);
                       return a ? <span className={`chip age ${a.tone}`}>{a.label}</span> : null;
+                    })()}
+                    {(() => {
+                      const rj = m.copies.map((c: any) => c.jobs).find((x: any) => x.recruiter_url);
+                      return rj ? (
+                        <a className="chip ok" href={rj.recruiter_url} target="_blank" rel="noreferrer">
+                          מפרסם: {rj.recruiter_name || 'פתח פרופיל'}
+                        </a>
+                      ) : null;
                     })()}
                     {why.map((r) => <span className="chip ok" key={r}>{r}</span>)}
                     <span className="chip mute">{m.cv_id}</span>

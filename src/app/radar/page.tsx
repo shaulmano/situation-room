@@ -130,6 +130,11 @@ export default async function Radar({
                 {j.location ? ` · ${j.location}` : ''}
                 <span className="chip mute">{j.source || 'SEO'}</span>
                 {j.found_for && <span className="chip mute">{j.found_for}</span>}
+                {j.recruiter_url && (
+                  <a className="chip ok" href={j.recruiter_url} target="_blank" rel="noreferrer">
+                    מפרסם: {j.recruiter_name || 'פתח פרופיל'}
+                  </a>
+                )}
                 <PriorApplied prior={priorApplication(priorIdx, j)} />
                 {/* הגיל מוצג ולא מסנן. שאול מחליט, לא השער. */}
                 {age && <span className={`chip age-${age.tone}`}>{age.label}</span>}
