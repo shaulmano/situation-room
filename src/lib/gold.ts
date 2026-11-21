@@ -80,17 +80,40 @@ export function goldMessage(opts: {
 }
 
 /**
+ * כינויי חברה (company_aliases): שם כפי שנראה באיש קשר או במשרה, ומפתח החברה
+ * במאגר. ההצלבה המדויקת קודמת תמיד, והכינוי רק משלים. טבלה ריקה: אין שינוי.
+ */
+export async function loadAliases(sb: any): Promise<Map<string, string>> {
+  const out = new Map<string, string>();
+  for (let from = 0; ; from += 1000) {
+    const { data, error } = await sb.from('company_aliases').select('alias_key, company_key').order('alias_key').range(from, from + 999);
+    if (error || !data) break;
+    for (const r of data as any[]) out.set(r.alias_key, r.company_key);
+    if (data.length < 1000) break;
+  }
+  return out;
+}
+
+/**
  * אילו מפתחות חברה מבין הנתונים הם חברות זהב (גוש דן, במאגר). משמש את
  * מסך הבית ומסך המשרות כדי לסמן משרה שמופיעה גם שם. 20.11.2026, שאול:
  * "כל משרה שמופיעה גם בתוצאות סריקה וגם במשרת זהב תסומן".
+ * מחזיר את המפתחות **כפי שנשלחו**, גם אם ההתאמה הייתה דרך כינוי.
  */
 export async function goldKeySet(sb: any, keys: string[]): Promise<Set<string>> {
   const uniq = [...new Set(keys.filter(Boolean))];
+  const aliases = await loadAliases(sb);
+  const resolved = new Map<string, string[]>();
+  for (const k of uniq) {
+    const r = aliases.get(k) ?? k;
+    resolved.set(r, [...(resolved.get(r) ?? []), k]);
+  }
+  const rk = [...resolved.keys()];
   const out = new Set<string>();
-  for (let i = 0; i < uniq.length; i += 100) {
+  for (let i = 0; i < rk.length; i += 100) {
     const { data } = await sb.from('companies').select('company_key')
-      .eq('region', 'gush_dan').in('company_key', uniq.slice(i, i + 100));
-    for (const r of (data ?? []) as any[]) out.add(r.company_key);
+      .eq('region', 'gush_dan').in('company_key', rk.slice(i, i + 100));
+    for (const r of (data ?? []) as any[]) for (const k of resolved.get(r.company_key) ?? []) out.add(k);
   }
   return out;
 }

@@ -6,7 +6,8 @@ import { rankContacts, isAgency } from '@/lib/pickContact';
 import { cvFamilyForTitle, cvFileFor } from '@/lib/outreach';
 import { israelDayStart, WIDE_CV_FILE } from '@/lib/wideReach';
 import { loadApplied } from '@/lib/priorApplication';
-import { GOLD_DAILY, GOLD_QUOTA, goldMessage, goldRank, type GoldCompany } from '@/lib/gold';
+import { GOLD_DAILY, GOLD_QUOTA, goldMessage, goldRank, loadAliases, type GoldCompany } from '@/lib/gold';
+import { jobPlace } from '@/lib/jobLocation';
 
 export const dynamic = 'force-dynamic';
 
@@ -40,12 +41,16 @@ export default async function Gold() {
     );
   }
 
+  // כינויים: משלימים התאמה שהשם המדויק מפספס (Scytale מול Scytale AI).
+  const aliases = await loadAliases(sb);
+  const resolve = (k: string) => aliases.get(k) ?? k;
   const byKey = new Map<string, WarmContact[]>();
   for (const c of (cs ?? []) as any[]) {
     if (!c.company_key) continue;
-    const arr = byKey.get(c.company_key) ?? [];
+    const rk = resolve(c.company_key);
+    const arr = byKey.get(rk) ?? [];
     arr.push(c as WarmContact);
-    byKey.set(c.company_key, arr);
+    byKey.set(rk, arr);
   }
 
   // משרות פתוחות, בלי מה שכבר הוגש. נשלפות לפני הבחירה, כי חברה שיש בה
@@ -54,7 +59,7 @@ export default async function Gold() {
   const appliedIds = new Set(applied.map((a: any) => a.job_id).filter(Boolean));
   const since = new Date(Date.now() - 60 * 86400000).toISOString();
   const { data: jobsRaw } = await sb.from('jobs')
-    .select('id, title, company, url, source, found_for, first_seen, live_checked_at')
+    .select('id, title, company, url, source, found_for, first_seen, live_checked_at, location')
     .eq('on_target', true)
     // ✕ במסכים הרגילים לא מוריד משרה מכאן (שאול, 20.11.2026: "שלא תוריד").
     // הוא לא מגיש מהמשרה אלא דרך מכר, ולכן סגירה שם אינה סגירה כאן.
@@ -66,13 +71,21 @@ export default async function Gold() {
   const fresh = Date.now() - 48 * 3600 * 1000;
   const isVerified = (j: any) => !!j.live_checked_at && new Date(j.live_checked_at).getTime() >= fresh;
   const jobsByKey = new Map<string, any[]>();
+  // לשורת השקיפות: משרות בחברות שיש בהן מכר, כמה אומתו וכמה ממתינות.
+  let watched = 0;
+  let watchedVerified = 0;
   for (const j of (jobsRaw ?? []) as any[]) {
     if (appliedIds.has(j.id)) continue;
+    const wk = companyKey(j.company);
+    if (wk && byKey.has(resolve(wk))) { watched++; if (isVerified(j)) watchedVerified++; }
+    // מיקום המשרה, לא רק החברה. 'out' לא מוצג, 'unknown' מוצג עם המיקום.
+    if (jobPlace(j.location) === 'out') continue;
     // **חד חד ערכי** (שאול, 20.11.2026: "עוד משרה שלא קיימת יותר"). משרה
     // מוצגת כאן רק אם אומתה כפתוחה בשעות האחרונות. לא אומתה: לא מוצגת.
     if (!isVerified(j)) continue;
-    const k = companyKey(j.company);
-    if (!k) continue;
+    const k0 = companyKey(j.company);
+    if (!k0) continue;
+    const k = resolve(k0);
     const arr = jobsByKey.get(k) ?? [];
     arr.push(j);
     jobsByKey.set(k, arr);
@@ -142,6 +155,9 @@ export default async function Gold() {
   const decided = decidedBy.S + decidedBy.M + decidedBy.E;
   const left = Math.max(0, GOLD_DAILY - decided);
 
+  const { count: closedDay } = await sb.from('jobs').select('id', { count: 'exact', head: true })
+    .gte('closed_at', new Date(Date.now() - 24 * 3600 * 1000).toISOString());
+
   const { data: picked } = pickedIds.length
     ? await sb.from('companies')
         .select('id, name, company_key, size_class, size_range, region, city, website, careers_url, is_hiring')
@@ -174,7 +190,7 @@ export default async function Gold() {
       contactsTotal: n,
       peopleHref,
       cvFile: top ? cvFileFor(cvId, top.title) : WIDE_CV_FILE,
-      jobs: jobs.slice(0, 4).map((j) => ({ id: j.id, title: j.title, url: j.url, source: j.source, verified: isVerified(j) })),
+      jobs: jobs.slice(0, 4).map((j) => ({ id: j.id, title: j.title, url: j.url, source: j.source, verified: isVerified(j), verifiedAt: j.live_checked_at ?? null, location: j.location ?? null })),
       people: people.map((p) => ({
         id: p.id,
         name: p.full_name,
@@ -201,6 +217,10 @@ export default async function Gold() {
         בכל חברה: מכר אם יש, משרה אם ידועה, ואם אין כלום זה כתוב. רק גוש דן בשלב הזה. בכל גודל, מי שיש בה מכר קודם.
         {' '}{GOLD_DAILY} ביום, מכל הגדלים: {GOLD_QUOTA.S} קטנות, {GOLD_QUOTA.M} בינוניות, {GOLD_QUOTA.E} גדולות.
         {hotIds.length > 0 && <> בראש הרשימה, בצבע, <b>{hotIds.length}</b> חברות שיש בהן משרה פתוחה שאומתה, מעל ה-{GOLD_DAILY}.</>}
+      </p>
+      <p className="hint">
+        אימות משרות בחברות שיש בהן מכר: <b>{watchedVerified}</b> אומתו כפתוחות ב-48 השעות האחרונות מתוך <b>{watched}</b>,
+        {' '}<b>{Math.max(0, watched - watchedVerified)}</b> ממתינות לאימות (לא מוצגות עד שיאומתו), <b>{closedDay ?? 0}</b> נסגרו ב-24 השעות האחרונות.
       </p>
       <GoldList rows={rows} target={GOLD_DAILY} doneToday={decided} />
       <p className="hint" style={{ marginTop: '1.2rem' }}>

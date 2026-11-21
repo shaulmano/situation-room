@@ -16,7 +16,7 @@ export type GoldRow = {
   contactsTotal: number;
   peopleHref: string | null;
   cvFile: string;
-  jobs: { id: string; title: string; url: string | null; source: string | null; verified: boolean }[];
+  jobs: { id: string; title: string; url: string | null; source: string | null; verified: boolean; verifiedAt: string | null; location: string | null }[];
   people: { id: string; name: string; title: string | null; url: string | null; message: string }[];
 };
 
@@ -25,6 +25,11 @@ export type GoldRow = {
  * שליחה וויתור נספרים שניהם מול המכסה, ושורה יורדת מיד וחוזרת רק אם
  * הכתיבה נכשלה.
  */
+function ago(iso: string): string {
+  const h = Math.max(0, Math.round((Date.now() - new Date(iso).getTime()) / 3600000));
+  return h < 1 ? 'לפני פחות משעה' : h < 24 ? `לפני ${h} שעות` : `לפני ${Math.round(h / 24)} ימים`;
+}
+
 export default function GoldList(
   { rows, target, doneToday }: { rows: GoldRow[]; target: number; doneToday: number },
 ) {
@@ -127,6 +132,8 @@ export default function GoldList(
                     ? <a href={j.url} target="_blank" rel="noreferrer">{j.title}</a>
                     : j.title}
                   {j.source && <span className="mute"> · {j.source}</span>}
+                  {j.location && <span className="mute"> · {j.location}</span>}
+                  {j.verifiedAt && <span className="mute"> · אומתה {ago(j.verifiedAt)}</span>}
                 </li>
               ))}
             </ul>

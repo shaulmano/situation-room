@@ -16,7 +16,7 @@ import os, re, subprocess, sys, time
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from gmail_sync import sql, q
-from seo_jobs import posting_is_live, workday_api_url
+from seo_jobs import posting_is_live, workday_api_url, _status_ok
 
 LEGAL = re.compile(r"(ltd|limited|inc|incorporated|llc|corp|corporation|gmbh|בעמ)$")
 UA = ("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
@@ -68,7 +68,26 @@ def linkedin_state(url):
     return None, True
 
 
+def ats_api_url(url):
+    """Greenhouse and Lever expose the posting itself as JSON: 200 open, 404 closed."""
+    m = re.match(r"https?://(?:job-boards|boards)(\.eu)?\.greenhouse\.io/([^/?#]+)/jobs/(\d+)", url or "")
+    if m:
+        host = "boards-api.eu.greenhouse.io" if m.group(1) else "boards-api.greenhouse.io"
+        return "https://%s/v1/boards/%s/jobs/%s" % (host, m.group(2), m.group(3))
+    m = re.match(r"https?://jobs(?:\.eu)?\.lever\.co/([^/?#]+)/([0-9a-f-]{20,})", url or "")
+    if m:
+        return "https://api.lever.co/v0/postings/%s/%s" % (m.group(1), m.group(2))
+    return None
+
+
 def other_state(url):
+    api = ats_api_url(url)
+    if api:
+        ok, why = _status_ok(api, 12, json=True)
+        if not ok:
+            print("  closed (ats api: %s)" % why)
+            return "closed"
+        return "live" if why == "HTTP 200" else None
     ok, why = posting_is_live(url)
     if not ok:
         print("  closed (%s)" % why)
@@ -84,7 +103,8 @@ def main():
     # חברות שיש בהן מכר, וגם כל חברות זהב בגוש דן.
     ckeys = {r["company_key"] for r in sql(
         "select distinct company_key from contacts where company_key is not null and company_key <> '' "
-        "union select distinct company_key from companies where region = 'gush_dan' and company_key <> ''")}
+        "union select distinct company_key from companies where region = 'gush_dan' and company_key <> '' "
+        "union select distinct alias_key from company_aliases")}
     jobs = sql(
         "select id, url, source, company, title from jobs "
         "where on_target and closed_at is null and coalesce(url,'') <> '' "
