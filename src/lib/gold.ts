@@ -80,6 +80,14 @@ export function goldMessage(opts: {
 }
 
 /**
+ * אותה הודעה של אנשי הקשר, בלי שם, למגייס/ת שאינם ברשימה. שאול (21.11.2026):
+ * "תכין לי את אותה הודעה גנרית להעתקה ואני אפנה ידנית".
+ */
+export function goldGenericMessage(company: string, job: { title: string; url: string | null; foundFor: string | null } | null, cvId?: string | null): string {
+  return goldMessage({ contactName: '', contactTitle: 'Recruiter', company, job, cvId }).replace(/^Hi ,/, 'Hi,');
+}
+
+/**
  * כינויי חברה (company_aliases): שם כפי שנראה באיש קשר או במשרה, ומפתח החברה
  * במאגר. ההצלבה המדויקת קודמת תמיד, והכינוי רק משלים. טבלה ריקה: אין שינוי.
  */

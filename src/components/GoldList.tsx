@@ -17,6 +17,8 @@ export type GoldRow = {
   contactsTotal: number;
   peopleHref: string | null;
   recruitersHref: string;
+  /** הודעה גנרית (בלי שם) למגייס שלא ברשימה, לפי הנוסח של אנשי הקשר. */
+  genericMessage: string;
   cvFile: string;
   jobs: { id: string; title: string; url: string | null; source: string | null; verified: boolean; verifiedAt: string | null; location: string | null; recruiterName: string | null; recruiterUrl: string | null }[];
   people: { id: string; name: string; title: string | null; url: string | null; message: string }[];
@@ -95,73 +97,63 @@ export default function GoldList(
         </div>
       )}
 
-      {live.map((r) => (
-        <div className={'row gold-row' + (r.hot ? ' gold-hot' : '')} key={r.id}>
-          <div className="reach-who">
-            {r.hot && <span className="chip gold-hot-chip">משרה פתוחה</span>}
-            <b>{r.name}</b>
-            {r.sizeRange && <span className="chip mute">{r.sizeRange} עובדים</span>}
-            {r.gushDan && <span className="chip mute">גוש דן</span>}
-            {r.city && <span className="chip mute">{r.city}</span>}
-            {r.hiring && <span className="chip mute">מגייסת</span>}
-          </div>
-          <div className="reach-sub">
-            {r.people.filter((p) => !gone.has(p.id)).length === 0 && r.jobs.length === 0
-              ? 'אין איש קשר ולא ידוע על משרה'
-              : <>
-                  {r.contactsTotal > 0 ? `${r.contactsTotal} מכרים שלך כאן` : 'אין איש קשר'}
-                  {r.jobs.length > 0 ? `, ${r.jobs.length} משרות פתוחות` : ', לא ידוע על משרה'}
-                </>}
-          </div>
-
-          <div className="gold-links">
-            {r.website && <a href={r.website} target="_blank" rel="noreferrer">אתר</a>}
-            {r.careers && <a href={r.careers} target="_blank" rel="noreferrer">דף קריירה</a>}
-            {r.people.length === 0 && r.peopleHref && (
-              <a href={r.peopleHref} target="_blank" rel="noreferrer">אנשי החברה בלינקדאין</a>
-            )}
-            <a href={r.recruitersHref} target="_blank" rel="noreferrer">מגייסים בחברה</a>
-            <a
-              href={'https://www.linkedin.com/jobs/search/?keywords=' + encodeURIComponent(r.name)}
-              target="_blank" rel="noreferrer"
-            >משרות בלינקדאין</a>
+      <div className="gold-grid">
+      {live.map((r, idx) => {
+        const people = r.people.filter((p) => !gone.has(p.id));
+        return (
+        <div className={'gold-card ' + (idx % 2 === 0 ? 'c0' : 'c1') + (r.hot ? ' gold-hot' : '')} key={r.id}>
+          <div className="gold-head">
+            <div className="reach-who">
+              {r.hot && <span className="chip gold-hot-chip">משרה פתוחה</span>}
+              <b>{r.name}</b>
+            </div>
+            <div className="gold-chips">
+              {r.sizeRange && <span className="chip mute">{r.sizeRange} עובדים</span>}
+              {r.gushDan && <span className="chip mute">גוש דן</span>}
+              {r.city && <span className="chip mute">{r.city}</span>}
+              {r.hiring && <span className="chip mute">מגייסת</span>}
+            </div>
+            <div className="reach-sub">
+              {people.length === 0 && r.jobs.length === 0
+                ? 'אין איש קשר ולא ידוע על משרה'
+                : <>
+                    {r.contactsTotal > 0 ? `${r.contactsTotal} מכרים שלך כאן` : 'אין איש קשר'}
+                    {r.jobs.length > 0 ? `, ${r.jobs.length} משרות פתוחות` : ', לא ידוע על משרה'}
+                  </>}
+            </div>
           </div>
 
-          {r.jobs.length > 0 && (
-            <ul className="gold-jobs">
-              {r.jobs.map((j) => (
-                <li key={j.id}>
-                  {j.url
-                    ? <a href={j.url} target="_blank" rel="noreferrer">{j.title}</a>
-                    : j.title}
-                  {j.source && <span className="mute"> · {j.source}</span>}
-                  {j.location && <span className="mute"> · {j.location}</span>}
-                  {j.verifiedAt && <span className="mute"> · אומתה {ago(j.verifiedAt)}</span>}
-                  {j.recruiterUrl && (
-                    <span className="mute"> · מפרסם: <a href={j.recruiterUrl} target="_blank" rel="noreferrer">{j.recruiterName || 'פתח פרופיל'}</a></span>
-                  )}
-                  {' '}<MarkApplied id={j.id} internal />
-                </li>
-              ))}
-            </ul>
-          )}
+          {r.jobs.map((j) => (
+            <div className="gold-sec" key={j.id}>
+              <h4>משרה פתוחה</h4>
+              <div className="gold-jt">
+                {j.url ? <a href={j.url} target="_blank" rel="noreferrer">{j.title}</a> : j.title}
+              </div>
+              <div className="gold-meta">
+                {[j.source, j.location, j.verifiedAt ? `אומתה ${ago(j.verifiedAt)}` : null].filter(Boolean).join(' · ')}
+                {j.recruiterUrl && (
+                  <> · מפרסם: <a href={j.recruiterUrl} target="_blank" rel="noreferrer">{j.recruiterName || 'פתח פרופיל'}</a></>
+                )}
+              </div>
+              <div className="gold-acts one"><MarkApplied id={j.id} internal /></div>
+            </div>
+          ))}
 
-          {r.people.filter((p) => !gone.has(p.id)).map((p) => (
-            <div className="gold-person" key={p.id}>
+          {people.map((p) => (
+            <div className="gold-sec" key={p.id}>
+              <h4>איש קשר שלך</h4>
               <div className="gold-pn">
                 <b>{p.name}</b>
                 <span className="mute">{p.title}</span>
               </div>
-              <div className="reach-acts">
+              <div className="gold-acts three">
                 <button
                   type="button" className={'mark' + (copied === p.id ? ' on' : '')}
                   onClick={() => copy(p.id, p.message)}
                 >{copied === p.id ? '✓ הועתק' : 'העתק הודעה'}</button>
-                {p.url && (
-                  <a className="apply indirect" href={p.url} target="_blank" rel="noreferrer">
-                    פתח בלינקדאין
-                  </a>
-                )}
+                {p.url
+                  ? <a className="apply indirect" href={p.url} target="_blank" rel="noreferrer">פתח בלינקדאין</a>
+                  : <span />}
                 <button type="button" className="closed"
                   title="לא רלוונטי. יירד ולא יחזור"
                   onClick={() => skipPerson(p.id)}>מוותר</button>
@@ -169,9 +161,34 @@ export default function GoldList(
             </div>
           ))}
 
-          <p className="hint">לצרף: <code>{r.cvFile}</code></p>
+          <div className="gold-sec">
+            <h4>מגייס/ת שלא ברשימה</h4>
+            <div className="gold-meta">לצרף: <code>{r.cvFile}</code></div>
+            <div className="gold-acts">
+              <button
+                type="button" className={'mark' + (copied === 'g' + r.id ? ' on' : '')}
+                onClick={() => copy('g' + r.id, r.genericMessage)}
+              >{copied === 'g' + r.id ? '✓ הועתק' : 'העתק הודעה גנרית'}</button>
+              <a className="apply indirect" href={r.recruitersHref} target="_blank" rel="noreferrer">מגייסים בחברה</a>
+            </div>
+          </div>
 
-          <div className="reach-acts">
+          <details className="gold-more">
+            <summary>קישורים</summary>
+            <div className="gold-links">
+              {r.website && <a href={r.website} target="_blank" rel="noreferrer">אתר</a>}
+              {r.careers && <a href={r.careers} target="_blank" rel="noreferrer">דף קריירה</a>}
+              {people.length === 0 && r.peopleHref && (
+                <a href={r.peopleHref} target="_blank" rel="noreferrer">אנשי החברה בלינקדאין</a>
+              )}
+              <a
+                href={'https://www.linkedin.com/jobs/search/?keywords=' + encodeURIComponent(r.name)}
+                target="_blank" rel="noreferrer"
+              >משרות בלינקדאין</a>
+            </div>
+          </details>
+
+          <div className="gold-acts">
             <button type="button" className="apply" disabled={busy === r.id}
               onClick={() => mark(r.id, 'done')}>{r.people.length ? 'סמן שנשלח' : 'סמן שטופלה'}</button>
             <button type="button" className="closed" disabled={busy === r.id}
@@ -179,7 +196,9 @@ export default function GoldList(
               onClick={() => mark(r.id, 'skipped')}>מוותר</button>
           </div>
         </div>
-      ))}
+        );
+      })}
+      </div>
     </>
   );
 }
