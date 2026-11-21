@@ -23,6 +23,10 @@ const OUT = [
   'yokneam', 'yoqneam', 'יקנעם', 'nazareth', 'נצרת', 'karmiel', 'כרמיאל', 'eilat', 'אילת', 'tiberias', 'טבריה', 'afula', 'עפולה',
   'kiryat shmona', 'קריית שמונה', 'north district', 'south district', 'haifa district', 'jerusalem district', 'מחוז הצפון', 'מחוז הדרום',
   'caesarea', 'קיסריה', 'hadera', 'חדרה', 'migdal haemek', 'מגדל העמק', 'rosh pina', 'safed', 'zefat', 'צפת', 'akko', 'acre', 'עכו',
+  'beit shean', "beit she'an", 'בית שאן', 'netivot', 'נתיבות', 'sderot', 'שדרות', 'kiryat malakhi', 'קריית מלאכי', 'tirat carmel',
+  'tirat hacarmel', 'tirat karmel', 'תירת הכרמל', 'nesher', 'נשר', 'kiryat ata', 'kiryat bialik', 'kiryat motzkin', 'kiryat yam', 'zichron', 'זכרון',
+  'binyamina', 'בנימינה', 'pardes hanna', 'katzrin', 'beit shemesh', 'בית שמש', 'mitzpe ramon', 'yeruham', 'ofakim', 'maalot', 'nof hagalil',
+  'upper nazareth', 'nazareth illit', 'shefa-amr', 'umm al-fahm', 'tel hai', 'kfar vradim', 'misgav', 'ramat yishai', 'yavne\'el',
   'nahariya', 'נהריה', 'kiryat gat', 'קריית גת', 'dimona', 'דימונה', 'omer', 'עומר', 'arad', 'ערד', 'mevaseret', 'מבשרת',
 ];
 

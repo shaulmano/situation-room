@@ -13,6 +13,11 @@ import { internalApplied } from '@/lib/internalApplied';
 
 export const dynamic = 'force-dynamic';
 
+const CORE_ROLES = [
+  'QA Director', 'QA Manager', 'Head of QA', 'QA Team Leader',
+  'Project Manager', 'Program Manager', 'Release Manager',
+];
+
 /**
  * חברות זהב: המסך העיקרי.
  *
@@ -99,6 +104,9 @@ export default async function Gold() {
     if (wk && byKey.has(resolve(wk))) { watched++; if (isVerified(j)) watchedVerified++; }
     // מיקום המשרה, לא רק החברה. 'out' לא מוצג, 'unknown' מוצג עם המיקום.
     if (jobPlace(j.location) === 'out') continue;
+    // רלוונטיות לתפקידים שלו: כותרת QA, פרויקטים, תוכניות, שחרורים או מסירה. השער של
+    // הסורק רחב (כל כותרת ניהולית), ולכן "IT Manager" עבר אותו ונראה כאן.
+    if (!cvFamilyForTitle(j.title) && !CORE_ROLES.includes(j.found_for)) continue;
     // **חד חד ערכי** (שאול, 20.11.2026: "עוד משרה שלא קיימת יותר"). משרה
     // מוצגת כאן רק אם אומתה כפתוחה בשעות האחרונות. לא אומתה: לא מוצגת.
     if (!isVerified(j)) continue;
