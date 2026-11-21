@@ -7,7 +7,7 @@ company_key of a pool company. Conservative on purpose:
     not become "DreaMed" and "Final" does not become "Finally Foods");
   * only generic words (technologies, ai, security, ...) may differ;
   * a name with more than one candidate company is skipped, never guessed.
-Only adds rows. Run: python sync/company_aliases.py [--dry]
+Rebuilds only its own derived rows (how='tokens'). Run: python sync/company_aliases.py [--dry]
 """
 import os, re, sys
 
@@ -44,12 +44,30 @@ def variants(name):
     return out
 
 
+SUFFIXES = ("ai", "io", "com", "labs", "security", "technologies", "systems", "software")
+
+
+def compatible(a, b):
+    """One name must contain the other's words, or differ only by a glued generic suffix.
+    "Elad Software Systems" and "Elad Technologies" fail: each has a word the other lacks."""
+    ta = {t for t in tokens(a) if t not in LEGAL}
+    tb = {t for t in tokens(b) if t not in LEGAL}
+    if not ta or not tb:
+        return False
+    if ta <= tb or tb <= ta:
+        return True
+    ja, jb = "".join(sorted(ta)), "".join(sorted(tb))
+    return any(jb == ja + x or ja == jb + x for x in SUFFIXES)
+
+
 def main():
     dry = "--dry" in sys.argv
     comps = sql("select company_key, name from companies where company_key <> ''")
     ck_exact = {c["company_key"] for c in comps}
     by_variant = {}
+    names = {}
     for c in comps:
+        names[c["company_key"]] = c["name"]
         for v in variants(c["name"]):
             by_variant.setdefault(v, set()).add(c["company_key"])
     seen = {}
@@ -59,6 +77,9 @@ def main():
         k = re.sub(r"[\W_]+", "", (r["company"] or "").lower())
         k = re.sub(r"(ltd|limited|inc|incorporated|llc|corp|corporation|gmbh|בעמ)$", "", k)
         seen.setdefault(k, r["company"])
+    # derived rows are rebuilt each run, so a rule fix removes old mistakes
+    if not dry:
+        sql("delete from company_aliases where how = 'tokens'")
     added = skipped_amb = 0
     for alias_key, name in seen.items():
         if not alias_key or alias_key in ck_exact:
@@ -66,6 +87,7 @@ def main():
         cands = set()
         for v in variants(name):
             cands |= by_variant.get(v, set())
+        cands = {k for k in cands if compatible(name, names[k])}
         if len(cands) == 1:
             target = next(iter(cands))
             if target == alias_key:
