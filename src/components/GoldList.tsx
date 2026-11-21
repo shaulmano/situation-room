@@ -16,8 +16,9 @@ export type GoldRow = {
   hiring: boolean;
   contactsTotal: number;
   peopleHref: string | null;
+  recruitersHref: string;
   cvFile: string;
-  jobs: { id: string; title: string; url: string | null; source: string | null; verified: boolean; verifiedAt: string | null; location: string | null }[];
+  jobs: { id: string; title: string; url: string | null; source: string | null; verified: boolean; verifiedAt: string | null; location: string | null; recruiterName: string | null; recruiterUrl: string | null }[];
   people: { id: string; name: string; title: string | null; url: string | null; message: string }[];
 };
 
@@ -119,6 +120,7 @@ export default function GoldList(
             {r.people.length === 0 && r.peopleHref && (
               <a href={r.peopleHref} target="_blank" rel="noreferrer">אנשי החברה בלינקדאין</a>
             )}
+            <a href={r.recruitersHref} target="_blank" rel="noreferrer">מגייסים בחברה</a>
             <a
               href={'https://www.linkedin.com/jobs/search/?keywords=' + encodeURIComponent(r.name)}
               target="_blank" rel="noreferrer"
@@ -135,6 +137,9 @@ export default function GoldList(
                   {j.source && <span className="mute"> · {j.source}</span>}
                   {j.location && <span className="mute"> · {j.location}</span>}
                   {j.verifiedAt && <span className="mute"> · אומתה {ago(j.verifiedAt)}</span>}
+                  {j.recruiterUrl && (
+                    <span className="mute"> · מפרסם: <a href={j.recruiterUrl} target="_blank" rel="noreferrer">{j.recruiterName || 'פתח פרופיל'}</a></span>
+                  )}
                   {' '}<MarkApplied id={j.id} internal />
                 </li>
               ))}

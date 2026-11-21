@@ -61,7 +61,7 @@ export default async function Gold() {
   const appliedIds = new Set(applied.map((a: any) => a.job_id).filter(Boolean));
   const since = new Date(Date.now() - 60 * 86400000).toISOString();
   const { data: jobsRaw } = await sb.from('jobs')
-    .select('id, title, company, url, source, found_for, first_seen, live_checked_at, location')
+    .select('id, title, company, url, source, found_for, first_seen, live_checked_at, location, recruiter_name, recruiter_url')
     .eq('on_target', true)
     // ✕ במסכים הרגילים לא מוריד משרה מכאן (שאול, 20.11.2026: "שלא תוריד").
     // הוא לא מגיש מהמשרה אלא דרך מכר, ולכן סגירה שם אינה סגירה כאן.
@@ -225,8 +225,9 @@ export default async function Gold() {
       hiring: c.is_hiring,
       contactsTotal: n,
       peopleHref,
+      recruitersHref: 'https://www.linkedin.com/search/results/people/?keywords=' + encodeURIComponent('recruiter ' + c.name),
       cvFile: top ? cvFileFor(cvId, top.title) : WIDE_CV_FILE,
-      jobs: jobs.slice(0, 4).map((j) => ({ id: j.id, title: j.title, url: j.url, source: (j.sources ?? [j.source]).filter(Boolean).join(' + '), verified: isVerified(j), verifiedAt: j.live_checked_at ?? null, location: j.location ?? null })),
+      jobs: jobs.slice(0, 4).map((j) => ({ id: j.id, title: j.title, url: j.url, source: (j.sources ?? [j.source]).filter(Boolean).join(' + '), verified: isVerified(j), verifiedAt: j.live_checked_at ?? null, location: j.location ?? null, recruiterName: j.recruiter_name ?? null, recruiterUrl: j.recruiter_url ?? null })),
       people: people.map((p) => ({
         id: p.id,
         name: p.full_name,

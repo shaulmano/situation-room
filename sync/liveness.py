@@ -17,6 +17,7 @@ import os, re, subprocess, sys, time
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from gmail_sync import sql, q
 from seo_jobs import posting_is_live, workday_api_url, _status_ok
+from poster import RecruiterParser
 
 LEGAL = re.compile(r"(ltd|limited|inc|incorporated|llc|corp|corporation|gmbh|בעמ)$")
 UA = ("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
@@ -39,6 +40,23 @@ def _get(url):
     return code, body
 
 
+REC = {"name": "", "url": ""}
+
+
+def _note_recruiter(body):
+    """The poster named on the ad (the credit line), read from the same page we already fetched."""
+    if REC["url"]:
+        return
+    p = RecruiterParser()
+    try:
+        p.feed(body)
+    except Exception:
+        return
+    if p.url:
+        REC["name"] = " ".join(p.name.split())
+        REC["url"] = p.url
+
+
 def linkedin_state(url):
     """returns ('closed'|'live'|None, throttled)"""
     m = re.search(r"linkedin\.com/jobs/view/(?:.*?-)?(\d{6,})", url or "")
@@ -58,6 +76,7 @@ def linkedin_state(url):
                 continue
             if code != "200":
                 continue
+            _note_recruiter(body)
             if CLOSED.search(body):
                 return "closed", False
             if APPLY.search(body):
@@ -106,10 +125,11 @@ def main():
         "union select distinct company_key from companies where region = 'gush_dan' and company_key <> '' "
         "union select distinct alias_key from company_aliases")}
     jobs = sql(
-        "select id, url, source, company, title from jobs "
+        "select id, url, source, company, title, recruiter_name from jobs "
         "where on_target and closed_at is null and coalesce(url,'') <> '' "
         "and first_seen > now() - interval '60 days' "
-        "and (live_checked_at is null or live_checked_at < now() - interval '24 hours') "
+        "and (live_checked_at is null or live_checked_at < now() - interval '24 hours' "
+        "     or (source = 'LinkedIn' and recruiter_name is null and live_tried_at < now() - interval '12 hours')) "
         "and (live_tried_at is null or live_tried_at < now() - interval '1 hour') "
         "order by live_checked_at is not null, live_tried_at nulls first, first_seen desc limit 4000")
     todo = [j for j in jobs if key(j["company"]) in ckeys][:cap]
@@ -118,8 +138,13 @@ def main():
     for n, j in enumerate(todo):
         url = j["url"] or ""
         throttled = False
+        REC["name"] = REC["url"] = ""
         if "linkedin.com" in url:
             state, throttled = linkedin_state(url)
+            if REC["url"] and not j.get("recruiter_name") and not dry:
+                sql("update jobs set recruiter_name = %s, recruiter_url = %s where id = %s and recruiter_name is null"
+                    % (q(REC["name"] or None), q(REC["url"]), q(j["id"])))
+                print("  poster: %s" % (REC["name"] or REC["url"]))
         else:
             state = other_state(url)
         if not dry:
