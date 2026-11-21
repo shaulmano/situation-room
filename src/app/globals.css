@@ -502,8 +502,6 @@ a.dup-title{text-decoration:underline;text-underline-offset:2px}
 
 /* מחשב: חזרה לרשימה הרגילה. כל חברה שורה אחת, בלי צבעי רקע, וכפתורים קטנים בצד. */
 @media (min-width:900px){
-  .gold-card.c0,.gold-card.c1{background:var(--card,#fff);border-color:var(--hair,#e3e6ea)}
-  .gold-card.gold-hot{background:var(--accent-soft)}
   .gold-card{display:grid;grid-template-columns:230px minmax(0,1fr) 150px;column-gap:1.2rem;row-gap:.3rem;padding:.8rem 1rem;align-items:start}
   .gold-head{grid-column:1;grid-row:1}
   .gold-more{grid-column:1;grid-row:2}
