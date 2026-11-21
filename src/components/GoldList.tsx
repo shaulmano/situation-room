@@ -124,6 +124,7 @@ export default function GoldList(
             </div>
           </div>
 
+          <div className="gold-body">
           {r.jobs.map((j) => (
             <div className="gold-sec" key={j.id}>
               <h4>משרה פתוחה</h4>
@@ -174,6 +175,8 @@ export default function GoldList(
             </div>
           </div>
 
+          </div>
+
           <details className="gold-more">
             <summary>קישורים</summary>
             <div className="gold-links">
@@ -189,7 +192,7 @@ export default function GoldList(
             </div>
           </details>
 
-          <div className="gold-acts">
+          <div className="gold-acts gold-foot">
             <button type="button" className="apply" disabled={busy === r.id}
               onClick={() => mark(r.id, 'done')}>{r.people.length ? 'סמן שנשלח' : 'סמן שטופלה'}</button>
             <button type="button" className="closed" disabled={busy === r.id}

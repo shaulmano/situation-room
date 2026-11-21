@@ -504,7 +504,13 @@ a.dup-title{text-decoration:underline;text-underline-offset:2px}
 @media (min-width:900px){
   .gold-card.c0,.gold-card.c1{background:var(--card,#fff);border-color:var(--hair,#e3e6ea)}
   .gold-card.gold-hot{background:var(--accent-soft)}
-  .gold-card{gap:.4rem;padding:.8rem .9rem}
+  .gold-card{display:grid;grid-template-columns:230px minmax(0,1fr) 150px;column-gap:1.2rem;row-gap:.3rem;padding:.8rem 1rem;align-items:start}
+  .gold-head{grid-column:1;grid-row:1}
+  .gold-more{grid-column:1;grid-row:2}
+  .gold-body{grid-column:2;grid-row:1 / span 2;display:flex;flex-direction:column;min-width:0}
+  .gold-body > .gold-sec:first-child{border-top:0;padding-top:0}
+  .gold-foot{grid-column:3;grid-row:1;flex-direction:column;align-items:stretch}
+  .gold-foot > *{width:100%}
   .gold-sec{background:transparent;border-top:1px solid var(--hair,#e3e6ea);border-radius:0;padding:.5rem 0;
     display:grid;grid-template-columns:minmax(0,1fr) auto;column-gap:1rem;row-gap:.15rem;align-items:center}
   .gold-sec h4{display:none}
@@ -512,5 +518,5 @@ a.dup-title{text-decoration:underline;text-underline-offset:2px}
   .gold-sec > :not(.gold-acts){grid-column:1}
   .gold-acts,.gold-acts.three,.gold-acts.one{display:flex;gap:.4rem;flex:none}
   .gold-acts > *{width:auto;min-height:30px;padding:.2rem .8rem;font-size:.78rem}
-  .gold-more{border-top:1px solid var(--hair,#e3e6ea);padding-top:.3rem}
+  
 }
