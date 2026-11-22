@@ -26,9 +26,9 @@ export type ReachRow = {
  * לדעת מתי גמרת איתה.
  */
 export default function ReachList(
-  { rows, sample, cvFile, target, doneToday, sentToday, skippedToday }:
+  { rows, sample, cvFile, target, doneToday, sentToday, skippedToday, exhausted }:
   {
-    rows: ReachRow[]; sample: string; cvFile: string; target: number;
+    exhausted?: boolean; rows: ReachRow[]; sample: string; cvFile: string; target: number;
     /** החלטות היום, שליחות וויתורים יחד. זה מה שמוריד את המכסה. */
     doneToday: number;
     sentToday: number;
@@ -111,8 +111,10 @@ export default function ReachList(
 
       {live.length === 0 && (
         <div className="empty">
-          <b>אין יותר להיום.</b>
-          <p>מחר בבוקר ימתינו לך {target} חדשים.</p>
+          <b>{exhausted ? 'נגמרו המגייסים במאגר.' : 'אין יותר להיום.'}</b>
+          <p>{exhausted
+            ? 'אין עוד מגייסים זכאים. השלב הבא (עמיתים ובכירים) ייפתח רק כשתחליט.'
+            : `מחר בבוקר ימתינו לך ${target} חדשים.`}</p>
         </div>
       )}
 

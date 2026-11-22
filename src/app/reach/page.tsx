@@ -2,7 +2,7 @@ import Link from 'next/link';
 import { serverClient } from '@/lib/server';
 import ReachList, { type ReachRow } from '@/components/ReachList';
 import {
-  DAILY_TARGET, WIDE_CV_FILE, bucketOf, displayName, eligible, israelDayStart,
+  DAILY_TARGET, RECRUITERS_ONLY, WIDE_CV_FILE, bucketOf, displayName, eligible, israelDayStart,
   looksLikeAgency, sortQueue, wideMessage, type ReachContact,
 } from '@/lib/wideReach';
 
@@ -71,7 +71,8 @@ export default async function Reach() {
   const left = Math.max(0, DAILY_TARGET - done);
 
   const list = (all ?? []) as unknown as ReachContact[];
-  const queue = sortQueue(list.filter((c) => eligible(c)));
+  const queue = sortQueue(list.filter((c) => eligible(c)
+    && (!RECRUITERS_ONLY || bucketOf(c.title) === 'recruiter')));
   const rows: ReachRow[] = queue.slice(0, left).map((c) => ({
     id: c.id,
     name: displayName(c.full_name),
@@ -113,7 +114,9 @@ export default async function Reach() {
 
       <p className="sub">
         פנייה כללית לאנשי קשר שאתה מחובר אליהם, בלי קשר למשרה פתוחה.
-        {' '}{DAILY_TARGET} ביום, ובנוסף לכל השאר. נשארו <b>{pool}</b> במאגר.
+        {' '}{DAILY_TARGET} ביום, ובנוסף לכל השאר.
+        {RECRUITERS_ONLY ? ' שלב ראשון: מגייסים בלבד.' : ''}
+        {' '}נשארו <b>{pool}</b> במאגר.
       </p>
 
       <details className="reach-msg">
