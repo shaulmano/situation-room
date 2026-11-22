@@ -8,7 +8,7 @@ import type { GoldRow } from './GoldList';
  * פתח בלינקדאין, טופל. מה שאין לו איש מאומת מקופל בשורה אחת למטה.
  * הלוגיקה שמאחורי הקלעים לא השתנתה, והמסך הישן נשאר ב-GoldList.
  */
-export default function GoldSimple({ ready, waiting }: { ready: GoldRow[]; waiting: GoldRow[] }) {
+export default function GoldSimple({ ready, waiting, dropped }: { ready: GoldRow[]; waiting: GoldRow[]; dropped: { company: string; title: string; why: string }[] }) {
   const [gone, setGone] = useState<Set<string>>(new Set());
   const [copied, setCopied] = useState<string | null>(null);
   const live = ready.filter((r) => !gone.has(r.id));
@@ -98,6 +98,17 @@ export default function GoldSimple({ ready, waiting }: { ready: GoldRow[]; waiti
                   <span key={j.id}> · {j.url ? <a href={j.url} target="_blank" rel="noreferrer">{j.title}</a> : j.title}</span>
                 ))}
               </li>
+            ))}
+          </ul>
+        </details>
+      )}
+
+      {dropped.length > 0 && (
+        <details className="reach-msg" style={{ marginTop: '.6rem' }}>
+          <summary>◀ {dropped.length} משרות בחברות עם איש גיוס מאומת שלא הוצגו, ולמה</summary>
+          <ul className="reach-why">
+            {dropped.map((d, i) => (
+              <li key={i}><b>{d.company}</b> · {d.title.slice(0, 60)} <span className="mute">· {d.why}</span></li>
             ))}
           </ul>
         </details>

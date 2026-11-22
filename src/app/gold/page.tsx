@@ -116,21 +116,31 @@ export default async function Gold() {
     return cities.some((x) => !x || !c || x === c);
   };
   const jobsByKey = new Map<string, any[]>();
+  // משרות בחברות עם איש גיוס מאומת שלא הוצגו, והסיבה. שקיפות: 22.11.2026 שאול
+  // שאל "למה רק משרה אחת", והתשובה הייתה צריכה להיות כתובה על המסך.
+  const vKeys = new Set<string>();
+  for (const c of cs) if (c.verified_ok && c.verified_key) vKeys.add(c.verified_key);
+  const dropped: { company: string; title: string; why: string }[] = [];
+  const drop = (j: any, why: string) => {
+    const k0 = companyKey(j.company);
+    if (k0 && vKeys.has(resolve(k0))) dropped.push({ company: j.company, title: j.title, why });
+  };
   // לשורת השקיפות: משרות בחברות שיש בהן מכר, כמה אומתו וכמה ממתינות.
   let watched = 0;
   let watchedVerified = 0;
   for (const j of (jobsRaw ?? []) as any[]) {
-    if (appliedIds.has(j.id) || twinApplied(j)) continue;
+    if (appliedIds.has(j.id)) { drop(j, 'הוגשה'); continue; }
+    if (twinApplied(j)) { drop(j, 'אותה משרה כבר הוגשה בכתובת אחרת'); continue; }
     const wk = companyKey(j.company);
     if (wk && byKey.has(resolve(wk))) { watched++; if (isVerified(j)) watchedVerified++; }
     // מיקום המשרה, לא רק החברה. 'out' לא מוצג, 'unknown' מוצג עם המיקום.
-    if (jobPlace(j.location) === 'out') continue;
+    if (jobPlace(j.location) === 'out') { drop(j, 'מחוץ לגוש דן: ' + (j.location ?? '')); continue; }
     // רלוונטיות לתפקידים שלו: כותרת QA, פרויקטים, תוכניות, שחרורים או מסירה. השער של
     // הסורק רחב (כל כותרת ניהולית), ולכן "IT Manager" עבר אותו ונראה כאן.
-    if (!cvFamilyForTitle(j.title) && !CORE_ROLES.includes(j.found_for)) continue;
+    if (!cvFamilyForTitle(j.title) && !CORE_ROLES.includes(j.found_for)) { drop(j, 'הכותרת לא בתחום שלך'); continue; }
     // **חד חד ערכי** (שאול, 20.11.2026: "עוד משרה שלא קיימת יותר"). משרה
     // מוצגת כאן רק אם אומתה כפתוחה בשעות האחרונות. לא אומתה: לא מוצגת.
-    if (!isVerified(j)) continue;
+    if (!isVerified(j)) { drop(j, 'לא אומתה כפתוחה ב-48 השעות האחרונות'); continue; }
     const k0 = companyKey(j.company);
     if (!k0) continue;
     const k = resolve(k0);
@@ -343,7 +353,7 @@ export default async function Gold() {
       <p className="sub">
         משרות פתוחות שאומתו ב-48 השעות האחרונות, עם איש גיוס שנבדק בפרופיל שלו.
       </p>
-      <GoldSimple ready={jobRows.filter((r) => r.tier === 'blue')} waiting={jobRows.filter((r) => r.tier === 'yellow')} />
+      <GoldSimple dropped={dropped} ready={jobRows.filter((r) => r.tier === 'blue')} waiting={jobRows.filter((r) => r.tier === 'yellow')} />
       <p className="hint" style={{ marginTop: '1.2rem' }}>
         מקור המאגר: techmap, מבוסס על רשם החברות, ברישיון ODbL.
       </p>
