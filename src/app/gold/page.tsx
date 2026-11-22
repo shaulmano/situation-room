@@ -32,13 +32,24 @@ const CORE_ROLES = [
 export default async function Gold() {
   const sb = serverClient();
 
-  const { data: cs, error } = await sb.from('contacts')
-    .select('id, full_name, title, company, company_key, linkedin_url, email, phone, contacted_at, gold_skipped_at')
-    .is('gold_skipped_at', null)
-    .is('left_company_at', null)
-    .not('company_key', 'is', null)
-    .not('linkedin_url', 'is', null)
-    .limit(5000);
+  // PostgREST מחזיר לכל היותר 1000 שורות, ו-`.limit(5000)` לא עוקף את זה.
+  // 22.11.2026: Hila Perels (mPrest) ו-Danielle Steinberg (Dream) היו במסד
+  // והכרטיס אמר "אין איש קשר", כי הן ישבו מעבר ל-1000 הראשונות. לכן דפים.
+  const cs: any[] = [];
+  let error: { message: string } | null = null;
+  for (let from = 0; from < 8000; from += 1000) {
+    const r = await sb.from('contacts')
+      .select('id, full_name, title, company, company_key, linkedin_url, email, phone, contacted_at, gold_skipped_at')
+      .is('gold_skipped_at', null)
+      .is('left_company_at', null)
+      .not('company_key', 'is', null)
+      .not('linkedin_url', 'is', null)
+      .order('id', { ascending: true })
+      .range(from, from + 999);
+    if (r.error) { error = r.error; break; }
+    cs.push(...(r.data ?? []));
+    if (!r.data || r.data.length < 1000) break;
+  }
   if (error) {
     return (
       <main>
@@ -65,7 +76,10 @@ export default async function Gold() {
   const { rows: applied } = await loadApplied(sb);
   const appliedIds = new Set(applied.map((a: any) => a.job_id).filter(Boolean));
   const since = new Date(Date.now() - 60 * 86400000).toISOString();
-  const { data: jobsRaw } = await sb.from('jobs')
+  // דפים של 1000: התקרה של PostgREST חלה גם כאן.
+  const jobsRaw: any[] = [];
+  for (let from = 0; from < 6000; from += 1000) {
+    const r = await sb.from('jobs')
     .select('id, title, company, url, source, found_for, first_seen, live_checked_at, location, recruiter_name, recruiter_url')
     .eq('on_target', true)
     // ✕ במסכים הרגילים לא מוריד משרה מכאן (שאול, 20.11.2026: "שלא תוריד").
@@ -75,7 +89,12 @@ export default async function Gold() {
     .is('gold_skipped_at', null)
     .gte('first_seen', since)
     .order('first_seen', { ascending: false })
-    .limit(4000);
+    .order('id', { ascending: true })
+    .range(from, from + 999);
+    if (r.error || !r.data) break;
+    jobsRaw.push(...r.data);
+    if (r.data.length < 1000) break;
+  }
   const fresh = Date.now() - 48 * 3600 * 1000;
   const isVerified = (j: any) => !!j.live_checked_at && new Date(j.live_checked_at).getTime() >= fresh;
   // **כפילויות (21.11.2026):** אותה חברה, אותה כותרת ואותה עיר היא משרה אחת גם
