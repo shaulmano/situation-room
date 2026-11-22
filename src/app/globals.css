@@ -485,6 +485,10 @@ a.dup-title{text-decoration:underline;text-underline-offset:2px}
 .gold-card{border:1px solid;border-radius:12px;padding:.85rem;display:flex;flex-direction:column;gap:.65rem;min-width:0}
 .gold-card.c0{background:#E8F2FA;border-color:#B4D0E6}
 .gold-card.c1{background:#FBF3D3;border-color:#E3CF86}
+.gold-card.c2{background:#fff;border-color:var(--border,#ddd)}
+.gold-tier{margin:.6rem 0 .1rem;font-size:1rem}
+.gold-tier-blue{color:#1f5f8f}
+.gold-tier-yellow{color:#8a6a00}
 .gold-card.gold-hot{border-width:2px;border-color:var(--accent)}
 .gold-head{display:flex;flex-direction:column;gap:.35rem}
 .gold-chips{display:flex;flex-wrap:wrap;gap:.3rem}

@@ -1,12 +1,17 @@
 'use client';
 import MarkApplied from './MarkApplied';
 import GoldSkipJob from './GoldSkipJob';
-import { useState } from 'react';
+import { Fragment, useState } from 'react';
 
 export type GoldRow = {
   id: string;
   /** יש בה משרה פתוחה ומכר שלך. מעל המכסה, ראשונה, בצבע בולט. */
   hot: boolean;
+  /** תכלת: משרה מאומתת ואיש גיוס מאומת. צהוב: משרה מאומתת בלי איש גיוס. plain: חברה בלי משרה. */
+  tier: 'blue' | 'yellow' | 'plain';
+  /** כרטיס שנבנה מהמשרה, החברה אינה ברשימת הזהב ולכן אין לה החלטה ברמת חברה. */
+  noCompany: boolean;
+  unverifiedN: number;
   name: string;
   sizeRange: string | null;
   sizeClass: string | null;
@@ -118,11 +123,20 @@ export default function GoldList(
       {live.map((r, idx) => {
         const people = r.people.filter((p) => !gone.has(p.id));
         const finds = r.finds.filter((f) => !gone.has(f.id));
+        const prev = idx > 0 ? live[idx - 1].tier : null;
+        const heading = r.tier !== prev
+          ? (r.tier === 'blue' ? 'משרה מאומתת ואיש גיוס מאומת'
+            : r.tier === 'yellow' ? 'משרה מאומתת, בלי איש גיוס מאומת'
+            : 'חברות בלי משרה מאומתת')
+          : null;
         return (
-        <div className={'gold-card ' + (idx % 2 === 0 ? 'c0' : 'c1') + (r.hot ? ' gold-hot' : '')} key={r.id}>
+        <Fragment key={r.id}>
+        {heading && <h3 className={'gold-tier gold-tier-' + r.tier}>{heading}</h3>}
+        <div className={'gold-card ' + (r.tier === 'blue' ? 'c0' : r.tier === 'yellow' ? 'c1' : 'c2') + (r.hot ? ' gold-hot' : '')}>
           <div className="gold-head">
             <div className="reach-who">
-              {r.hot && <span className="chip gold-hot-chip">משרה פתוחה</span>}
+              {r.tier === 'blue' && <span className="chip gold-hot-chip">איש גיוס מאומת</span>}
+              {r.tier === 'yellow' && <span className="chip gold-hot-chip">משרה מאומתת</span>}
               <b>{r.name}</b>
             </div>
             <div className="gold-chips">
@@ -132,12 +146,11 @@ export default function GoldList(
               {r.hiring && <span className="chip mute">מגייסת</span>}
             </div>
             <div className="reach-sub">
-              {people.length === 0 && finds.length === 0 && r.jobs.length === 0
-                ? 'אין איש קשר ולא ידוע על משרה'
-                : <>
-                    {r.contactsTotal > 0 ? `${r.contactsTotal} מכרים שלך כאן` : 'אין איש קשר'}
-                    {r.jobs.length > 0 ? `, ${r.jobs.length} משרות פתוחות` : ', לא ידוע על משרה'}
-                  </>}
+              {r.tier === 'blue'
+                ? `${r.contactsTotal} אנשי גיוס מאומתים, ${r.jobs.length} משרות פתוחות`
+                : r.tier === 'yellow'
+                  ? `אין איש גיוס מאומת${r.unverifiedN > 0 ? `, ${r.unverifiedN} אנשי קשר שלא נבדקו` : ''}, ${r.jobs.length} משרות פתוחות`
+                  : (r.contactsTotal > 0 ? `${r.contactsTotal} מכרים שלך כאן` : 'אין איש קשר') + ', לא ידוע על משרה'}
             </div>
           </div>
 
@@ -160,7 +173,7 @@ export default function GoldList(
 
           {people.map((p) => (
             <div className="gold-sec" key={p.id}>
-              <h4>איש קשר שלך</h4>
+              <h4>{r.tier === 'blue' ? 'איש גיוס מאומת' : 'איש קשר שלך'}</h4>
               <div className="gold-pn">
                 <b>{p.name}</b>
                 <span className="mute">{p.title}</span>
@@ -229,14 +242,15 @@ export default function GoldList(
             </div>
           </details>
 
-          <div className="gold-acts gold-foot">
+          {!r.noCompany && <div className="gold-acts gold-foot">
             <button type="button" className="apply" disabled={busy === r.id}
               onClick={() => mark(r.id, 'done')}>{r.people.length ? 'סמן שנשלח' : 'סמן שטופלה'}</button>
             <button type="button" className="closed" disabled={busy === r.id}
               title="לא רלוונטי. יירד מהתור ולא יחזור"
               onClick={() => mark(r.id, 'skipped')}>מוותר</button>
-          </div>
+          </div>}
         </div>
+        </Fragment>
         );
       })}
       </div>

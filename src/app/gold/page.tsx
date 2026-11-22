@@ -39,7 +39,7 @@ export default async function Gold() {
   let error: { message: string } | null = null;
   for (let from = 0; from < 8000; from += 1000) {
     const r = await sb.from('contacts')
-      .select('id, full_name, title, company, company_key, linkedin_url, email, phone, contacted_at, gold_skipped_at')
+      .select('id, full_name, title, company, company_key, linkedin_url, email, phone, contacted_at, gold_skipped_at, verified_ok, verified_key, verified_at')
       .is('gold_skipped_at', null)
       .is('left_company_at', null)
       .not('company_key', 'is', null)
@@ -157,25 +157,35 @@ export default async function Gold() {
   // לינקדאין אמרה "No longer accepting applications" והמסך הציג אותה
   // כמשרה פתוחה בצבע בולט. עכשיו הקפצה דורשת אימות מהשעות האחרונות,
   // ומשרה שלא אומתה אינה מוצגת בכלל.
-  const hotKeys = [...jobsByKey.entries()]
-    .filter(([, js]) => js.some(isVerified))
-    .map(([k]) => k);
-  const hotIds: string[] = [];
-  for (let i = 0; i < hotKeys.length; i += 100) {
-    const { data: hc } = await sb.from('companies').select('id')
-      .in('company_key', hotKeys.slice(i, i + 100))
-      .eq('region', 'gush_dan')
-      .is('gold_done_at', null)
-      .is('gold_skipped_at', null);
-    hotIds.push(...((hc ?? []) as any[]).map((r) => r.id));
+  // 22.11.2026: כרטיס לכל חברה שיש בה משרה מאומתת, בלי קשר לרשימת החברות.
+  // פרטי החברה (גודל, עיר) נשלפים אם היא ברשימה, ואם לא הכרטיס בנוי מהמשרה.
+  const jobKeys = [...jobsByKey.keys()];
+  const compByKey = new Map<string, any>();
+  for (let i = 0; i < jobKeys.length; i += 100) {
+    const { data: hc } = await sb.from('companies')
+      .select('id, name, company_key, size_class, size_range, region, city, website, careers_url, is_hiring, gold_done_at, gold_skipped_at')
+      .in('company_key', jobKeys.slice(i, i + 100));
+    for (const r of (hc ?? []) as any[]) compByKey.set(r.company_key, r);
   }
-  const hotSet = new Set(hotIds);
+  // אנשי קשר מאומתים: הסקריפט במחשב פתח את הפרופיל ב-14 הימים האחרונים וראה
+  // חבר מדרגה ראשונה, עובד שם עכשיו, בתפקיד גיוס.
+  const freshV = Date.now() - 14 * 86400000;
+  const verifiedBy = new Map<string, any[]>();
+  for (const c of cs) {
+    if (!c.verified_ok || !c.verified_key || !c.verified_at) continue;
+    if (new Date(c.verified_at).getTime() < freshV) continue;
+    const arr = verifiedBy.get(c.verified_key) ?? [];
+    arr.push(c);
+    verifiedBy.set(c.verified_key, arr);
+  }
+  const hotIds: string[] = [];
+  const hotSet = new Set<string>();
 
   // המאגר כולו, בלי מה שכבר הוחלט עליו. נשלף בעמודים, כי PostgREST מגביל
   // שורות לשליפה. רק מה שנדרש לדירוג, ואת הפרטים שולפים רק ל-50 שנבחרו.
   const day = israelDayStart().slice(0, 10);
   const dayStart = israelDayStart();
-  const pickedIds: string[] = [...hotIds];
+  const pickedIds: string[] = [];
   const decidedBy: Record<string, number> = { S: 0, M: 0, E: 0 };
   for (const cls of ['S', 'M', 'E'] as const) {
     const [d1, d2] = await Promise.all([
@@ -206,7 +216,8 @@ export default async function Gold() {
         );
       }
       for (const r of (data ?? []) as any[]) {
-        if (hotSet.has(r.id)) continue;
+        // חברה שיש בה משרה מאומתת מוצגת למעלה כרטיס משרה, לא כאן.
+        if (r.company_key && jobsByKey.has(r.company_key)) continue;
         pool.push({ id: r.id, n: r.company_key ? (byKey.get(r.company_key)?.length ?? 0) : 0, gush: r.region === 'gush_dan' });
       }
       if (!data || data.length < 1000) break;
@@ -227,12 +238,26 @@ export default async function Gold() {
         .select('id, name, company_key, size_class, size_range, region, city, website, careers_url, is_hiring')
         .in('id', pickedIds)
     : { data: [] as any[] };
+  // כרטיסי משרה: כל חברה שיש בה משרה מאומתת. תכלת אם יש בה איש גיוס מאומת, צהוב אם אין.
+  const jobCompanies: any[] = [];
+  for (const [k, js] of jobsByKey) {
+    if (!js.length) continue;
+    const comp = compByKey.get(k);
+    if (comp && (comp.gold_done_at || comp.gold_skipped_at)) continue;
+    jobCompanies.push({
+      key: k,
+      comp: comp ?? { id: 'job:' + k, name: js[0].company, company_key: k, size_class: null, size_range: null, region: null, city: null, website: null, careers_url: null, is_hiring: false },
+      noCompany: !comp,
+      js,
+    });
+  }
+  const findIds = [...pickedIds, ...jobCompanies.filter((x) => !x.noCompany).map((x) => x.comp.id)];
   // מגייסים שנמצאו בחיפוש לחברות בלי איש קשר (gold_recruiters).
   const finds = new Map<string, { id: string; name: string; headline: string | null; url: string }[]>();
-  if (pickedIds.length) {
+  if (findIds.length) {
     const { data: fr } = await sb.from('gold_recruiters')
       .select('id, company_id, full_name, headline, profile_url')
-      .in('company_id', pickedIds).is('contacted_at', null).is('skipped_at', null);
+      .in('company_id', findIds).is('contacted_at', null).is('skipped_at', null);
     for (const f of (fr ?? []) as any[]) {
       const arr = finds.get(f.company_id) ?? [];
       arr.push({ id: f.id, name: f.full_name, headline: f.headline, url: f.profile_url });
@@ -242,19 +267,22 @@ export default async function Gold() {
   const classOrder: Record<string, number> = { E: 0, M: 1, S: 2 };
   const ranked = ((picked ?? []) as GoldCompany[])
     .map((c) => ({ c, n: c.company_key ? (byKey.get(c.company_key)?.length ?? 0) : 0 }))
-    .sort((x, y) => ((hotSet.has(y.c.id) ? 1 : 0) - (hotSet.has(x.c.id) ? 1 : 0)) || (y.n - x.n)
+    .sort((x, y) => (y.n - x.n)
       || ((x.c.region === 'gush_dan' ? 0 : 1) - (y.c.region === 'gush_dan' ? 0 : 1))
       || ((classOrder[x.c.size_class ?? ''] ?? 3) - (classOrder[y.c.size_class ?? ''] ?? 3)));
 
-  const rows: GoldRow[] = ranked.map(({ c, n }) => {
-    const jobs = jobsByKey.get(c.company_key) ?? [];
+  const toRow = (
+    c: any, tier: 'blue' | 'yellow' | 'plain', jobs: any[], pplSrc: any[], noCompany: boolean, n: number, unverifiedN: number,
+  ): GoldRow => {
     const top = jobs[0] ?? null;
-    const people = rankContacts(byKey.get(c.company_key) ?? [], top?.title, isAgency(c.name)).slice(0, 3);
-    const peopleHref = peopleAtCompanyHref(c.name, null);
+    const people = rankContacts(pplSrc, top?.title, isAgency(c.name)).slice(0, 3);
     const cvId = top ? (cvFamilyForTitle(top.title) ?? 'project-release-manager') : null;
     return {
       id: c.id,
-      hot: hotSet.has(c.id),
+      hot: tier !== 'plain',
+      tier,
+      noCompany,
+      unverifiedN,
       name: c.name,
       sizeRange: c.size_range,
       sizeClass: c.size_class,
@@ -264,7 +292,7 @@ export default async function Gold() {
       careers: c.careers_url,
       hiring: c.is_hiring,
       contactsTotal: n,
-      peopleHref,
+      peopleHref: peopleAtCompanyHref(c.name, null),
       genericMessage: goldGenericMessage(c.name, top ? { title: top.title, url: top.url, foundFor: top.found_for } : null, cvId),
       recruitersHref: 'https://www.linkedin.com/search/results/people/?keywords=' + encodeURIComponent('recruiter ' + c.name),
       cvFile: top ? cvFileFor(cvId, top.title) : WIDE_CV_FILE,
@@ -287,7 +315,23 @@ export default async function Gold() {
         }),
       })),
     };
-  });
+  };
+
+  const newest = (js: any[]) => Math.max(...js.map((j) => new Date(j.first_seen ?? 0).getTime()));
+  const jobRows: GoldRow[] = jobCompanies
+    .map((x) => {
+      const v = verifiedBy.get(x.key) ?? [];
+      const all = byKey.get(x.key) ?? [];
+      return { x, v, t: newest(x.js), un: Math.max(0, all.length - v.length) };
+    })
+    .sort((a, b) => ((b.v.length ? 1 : 0) - (a.v.length ? 1 : 0)) || (b.t - a.t))
+    .map(({ x, v, un }) => toRow(x.comp, v.length ? 'blue' : 'yellow', x.js, v, x.noCompany, v.length, un));
+
+  const plainRows: GoldRow[] = ranked.map(({ c, n }) =>
+    toRow(c, 'plain', [], byKey.get(c.company_key) ?? [], false, n, 0));
+  const rows: GoldRow[] = [...jobRows, ...plainRows];
+  const blueN = jobRows.filter((r) => r.tier === 'blue').length;
+  const yellowN = jobRows.length - blueN;
 
   return (
     <main>
@@ -298,7 +342,7 @@ export default async function Gold() {
       <p className="sub">
         בכל חברה: מכר אם יש, משרה אם ידועה, ואם אין כלום זה כתוב. רק גוש דן בשלב הזה. בכל גודל, מי שיש בה מכר קודם.
         {' '}{GOLD_DAILY} ביום, מכל הגדלים: {GOLD_QUOTA.S} קטנות, {GOLD_QUOTA.M} בינוניות, {GOLD_QUOTA.E} גדולות.
-        {hotIds.length > 0 && <> בראש הרשימה, בצבע, <b>{hotIds.length}</b> חברות שיש בהן משרה פתוחה שאומתה, מעל ה-{GOLD_DAILY}.</>}
+        {jobRows.length > 0 && <> בראש הרשימה, מעל ה-{GOLD_DAILY}: <b>{blueN}</b> משרות מאומתות עם איש גיוס מאומת, ו-<b>{yellowN}</b> מאומתות בלי איש גיוס.</>}
       </p>
       <p className="hint">
         אימות משרות בחברות שיש בהן מכר: <b>{watchedVerified}</b> אומתו כפתוחות ב-48 השעות האחרונות מתוך <b>{watched}</b>,
