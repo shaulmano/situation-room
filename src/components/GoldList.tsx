@@ -259,20 +259,17 @@ export default function GoldList(
             </div>
           </details>
 
-          {r.noCompany && (
-            <div className="gold-acts gold-foot">
-              <button type="button" className="closed" disabled={busy === r.id}
-                title="מוותר על כל המשרות בכרטיס. הוא יירד ולא יחזור"
-                onClick={() => closeCard(r)}>סגור את הכרטיס</button>
-            </div>
-          )}
-          {!r.noCompany && <div className="gold-acts gold-foot">
+          {/* אותם שני כפתורים בכל כרטיס. כרטיס שנבנה ממשרה (בלי חברה ברשימה) סוגר
+              את כל המשרות שלו, כי אין לו החלטה ברמת חברה. */}
+          <div className="gold-acts gold-foot">
             <button type="button" className="apply" disabled={busy === r.id}
-              onClick={() => mark(r.id, 'done')}>{r.people.length ? 'סמן שנשלח' : 'סמן שטופלה'}</button>
+              onClick={() => (r.noCompany ? closeCard(r) : mark(r.id, 'done'))}>
+              {r.people.length ? 'סמן שנשלח' : 'סמן שטופלה'}
+            </button>
             <button type="button" className="closed" disabled={busy === r.id}
               title="לא רלוונטי. יירד מהתור ולא יחזור"
-              onClick={() => mark(r.id, 'skipped')}>מוותר</button>
-          </div>}
+              onClick={() => (r.noCompany ? closeCard(r) : mark(r.id, 'skipped'))}>מוותר</button>
+          </div>
         </div>
         </Fragment>
         );
