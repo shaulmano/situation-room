@@ -1,6 +1,6 @@
 import Link from 'next/link';
 import { serverClient } from '@/lib/server';
-import { goldKeySet } from '@/lib/gold';
+import { goldKeySet, goldGenericMessage } from '@/lib/gold';
 import { applyTarget, directLinks } from '@/lib/apply';
 import { jobAge } from '@/lib/age';
 import { companyKey, type WarmContact, contactsByCompanyKeys } from '@/lib/contacts';
@@ -13,6 +13,8 @@ import DismissAll from '@/components/DismissAll';
 import JobBrief from '@/components/JobBrief';
 import JobContacts from '@/components/JobContacts';
 import MarkApplied from '@/components/MarkApplied';
+import CopyGeneric from '@/components/CopyGeneric';
+import { cvFileFor } from '@/lib/outreach';
 import MarkClosed from '@/components/MarkClosed';
 
 export const dynamic = 'force-dynamic';
@@ -392,6 +394,10 @@ export default async function Jobs({
                     {d.label}
                   </a>
                 ))}
+                <CopyGeneric
+                  text={goldGenericMessage(j.company, { title: j.title, url: j.url, foundFor: j.found_for }, m.cv_id)}
+                  file={cvFileFor(m.cv_id, j.title)}
+                />
                 <MarkApplied id={j.id} cvId={m.cv_id} />
                 <MarkApplied id={j.id} cvId={m.cv_id} internal />
                 <MarkClosed id={j.id} ids={m.copies.map((c: any) => c.jobs.id)} />
