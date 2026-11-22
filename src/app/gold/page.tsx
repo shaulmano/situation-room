@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import { serverClient } from '@/lib/server';
-import GoldList, { type GoldRow } from '@/components/GoldList';
+import { type GoldRow } from '@/components/GoldList';
+import GoldSimple from '@/components/GoldSimple';
 import { companyKey, peopleAtCompanyHref, type WarmContact } from '@/lib/contacts';
 import { rankContacts, isAgency } from '@/lib/pickContact';
 import { cvFamilyForTitle, cvFileFor } from '@/lib/outreach';
@@ -340,18 +341,9 @@ export default async function Gold() {
         <Link className="more" href="/">← חדר המצב</Link>
       </div>
       <p className="sub">
-        בכל חברה: מכר אם יש, משרה אם ידועה, ואם אין כלום זה כתוב. רק גוש דן בשלב הזה. בכל גודל, מי שיש בה מכר קודם.
-        {' '}{GOLD_DAILY} ביום, מכל הגדלים: {GOLD_QUOTA.S} קטנות, {GOLD_QUOTA.M} בינוניות, {GOLD_QUOTA.E} גדולות.
-        {jobRows.length > 0 && <> בראש הרשימה, מעל ה-{GOLD_DAILY}: <b>{blueN}</b> משרות מאומתות עם איש גיוס מאומת, ו-<b>{yellowN}</b> מאומתות בלי איש גיוס.</>}
+        משרות פתוחות שאומתו ב-48 השעות האחרונות, עם איש גיוס שנבדק בפרופיל שלו.
       </p>
-      <p className="hint">
-        אימות משרות בחברות שיש בהן מכר: <b>{watchedVerified}</b> אומתו כפתוחות ב-48 השעות האחרונות מתוך <b>{watched}</b>,
-        {' '}<b>{Math.max(0, watched - watchedVerified)}</b> ממתינות לאימות (לא מוצגות עד שיאומתו), <b>{closedDay ?? 0}</b> נסגרו ב-24 השעות האחרונות.
-      </p>
-      <p className="hint">
-        הוגשו פנימית: <b>{internalN.today}</b> היום, <b>{internalN.week}</b> בשבוע, <b>{internalN.total}</b> בסך הכל.
-      </p>
-      <GoldList rows={rows} target={GOLD_DAILY} doneToday={decided} />
+      <GoldSimple ready={jobRows.filter((r) => r.tier === 'blue')} waiting={jobRows.filter((r) => r.tier === 'yellow')} />
       <p className="hint" style={{ marginTop: '1.2rem' }}>
         מקור המאגר: techmap, מבוסס על רשם החברות, ברישיון ODbL.
       </p>

@@ -523,3 +523,8 @@ a.dup-title{text-decoration:underline;text-underline-offset:2px}
   .gold-acts > *{width:auto;min-height:30px;padding:.2rem .8rem;font-size:.78rem}
   
 }
+
+.gold-simple{display:flex;flex-direction:column;gap:.6rem;border:1px solid #B4D0E6;background:#E8F2FA;border-radius:12px;padding:.85rem;margin-bottom:.7rem}
+.gs-job{margin:.2rem 0}.gs-who{margin-top:.4rem}.gs-cv{font-size:.85rem;margin-top:.3rem}
+.gs-acts{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:.45rem}
+@media (min-width:900px){.gold-simple{flex-direction:row;justify-content:space-between;align-items:center}.gs-main{flex:1;min-width:0}.gs-acts{display:flex;flex:none}}
