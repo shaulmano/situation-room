@@ -9,6 +9,33 @@ import {
 export const dynamic = 'force-dynamic';
 
 /**
+ * שליפת המאגר בדפים של 1000.
+ *
+ * 22.11.2026. שאול: "אין שום משימות לשליחה בפנייה רחבה". `.limit(4000)`
+ * אינו עוקף את התקרה של PostgREST, שמחזיר לכל היותר 1000 שורות. בלי מיון
+ * זה היה 1000 הראשונות לפי סדר פיזי מתוך כ-2,300, והמגייסים ישבו בעיקר
+ * מעבר לגבול. עד שהמסך סונן למגייסים בלבד זה נראה כמו "יותר מדי עמיתים",
+ * ובשלב הזה זה נראה כמו מסך ריק. **תקרה שקטה: אותו דפוס כמו `limit` ב-warm.**
+ */
+async function fetchPool(sb: ReturnType<typeof serverClient>) {
+  const rows: any[] = [];
+  for (let from = 0; from < 6000; from += 1000) {
+    const { data, error } = await sb.from('contacts')
+      .select('id, full_name, title, company, linkedin_url, contacted_at, '
+        + 'wide_sent_at, wide_skipped_at, left_company_at, li_seen_at, first_pitch_at')
+      .is('wide_sent_at', null)
+      .is('wide_skipped_at', null)
+      .not('linkedin_url', 'is', null)
+      .order('id', { ascending: true })
+      .range(from, from + 999);
+    if (error) return { data: null, error };
+    rows.push(...(data ?? []));
+    if (!data || data.length < 1000) break;
+  }
+  return { data: rows, error: null };
+}
+
+/**
  * פנייה רחבה: מסך ייעודי, מטרה אחת.
  *
  * 15.11.2026. שאול ביקש טאב נפרד ולא עוד לשונית בתוך מכרים: "כל טאב
@@ -38,13 +65,7 @@ export default async function Reach() {
   // ויתור הוא עבודה: הוא קרא שם, תפקיד וחברה והחליט. 25 החלטות ביום
   // הן המכסה, ולא משנה לאיזה צד הן נפלו.
   const [{ data: all, error }, { count: sentToday }, { count: skippedToday }] = await Promise.all([
-    sb.from('contacts')
-      .select('id, full_name, title, company, linkedin_url, contacted_at, '
-        + 'wide_sent_at, wide_skipped_at, left_company_at, li_seen_at, first_pitch_at')
-      .is('wide_sent_at', null)
-      .is('wide_skipped_at', null)
-      .not('linkedin_url', 'is', null)
-      .limit(4000),
+    fetchPool(sb),
     sb.from('contacts')
       .select('id', { count: 'exact', head: true })
       .gte('wide_sent_at', israelDayStart()),
