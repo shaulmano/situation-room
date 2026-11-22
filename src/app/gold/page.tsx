@@ -307,7 +307,20 @@ export default async function Gold() {
       genericMessage: goldGenericMessage(c.name, top ? { title: top.title, url: top.url, foundFor: top.found_for } : null, cvId),
       recruitersHref: 'https://www.linkedin.com/search/results/people/?keywords=' + encodeURIComponent('recruiter ' + c.name),
       cvFile: top ? cvFileFor(cvId, top.title) : WIDE_CV_FILE,
-      jobs: jobs.slice(0, 4).map((j) => ({ id: j.id, title: j.title, url: j.url, source: (j.sources ?? [j.source]).filter(Boolean).join(' + '), verified: isVerified(j), verifiedAt: j.live_checked_at ?? null, location: j.location ?? null, recruiterName: j.recruiter_name ?? null, recruiterUrl: j.recruiter_url ?? null })),
+      jobs: jobs.slice(0, 4).map((j) => ({ id: j.id, title: j.title, url: j.url, source: (j.sources ?? [j.source]).filter(Boolean).join(' + '), verified: isVerified(j), verifiedAt: j.live_checked_at ?? null, location: j.location ?? null, recruiterName: j.recruiter_name ?? null, recruiterUrl: j.recruiter_url ?? null,
+        // הודעה וקובץ לכל משרה בנפרד: אותה חברה יכולה להחזיק משרת QA ומשרת פרויקטים,
+        // ולכל אחת קישור וקובץ קורות חיים משלה.
+        ...(() => {
+          const jcv = cvFamilyForTitle(j.title) ?? 'project-release-manager';
+          const jj = { title: j.title, url: j.url, foundFor: j.found_for };
+          const who = people[0];
+          return {
+            cvFile: cvFileFor(jcv, j.title),
+            message: who
+              ? goldMessage({ contactName: who.full_name, contactTitle: who.title, company: c.name, job: jj, cvId: jcv })
+              : goldGenericMessage(c.name, jj, jcv),
+          };
+        })() })),
       finds: (finds.get(c.id) ?? []).map((f) => ({
         ...f,
         note: goldConnectNote({ name: f.name, company: c.name, jobTitle: top?.title ?? null }),

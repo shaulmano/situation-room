@@ -67,18 +67,20 @@ export default function GoldSimple({ ready, waiting, dropped }: { ready: GoldRow
               <b>{r.name}</b>
               {r.jobs.map((j) => (
                 <div className="gs-job" key={j.id}>
-                  {j.url ? <a href={j.url} target="_blank" rel="noreferrer">{j.title}</a> : j.title}
-                  <span className="mute"> · {[j.location, j.source].filter(Boolean).join(' · ')}</span>
+                  <div className="gs-jt">
+                    {j.url ? <a href={j.url} target="_blank" rel="noreferrer">{j.title}</a> : j.title}
+                    <span className="mute"> · {[j.location, j.source].filter(Boolean).join(' · ')}</span>
+                    {j.cvFile && <div className="mute gs-cv">לצרף: <code>{j.cvFile}</code></div>}
+                  </div>
+                  {j.message && (
+                    <button type="button" className={'mark gs-copy' + (copied === j.id ? ' on' : '')}
+                      onClick={() => copy(j.id, j.message!)}>{copied === j.id ? '✓ הועתק' : 'העתק הודעה'}</button>
+                  )}
                 </div>
               ))}
               {p && <div className="gs-who"><b>{p.name}</b> <span className="mute">{p.title}</span></div>}
-              <div className="mute gs-cv">לצרף: <code>{r.cvFile}</code></div>
             </div>
             <div className="gs-acts">
-              {p && (
-                <button type="button" className={'mark' + (copied === r.id ? ' on' : '')}
-                  onClick={() => copy(r.id, p.message)}>{copied === r.id ? '✓ הועתק' : 'העתק הודעה'}</button>
-              )}
               {p?.url && <a className="apply indirect" href={p.url} target="_blank" rel="noreferrer">פתח בלינקדאין</a>}
               <button type="button" className="apply" onClick={() => done(r)}>טופל</button>
               <button type="button" className="closed" title="לא רלוונטי. יירד ולא יחזור" onClick={() => drop(r)}>✕</button>

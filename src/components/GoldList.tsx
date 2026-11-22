@@ -26,7 +26,7 @@ export type GoldRow = {
   /** הודעה גנרית (בלי שם) למגייס שלא ברשימה, לפי הנוסח של אנשי הקשר. */
   genericMessage: string;
   cvFile: string;
-  jobs: { id: string; title: string; url: string | null; source: string | null; verified: boolean; verifiedAt: string | null; location: string | null; recruiterName: string | null; recruiterUrl: string | null }[];
+  jobs: { id: string; title: string; url: string | null; source: string | null; verified: boolean; verifiedAt: string | null; location: string | null; recruiterName: string | null; recruiterUrl: string | null; message?: string; cvFile?: string }[];
   people: { id: string; name: string; title: string | null; url: string | null; message: string }[];
   /** מגייסים שנמצאו בחיפוש. לא קשרים: בקשת חברות עם הערה, ואחרי אישור ההודעה עם הקובץ. */
   finds: { id: string; name: string; headline: string | null; url: string; note: string }[];

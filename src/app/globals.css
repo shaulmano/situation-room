@@ -529,3 +529,6 @@ a.dup-title{text-decoration:underline;text-underline-offset:2px}
 .gs-acts{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:.45rem}
 @media (min-width:900px){.gold-simple{flex-direction:row;justify-content:space-between;align-items:center;gap:1.5rem}.gs-main{flex:1;min-width:0}.gs-acts{width:320px;flex:none}}
 .gs-acts>*{width:100%;min-width:0;text-align:center;box-sizing:border-box}
+
+.gs-job{display:flex;justify-content:space-between;align-items:center;gap:.6rem;margin:.35rem 0}.gs-jt{min-width:0}.gs-copy{flex:none;white-space:nowrap}
+.gs-acts{grid-template-columns:repeat(2,minmax(0,1fr))}
