@@ -1,6 +1,6 @@
 import { NextResponse, type NextRequest } from 'next/server';
 import { serverClient } from '@/lib/server';
-import { WIDE_CV_FILE, displayName, wideMessage } from '@/lib/wideReach';
+import { AUTO_SEND_PER_DAY, WIDE_CV_FILE, displayName, israelDayStart, wideMessage } from '@/lib/wideReach';
 
 export const dynamic = 'force-dynamic';
 
@@ -34,8 +34,14 @@ export async function POST(req: NextRequest) {
   const { data: open } = await sb.from('li_outbox').select('contact_id')
     .in('contact_id', ok.map((r: any) => r.id)).in('status', ['queued', 'sending']);
   const have = new Set((open ?? []).map((r: any) => r.contact_id));
-  const fresh = ok.filter((r: any) => !have.has(r.id));
-  if (fresh.length === 0) return NextResponse.json({ ok: true, queued: 0 });
+  // תקרה יומית: מה שכבר נכנס לתור היום נספר, כדי שלחיצה כפולה או רענון
+  // לא יעקפו אותה.
+  const { count: today } = await sb.from('li_outbox')
+    .select('id', { count: 'exact', head: true })
+    .eq('kind', 'wide').gte('queued_at', israelDayStart());
+  const room = Math.max(0, AUTO_SEND_PER_DAY - (today ?? 0));
+  const fresh = ok.filter((r: any) => !have.has(r.id)).slice(0, room);
+  if (fresh.length === 0) return NextResponse.json({ ok: true, queued: 0, room });
 
   const { error: insErr } = await sb.from('li_outbox').insert(fresh.map((r: any) => ({
     contact_id: r.id, profile_url: r.linkedin_url, to_name: r.full_name ?? null,

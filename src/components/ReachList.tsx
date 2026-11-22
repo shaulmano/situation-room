@@ -26,9 +26,9 @@ export type ReachRow = {
  * לדעת מתי גמרת איתה.
  */
 export default function ReachList(
-  { rows, sample, cvFile, target, doneToday, sentToday, skippedToday, exhausted }:
+  { rows, sample, cvFile, target, doneToday, sentToday, skippedToday, exhausted, autoLeft: autoLeft0 }:
   {
-    exhausted?: boolean; rows: ReachRow[]; sample: string; cvFile: string; target: number;
+    exhausted?: boolean; autoLeft?: number; rows: ReachRow[]; sample: string; cvFile: string; target: number;
     /** החלטות היום, שליחות וויתורים יחד. זה מה שמוריד את המכסה. */
     doneToday: number;
     sentToday: number;
@@ -39,6 +39,7 @@ export default function ReachList(
   const [copied, setCopied] = useState<string | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
   const [queuedN, setQueuedN] = useState(0);
+  const autoLeft = Math.max(0, (autoLeft0 ?? 0) - queuedN);
 
   const left = Math.max(0, target - doneToday - done.size);
   const live = rows.filter((r) => !done.has(r.id));
@@ -68,7 +69,7 @@ export default function ReachList(
   // אישור הרשימה: נכנסת לתור, והסקריפט במחשב שולח עם הקובץ. הספירה יורדת
   // מיד, ואם הכתיבה נכשלת השורות חוזרות.
   async function queueAll() {
-    const rs = live.filter((r) => r.url);
+    const rs = live.filter((r) => r.url).slice(0, autoLeft);
     if (rs.length === 0) return;
     setBusy('queue');
     rs.forEach((r) => setDone((p) => new Set(p).add(r.id)));
@@ -114,11 +115,14 @@ export default function ReachList(
         </p>
       )}
 
-      {live.some((r) => r.url) && (
+      {autoLeft > 0 && live.some((r) => r.url) && (
         <button type="button" className="apply reach-all" disabled={busy === 'queue'}
           onClick={queueAll}>
-          שלח את כולם מהמחשב ({live.filter((r) => r.url).length})
+          שלח מהמחשב ({Math.min(autoLeft, live.filter((r) => r.url).length)})
         </button>
+      )}
+      {autoLeft === 0 && (
+        <p className="hint">המכסה היומית לשליחה אוטומטית נוצלה. השאר ידנית.</p>
       )}
       {queuedN > 0 && (
         <p className="hint">

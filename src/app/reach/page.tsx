@@ -2,7 +2,7 @@ import Link from 'next/link';
 import { serverClient } from '@/lib/server';
 import ReachList, { type ReachRow } from '@/components/ReachList';
 import {
-  DAILY_TARGET, RECRUITERS_ONLY, WIDE_CV_FILE, bucketOf, displayName, eligible, israelDayStart,
+  AUTO_SEND_PER_DAY, DAILY_TARGET, RECRUITERS_ONLY, WIDE_CV_FILE, bucketOf, displayName, eligible, israelDayStart,
   looksLikeAgency, sortQueue, wideMessage, type ReachContact,
 } from '@/lib/wideReach';
 
@@ -64,7 +64,7 @@ export default async function Reach() {
   //
   // ויתור הוא עבודה: הוא קרא שם, תפקיד וחברה והחליט. 25 החלטות ביום
   // הן המכסה, ולא משנה לאיזה צד הן נפלו.
-  const [{ data: all, error }, { count: sentToday }, { count: skippedToday }] = await Promise.all([
+  const [{ data: all, error }, { count: sentToday }, { count: skippedToday }, { count: autoToday }] = await Promise.all([
     fetchPool(sb),
     sb.from('contacts')
       .select('id', { count: 'exact', head: true })
@@ -72,6 +72,10 @@ export default async function Reach() {
     sb.from('contacts')
       .select('id', { count: 'exact', head: true })
       .gte('wide_skipped_at', israelDayStart()),
+    sb.from('li_outbox')
+      .select('id', { count: 'exact', head: true })
+      .eq('kind', 'wide')
+      .gte('queued_at', israelDayStart()),
   ]);
 
   if (error) {
