@@ -10,6 +10,8 @@
  *             כפי שנכתב, כי "לא ידוע" אינו ראיה שהיא רחוקה.
  */
 const IN = [
+  // מודעה שמפרטת כמה אזורים ("גוש דן, השפלה, השרון, ירושלים והסביבה") כוללת את גוש דן.
+  'גוש דן', 'gush dan', 'השפלה', 'השרון',
   'tel aviv', 'תל אביב', 'ramat gan', 'רמת גן', 'givatayim', 'גבעתיים', 'bnei brak', 'בני ברק', 'petah tikva', 'petach tikva',
   'פתח תקווה', 'herzliya', 'הרצליה', 'raanana', "ra'anana", 'רעננה', 'kfar saba', 'כפר סבא', 'hod hasharon', 'הוד השרון',
   'netanya', 'נתניה', 'rishon', 'ראשון לציון', 'rehovot', 'רחובות', 'holon', 'חולון', 'bat yam', 'בת ים', 'rosh haayin',

@@ -48,7 +48,8 @@ const TITLE_FAMILY: [RegExp, string][] = [
   [/\b(qa|q\.a|quality|testing|test)\b|אבטחת איכות|בדיקות/i, 'qa'],
   [/\brelease\b|configuration\s*&?\s*release/i, 'release'],
   [/\b(delivery|professional services|implementation)\b/i, 'delivery'],
-  [/\b(project|program|programme|pmo|תוכנית|פרויקט)/i, 'program'],
+  // 22.11.2026: \b לא עובד לפני אותיות עבריות ב-JavaScript, ולכן "מנהל.ת פרויקטים" לא הותאם אף פעם.
+  [/\b(project|program|programme|pmo)|תוכנית|פרויקט/i, 'program'],
 ];
 
 export function cvFamilyForTitle(title?: string | null): string | null {
