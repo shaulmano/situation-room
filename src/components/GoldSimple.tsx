@@ -34,6 +34,16 @@ export default function GoldSimple({ ready, waiting, dropped }: { ready: GoldRow
     }
   }
 
+  // ויתור על משרה אחת: היא יורדת ולא חוזרת. שאר המשרות בכרטיס נשארות.
+  async function dropJob(jobId: string) {
+    setDoneJobs((p) => new Set(p).add(jobId));
+    const ok = await post('/api/jobs/gold-skip', { id: jobId });
+    if (!ok) {
+      setDoneJobs((p) => { const n = new Set(p); n.delete(jobId); return n; });
+      alert('לא נשמר. נסה שוב.');
+    }
+  }
+
   // ✕: לא רלוונטי. כל המשרות בכרטיס יורדות ולא חוזרות.
   async function drop(r: GoldRow) {
     setGone((p) => new Set(p).add(r.id));
@@ -73,6 +83,7 @@ export default function GoldSimple({ ready, waiting, dropped }: { ready: GoldRow
                     {j.cvFile && <div className="mute gs-cv">לצרף: <code>{j.cvFile}</code></div>}
                   </div>
                   <button type="button" className="apply gs-done" onClick={() => doneJob(r, j.id)}>טופל</button>
+                  <button type="button" className="closed gs-drop" title="לא רלוונטי. המשרה הזאת תרד ולא תחזור" onClick={() => dropJob(j.id)}>מוותר</button>
                   {j.message && (
                     <button type="button" className={'mark gs-copy' + (copied === j.id ? ' on' : '')}
                       onClick={() => copy(j.id, j.message!)}>{copied === j.id ? '✓ הועתק' : 'העתק הודעה'}</button>
@@ -83,7 +94,7 @@ export default function GoldSimple({ ready, waiting, dropped }: { ready: GoldRow
             </div>
             <div className="gs-acts">
               {p?.url && <a className="apply indirect" href={p.url} target="_blank" rel="noreferrer">פתח בלינקדאין</a>}
-              <button type="button" className="closed" title="לא רלוונטי. יירד ולא יחזור" onClick={() => drop(r)}>✕</button>
+              <button type="button" className="closed" title="מוותר על כל המשרות שנשארו בכרטיס" onClick={() => drop(r)}>✕ כל הכרטיס</button>
             </div>
           </div>
         );

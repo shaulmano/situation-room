@@ -534,3 +534,5 @@ a.dup-title{text-decoration:underline;text-underline-offset:2px}
 .gs-acts{grid-template-columns:repeat(2,minmax(0,1fr))}
 
 .gs-done{flex:none}.gs-job{flex-wrap:wrap}
+
+.gs-drop{flex:none}
