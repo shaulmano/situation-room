@@ -72,30 +72,34 @@ export default function GoldSimple({ ready, waiting, dropped }: { ready: GoldRow
       {live.map((r) => {
         const p = r.people[0];
         return (
-          <div className="row gold-simple" key={r.id}>
-            <div className="gs-main">
+          <div className="gold-simple" key={r.id}>
+            <div className="gs-co">
               <b>{r.name}</b>
-              {r.jobs.filter((j) => !doneJobs.has(j.id)).map((j) => (
-                <div className="gs-job" key={j.id}>
-                  <div className="gs-jt">
-                    {j.url ? <a href={j.url} target="_blank" rel="noreferrer">{j.title}</a> : j.title}
-                    <span className="mute"> · {[j.location, j.source].filter(Boolean).join(' · ')}</span>
-                    {j.cvFile && <div className="mute gs-cv">לצרף: <code>{j.cvFile}</code></div>}
-                  </div>
-                  <button type="button" className="apply gs-done" onClick={() => doneJob(r, j.id)}>טופל</button>
-                  <button type="button" className="closed gs-drop" title="לא רלוונטי. המשרה הזאת תרד ולא תחזור" onClick={() => dropJob(j.id)}>מוותר</button>
-                  {j.message && (
-                    <button type="button" className={'mark gs-copy' + (copied === j.id ? ' on' : '')}
-                      onClick={() => copy(j.id, j.message!)}>{copied === j.id ? '✓ הועתק' : 'העתק הודעה'}</button>
-                  )}
+              <button type="button" className="closed gs-all" title="מוותר על כל המשרות שנשארו בכרטיס"
+                onClick={() => drop(r)}>✕ כל הכרטיס</button>
+            </div>
+            {r.jobs.filter((j) => !doneJobs.has(j.id)).map((j) => (
+              <div className="gs-job" key={j.id}>
+                <div className="gs-jt">
+                  {j.url ? <a href={j.url} target="_blank" rel="noreferrer">{j.title}</a> : j.title}
+                  <span className="mute"> · {[j.location, j.source].filter(Boolean).join(' · ')}</span>
                 </div>
-              ))}
-              {p && <div className="gs-who"><b>{p.name}</b> <span className="mute">{p.title}</span></div>}
-            </div>
-            <div className="gs-acts">
-              {p?.url && <a className="apply indirect" href={p.url} target="_blank" rel="noreferrer">פתח בלינקדאין</a>}
-              <button type="button" className="closed" title="מוותר על כל המשרות שנשארו בכרטיס" onClick={() => drop(r)}>✕ כל הכרטיס</button>
-            </div>
+                {p && <div className="gs-who"><b>{p.name}</b> <span className="mute">{p.title}</span></div>}
+                {j.cvFile && <div className="mute gs-cv">לצרף: <code>{j.cvFile}</code></div>}
+                <div className="gs-btns">
+                  {j.message
+                    ? <button type="button" className={'mark' + (copied === j.id ? ' on' : '')}
+                        onClick={() => copy(j.id, j.message!)}>{copied === j.id ? '✓ הועתק' : 'העתק הודעה'}</button>
+                    : <span />}
+                  {p?.url
+                    ? <a className="apply indirect" href={p.url} target="_blank" rel="noreferrer">פתח בלינקדאין</a>
+                    : <span />}
+                  <button type="button" className="apply" onClick={() => doneJob(r, j.id)}>טופל</button>
+                  <button type="button" className="closed" title="לא רלוונטי. המשרה הזאת תרד ולא תחזור"
+                    onClick={() => dropJob(j.id)}>מוותר</button>
+                </div>
+              </div>
+            ))}
           </div>
         );
       })}
