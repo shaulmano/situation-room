@@ -95,6 +95,23 @@ export default function GoldList(
     }
   }
 
+  // סגירת כרטיס שנבנה ממשרה: מוותר על כל המשרות שלו בבת אחת. הוא יורד מיד
+  // וחוזר רק אם אחת הכתיבות נכשלה.
+  async function closeCard(r: GoldRow) {
+    setBusy(r.id);
+    setDone((p) => new Set(p).add(r.id));
+    const results = await Promise.all(r.jobs.map((j) =>
+      fetch('/api/jobs/gold-skip', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: j.id }),
+      }).then((x) => x.ok).catch(() => false)));
+    setBusy(null);
+    if (results.some((ok) => !ok)) {
+      setDone((p) => { const n = new Set(p); n.delete(r.id); return n; });
+      alert('לא הכל נשמר. נסה שוב.');
+    }
+  }
+
   async function copy(key: string, text: string) {
     try {
       await navigator.clipboard.writeText(text);
@@ -242,6 +259,13 @@ export default function GoldList(
             </div>
           </details>
 
+          {r.noCompany && (
+            <div className="gold-acts gold-foot">
+              <button type="button" className="closed" disabled={busy === r.id}
+                title="מוותר על כל המשרות בכרטיס. הוא יירד ולא יחזור"
+                onClick={() => closeCard(r)}>סגור את הכרטיס</button>
+            </div>
+          )}
           {!r.noCompany && <div className="gold-acts gold-foot">
             <button type="button" className="apply" disabled={busy === r.id}
               onClick={() => mark(r.id, 'done')}>{r.people.length ? 'סמן שנשלח' : 'סמן שטופלה'}</button>
