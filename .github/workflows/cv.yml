@@ -26,7 +26,7 @@ on:
   workflow_dispatch:
     inputs:
       mode:
-        description: 'fetch, render, audit, dismissals, migrate, query, checkapi, poster, replies, referrals, referral_pdf, referral_mark, ats_mail, ats_mail_write, boards, boards_add, boards_probe, messaged, pitched, rejections, rejections_write, mail_selftest, mail_test or mail_send'
+        description: 'fetch, render, audit, dismissals, migrate, query, checkapi, poster, replies, referrals, referral_pdf, referral_mark, ats_mail, ats_mail_write, boards, boards_add, boards_probe, messaged, pitched, rejections, rejections_write, mail_selftest, mail_test, mail_send, outbox_list or outbox_mark'
         required: true
         default: 'fetch'
       migration:
@@ -221,6 +221,21 @@ jobs:
           SUPABASE_PROJECT_REF: ${{ secrets.SUPABASE_PROJECT_REF }}
           CONTENT: ${{ inputs.content }}
         run: python sync/messaged_mark.py "$CONTENT"
+
+      # 22.11.2026: תור שליחת הודעות לינקדאין. הסוכן מושך שורות וחוזר
+      # עם התוצאה. outbox_mark: request_id הוא מזהה השורה, filename הוא
+      # sent או failed, content הוא הסיבה לכישלון.
+      - name: LinkedIn outbox
+        if: startsWith(inputs.mode, 'outbox_')
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+          SUPABASE_PROJECT_REF: ${{ secrets.SUPABASE_PROJECT_REF }}
+          ROW_ID: ${{ inputs.request_id }}
+          STATUS: ${{ inputs.filename }}
+          NOTE: ${{ inputs.content }}
+        run: |
+          if [ "${{ inputs.mode }}" = "outbox_list" ]; then python sync/outbox.py list 5
+          else python sync/outbox.py mark "$ROW_ID" "$STATUS" "$NOTE"; fi
 
       # 15.11.2026: גל מאי. אותו מצליב, עמודה אחרת. ראה 0049.
       - name: Mark contacts pitched in the May wave
