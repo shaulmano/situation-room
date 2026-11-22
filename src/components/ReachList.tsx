@@ -38,6 +38,7 @@ export default function ReachList(
   const [done, setDone] = useState<Set<string>>(new Set());
   const [copied, setCopied] = useState<string | null>(null);
   const [busy, setBusy] = useState<string | null>(null);
+  const [queuedN, setQueuedN] = useState(0);
 
   const left = Math.max(0, target - doneToday - done.size);
   const live = rows.filter((r) => !done.has(r.id));
@@ -62,6 +63,27 @@ export default function ReachList(
       });
       alert('לא נשמר. נסה שוב.');
     }
+  }
+
+  // אישור הרשימה: נכנסת לתור, והסקריפט במחשב שולח עם הקובץ. הספירה יורדת
+  // מיד, ואם הכתיבה נכשלת השורות חוזרות.
+  async function queueAll() {
+    const rs = live.filter((r) => r.url);
+    if (rs.length === 0) return;
+    setBusy('queue');
+    rs.forEach((r) => setDone((p) => new Set(p).add(r.id)));
+    const res = await fetch('/api/reach/queue', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ ids: rs.map((r) => r.id) }),
+    }).catch(() => null);
+    setBusy(null);
+    if (!res || !res.ok) {
+      setDone((p) => { const n = new Set(p); rs.forEach((r) => n.delete(r.id)); return n; });
+      alert('לא נשמר. נסה שוב.');
+      return;
+    }
+    const j = await res.json().catch(() => ({}));
+    setQueuedN((n) => n + (j.queued ?? 0));
   }
 
   async function copy(r: ReachRow) {
@@ -89,6 +111,19 @@ export default function ReachList(
         <p className="hint">
           היום: <b>{sentToday}</b> נשלחו, <b>{skippedToday}</b> ויתרת.
           {' '}שניהם נספרים מתוך {target}.
+        </p>
+      )}
+
+      {live.some((r) => r.url) && (
+        <button type="button" className="apply reach-all" disabled={busy === 'queue'}
+          onClick={queueAll}>
+          שלח את כולם מהמחשב ({live.filter((r) => r.url).length})
+        </button>
+      )}
+      {queuedN > 0 && (
+        <p className="hint">
+          <b>{queuedN}</b> נכנסו לתור. הסקריפט במחשב שולח אותם עם הקובץ, אחד אחד.
+          אם אחת נכשלת היא חוזרת לכאן.
         </p>
       )}
 
