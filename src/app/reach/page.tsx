@@ -163,6 +163,8 @@ export default async function Reach() {
         doneToday={done}
         sentToday={sent}
         skippedToday={skipped}
+        exhausted={pool === 0}
+        autoLeft={Math.max(0, AUTO_SEND_PER_DAY - (autoToday ?? 0))}
       />
     </main>
   );
