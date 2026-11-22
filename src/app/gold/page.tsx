@@ -6,7 +6,7 @@ import { rankContacts, isAgency } from '@/lib/pickContact';
 import { cvFamilyForTitle, cvFileFor } from '@/lib/outreach';
 import { israelDayStart, WIDE_CV_FILE } from '@/lib/wideReach';
 import { loadApplied } from '@/lib/priorApplication';
-import { GOLD_DAILY, GOLD_QUOTA, goldGenericMessage, goldMessage, goldRank, loadAliases, type GoldCompany } from '@/lib/gold';
+import { GOLD_DAILY, GOLD_QUOTA, goldConnectNote, goldGenericMessage, goldMessage, goldRank, loadAliases, type GoldCompany } from '@/lib/gold';
 import { jobPlace, cityOf } from '@/lib/jobLocation';
 import { postingKey } from '@/lib/dedupe';
 import { internalApplied } from '@/lib/internalApplied';
@@ -208,6 +208,18 @@ export default async function Gold() {
         .select('id, name, company_key, size_class, size_range, region, city, website, careers_url, is_hiring')
         .in('id', pickedIds)
     : { data: [] as any[] };
+  // מגייסים שנמצאו בחיפוש לחברות בלי איש קשר (gold_recruiters).
+  const finds = new Map<string, { id: string; name: string; headline: string | null; url: string }[]>();
+  if (pickedIds.length) {
+    const { data: fr } = await sb.from('gold_recruiters')
+      .select('id, company_id, full_name, headline, profile_url')
+      .in('company_id', pickedIds).is('contacted_at', null).is('skipped_at', null);
+    for (const f of (fr ?? []) as any[]) {
+      const arr = finds.get(f.company_id) ?? [];
+      arr.push({ id: f.id, name: f.full_name, headline: f.headline, url: f.profile_url });
+      finds.set(f.company_id, arr);
+    }
+  }
   const classOrder: Record<string, number> = { E: 0, M: 1, S: 2 };
   const ranked = ((picked ?? []) as GoldCompany[])
     .map((c) => ({ c, n: c.company_key ? (byKey.get(c.company_key)?.length ?? 0) : 0 }))
@@ -238,6 +250,10 @@ export default async function Gold() {
       recruitersHref: 'https://www.linkedin.com/search/results/people/?keywords=' + encodeURIComponent('recruiter ' + c.name),
       cvFile: top ? cvFileFor(cvId, top.title) : WIDE_CV_FILE,
       jobs: jobs.slice(0, 4).map((j) => ({ id: j.id, title: j.title, url: j.url, source: (j.sources ?? [j.source]).filter(Boolean).join(' + '), verified: isVerified(j), verifiedAt: j.live_checked_at ?? null, location: j.location ?? null, recruiterName: j.recruiter_name ?? null, recruiterUrl: j.recruiter_url ?? null })),
+      finds: (finds.get(c.id) ?? []).map((f) => ({
+        ...f,
+        note: goldConnectNote({ name: f.name, company: c.name, jobTitle: top?.title ?? null }),
+      })),
       people: people.map((p) => ({
         id: p.id,
         name: p.full_name,

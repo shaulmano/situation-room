@@ -23,6 +23,8 @@ export type GoldRow = {
   cvFile: string;
   jobs: { id: string; title: string; url: string | null; source: string | null; verified: boolean; verifiedAt: string | null; location: string | null; recruiterName: string | null; recruiterUrl: string | null }[];
   people: { id: string; name: string; title: string | null; url: string | null; message: string }[];
+  /** מגייסים שנמצאו בחיפוש. לא קשרים: בקשת חברות עם הערה, ואחרי אישור ההודעה עם הקובץ. */
+  finds: { id: string; name: string; headline: string | null; url: string; note: string }[];
 };
 
 /**
@@ -74,6 +76,20 @@ export default function GoldList(
     }
   }
 
+  // מגייס שנמצא בחיפוש: ביקשתי חברות, או ויתור. יורד מיד וחוזר רק אם הכתיבה נכשלה.
+  async function markFind(id: string, field: 'asked' | 'skipped') {
+    setGone((p) => new Set(p).add(id));
+    const res = await fetch('/api/gold', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ recruiterId: id, [field]: true }),
+    }).catch(() => null);
+    if (!res || !res.ok) {
+      setGone((p) => { const n = new Set(p); n.delete(id); return n; });
+      alert('לא נשמר. נסה שוב.');
+    }
+  }
+
   async function copy(key: string, text: string) {
     try {
       await navigator.clipboard.writeText(text);
@@ -101,6 +117,7 @@ export default function GoldList(
       <div className="gold-grid">
       {live.map((r, idx) => {
         const people = r.people.filter((p) => !gone.has(p.id));
+        const finds = r.finds.filter((f) => !gone.has(f.id));
         return (
         <div className={'gold-card ' + (idx % 2 === 0 ? 'c0' : 'c1') + (r.hot ? ' gold-hot' : '')} key={r.id}>
           <div className="gold-head">
@@ -115,7 +132,7 @@ export default function GoldList(
               {r.hiring && <span className="chip mute">מגייסת</span>}
             </div>
             <div className="reach-sub">
-              {people.length === 0 && r.jobs.length === 0
+              {people.length === 0 && finds.length === 0 && r.jobs.length === 0
                 ? 'אין איש קשר ולא ידוע על משרה'
                 : <>
                     {r.contactsTotal > 0 ? `${r.contactsTotal} מכרים שלך כאן` : 'אין איש קשר'}
@@ -159,6 +176,28 @@ export default function GoldList(
                 <button type="button" className="closed"
                   title="לא רלוונטי. יירד ולא יחזור"
                   onClick={() => skipPerson(p.id)}>מוותר</button>
+              </div>
+            </div>
+          ))}
+
+          {finds.map((f) => (
+            <div className="gold-sec" key={f.id}>
+              <h4>איש גיוס שנמצא, לא חבר שלך</h4>
+              <div className="gold-pn">
+                <b>{f.name}</b>
+                <span className="mute">{f.headline}</span>
+              </div>
+              <div className="gold-meta">בקשת חברות עם הערה. את הקובץ שולחים אחרי שהוא מאשר.</div>
+              <div className="gold-acts three">
+                <button
+                  type="button" className={'mark' + (copied === f.id ? ' on' : '')}
+                  onClick={() => copy(f.id, f.note)}
+                >{copied === f.id ? '✓ הועתק' : 'העתק הערה'}</button>
+                <a className="apply indirect" href={f.url} target="_blank" rel="noreferrer">פתח בלינקדאין</a>
+                <button type="button" className="apply" onClick={() => markFind(f.id, 'asked')}>ביקשתי חברות</button>
+              </div>
+              <div className="gold-acts">
+                <button type="button" className="closed" onClick={() => markFind(f.id, 'skipped')}>מוותר</button>
               </div>
             </div>
           ))}

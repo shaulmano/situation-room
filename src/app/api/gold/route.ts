@@ -10,6 +10,13 @@ export const dynamic = 'force-dynamic';
 export async function POST(req: NextRequest) {
   const body = await req.json().catch(() => null);
   const now = new Date().toISOString();
+  // מגייס שנמצא בחיפוש (gold_recruiters): "ביקשתי חברות" או ויתור.
+  if (typeof body?.recruiterId === 'string' && (body?.asked === true || body?.skipped === true)) {
+    const { error } = await serverClient().from('gold_recruiters')
+      .update(body.asked ? { contacted_at: now } : { skipped_at: now }).eq('id', body.recruiterId);
+    if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+    return NextResponse.json({ ok: true });
+  }
   // ויתור על איש קשר בודד, לא על כל החברה.
   if (typeof body?.contactId === 'string' && typeof body?.skipped === 'boolean') {
     const { error } = await serverClient().from('contacts')

@@ -125,3 +125,19 @@ export async function goldKeySet(sb: any, keys: string[]): Promise<Set<string>> 
   }
   return out;
 }
+
+
+/**
+ * הערה לבקשת חברות למגייס שאינו קשר של שאול (נמצא בחיפוש, ראה
+ * gold_recruiters). לינקדאין מגבילה הערה ל-300 תווים, ואי אפשר לצרף בה
+ * קובץ. הקובץ נשלח אחרי שהוא מאשר, במסך "אישר חברות".
+ */
+export function goldConnectNote(opts: { name: string; company: string; jobTitle?: string | null }): string {
+  const hi = `Hi ${firstName(opts.name) || 'there'},`;
+  const co = englishCompany(opts.company);
+  const body = opts.jobTitle
+    ? `I saw that ${co} is hiring a ${opts.jobTitle}. I'm a Program / QA leader with 15+ years in high-tech, and I would be glad to connect and send you my CV.`
+    : `I'm a Program / QA leader with 15+ years in high-tech, looking for my next role. I would be glad to connect and send you my CV.`;
+  const note = `${hi} ${body} Thanks, Shaul`;
+  return note.length <= 295 ? note : `${hi} I'm a Program / QA leader with 15+ years in high-tech and would be glad to connect and send you my CV. Thanks, Shaul`;
+}

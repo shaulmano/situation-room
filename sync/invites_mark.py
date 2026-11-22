@@ -92,12 +92,21 @@ def main():
             # נשמרים, והוא מבחין בין קשר מדרגה ראשונה לבין מי שאינו. אדם
             # שאישר את בקשת החברות של שאול הוא קשר מדרגה ראשונה מרגע
             # האישור, ולכן זה הצד המותר של הכלל ולא חריג לו.
+            # 22.11.2026: מגייס שנמצא בחיפוש לחברות זהב (gold_recruiters)
+            # מגיע לכאן אחרי שאישר. החברה שלו ידועה משם, ובלעדיה המכתב
+            # אחרי האישור לא יידע על איזו חברה לדבר.
+            found = sql('select c.name, c.company_key from gold_recruiters g '
+                        'join companies c on c.id = g.company_id '
+                        'where lower(g.full_name) = {n} limit 1'.format(n=q(norm(name))))
+            co = found[0] if found else None
             sql('insert into contacts '
-                '(full_name, title, linkedin_url, invite_accepted_at, source, '
-                'imported_at, updated_at) '
-                'values ({name},{title},{url},{at},\'linkedin_invite\',now(),now())'
+                '(full_name, title, company, company_key, linkedin_url, '
+                'invite_accepted_at, source, imported_at, updated_at) '
+                'values ({name},{title},{co},{ck},{url},{at},\'linkedin_invite\',now(),now())'
                 .format(name=q(name[:120]),
                         title=q((r.get('title') or '')[:120] or None),
+                        co=q(co['name'] if co else None),
+                        ck=q(co['company_key'] if co else None),
                         url=q((r.get('url') or '')[:300] or None), at=at_sql))
             created += 1
             print('  new contact: %s' % name[:46])
