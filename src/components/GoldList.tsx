@@ -1,6 +1,7 @@
 'use client';
 import MarkApplied from './MarkApplied';
 import GoldSkipJob from './GoldSkipJob';
+import QueueSend from './QueueSend';
 import { useState } from 'react';
 
 export type GoldRow = {
@@ -148,7 +149,10 @@ export default function GoldList(
                 <b>{p.name}</b>
                 <span className="mute">{p.title}</span>
               </div>
-              <div className="gold-acts three">
+              <div className="gold-acts four">
+                {p.url
+                  ? <QueueSend contactId={p.id} url={p.url} name={p.name} message={p.message} cvFile={r.cvFile} jobId={r.jobs[0]?.id} />
+                  : <span />}
                 <button
                   type="button" className={'mark' + (copied === p.id ? ' on' : '')}
                   onClick={() => copy(p.id, p.message)}
