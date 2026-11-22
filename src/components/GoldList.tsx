@@ -188,15 +188,13 @@ export default function GoldList(
                 <span className="mute">{f.headline}</span>
               </div>
               <div className="gold-meta">בקשת חברות עם הערה. את הקובץ שולחים אחרי שהוא מאשר.</div>
-              <div className="gold-acts three">
+              <div className="gold-acts four">
                 <button
                   type="button" className={'mark' + (copied === f.id ? ' on' : '')}
                   onClick={() => copy(f.id, f.note)}
                 >{copied === f.id ? '✓ הועתק' : 'העתק הערה'}</button>
                 <a className="apply indirect" href={f.url} target="_blank" rel="noreferrer">פתח בלינקדאין</a>
                 <button type="button" className="apply" onClick={() => markFind(f.id, 'asked')}>ביקשתי חברות</button>
-              </div>
-              <div className="gold-acts">
                 <button type="button" className="closed" onClick={() => markFind(f.id, 'skipped')}>מוותר</button>
               </div>
             </div>
