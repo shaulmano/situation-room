@@ -545,3 +545,8 @@ a.dup-title{text-decoration:underline;text-underline-offset:2px}
 .gs-btns{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:.45rem;margin-top:.55rem}
 .gs-btns>*{width:100%;box-sizing:border-box;text-align:center}
 @media (min-width:900px){.gs-btns{grid-template-columns:repeat(4,minmax(0,1fr))}}
+
+.gs-btns3{grid-template-columns:repeat(3,minmax(0,1fr))}
+@media (max-width:600px){.gs-btns3{grid-template-columns:1fr}}
+.gs-job{display:flex;justify-content:space-between;align-items:center;gap:.6rem}
+.gold-simple .gs-job{display:flex;justify-content:space-between;align-items:center;gap:.6rem;padding:.5rem .7rem}

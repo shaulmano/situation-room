@@ -1,6 +1,7 @@
 'use client';
 import { useState } from 'react';
 import type { GoldRow } from './GoldList';
+import { goldMultiMessage } from '@/lib/gold';
 
 /**
  * מסך זהב בגרסה הפשוטה. 22.11.2026, שאול: "הוספנו הרבה והכל רק מסרבל".
@@ -18,18 +19,20 @@ export default function GoldSimple({ ready, waiting, dropped }: { ready: GoldRow
     fetch(url, { method, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) })
       .then((x) => x.ok).catch(() => false);
 
-  // טופל על משרה אחת: רושם פנייה לאיש עם המשרה הזאת ומסמן הגשה פנימית עליה.
-  // שאר המשרות בכרטיס נשארות, כך שאפשר לפנות לכמה משרות באותה חברה.
-  // המשרה יורדת מיד וחוזרת רק אם הכתיבה נכשלה.
-  async function doneJob(r: GoldRow, jobId: string) {
-    setDoneJobs((p) => new Set(p).add(jobId));
+  // טופל: הודעה אחת נשלחה לאיש על כל המשרות שנשארו בכרטיס. נרשמת פנייה אחת לאיש,
+  // והגשה פנימית נפרדת לכל משרה, כדי שהספירה תישאר נכונה. הכרטיס יורד מיד
+  // וחוזר רק אם משהו נכשל.
+  async function doneCard(r: GoldRow) {
+    const jobs = r.jobs.filter((j) => !doneJobs.has(j.id));
+    if (!jobs.length) return;
+    setDoneJobs((p) => { const n = new Set(p); jobs.forEach((j) => n.add(j.id)); return n; });
     const person = r.people[0];
     const results = await Promise.all([
-      person ? post('/api/contacts', { id: person.id, contacted: true, jobId }, 'PATCH') : true,
-      post('/api/jobs/applied', { id: jobId, internal: true }),
+      person ? post('/api/contacts', { id: person.id, contacted: true, jobId: jobs[0].id }, 'PATCH') : true,
+      ...jobs.map((j) => post('/api/jobs/applied', { id: j.id, internal: true })),
     ]);
     if (results.some((ok) => !ok)) {
-      setDoneJobs((p) => { const n = new Set(p); n.delete(jobId); return n; });
+      setDoneJobs((p) => { const n = new Set(p); jobs.forEach((j) => n.delete(j.id)); return n; });
       alert('לא הכל נשמר. נסה שוב.');
     }
   }
@@ -71,6 +74,12 @@ export default function GoldSimple({ ready, waiting, dropped }: { ready: GoldRow
 
       {live.map((r) => {
         const p = r.people[0];
+        const jobs = r.jobs.filter((j) => !doneJobs.has(j.id));
+        const files = [...new Set(jobs.map((j) => j.cvFile).filter(Boolean))] as string[];
+        const message = goldMultiMessage({
+          contactName: p?.name ?? '', contactTitle: p?.title ?? 'Recruiter', company: r.name,
+          jobs: jobs.map((j) => ({ title: j.title, url: j.url, foundFor: j.foundFor ?? null })),
+        });
         return (
           <div className="gold-simple" key={r.id}>
             <div className="gs-co">
@@ -78,28 +87,29 @@ export default function GoldSimple({ ready, waiting, dropped }: { ready: GoldRow
               <button type="button" className="closed gs-all" title="מוותר על כל המשרות שנשארו בכרטיס"
                 onClick={() => drop(r)}>✕ כל הכרטיס</button>
             </div>
-            {r.jobs.filter((j) => !doneJobs.has(j.id)).map((j) => (
+            {p && <div className="gs-who"><b>{p.name}</b> <span className="mute">{p.title}</span></div>}
+            {jobs.map((j) => (
               <div className="gs-job" key={j.id}>
                 <div className="gs-jt">
                   {j.url ? <a href={j.url} target="_blank" rel="noreferrer">{j.title}</a> : j.title}
                   <span className="mute"> · {[j.location, j.source].filter(Boolean).join(' · ')}</span>
+                  {files.length > 1 && j.cvFile && <div className="mute gs-cv">לצרף: <code>{j.cvFile}</code></div>}
                 </div>
-                {p && <div className="gs-who"><b>{p.name}</b> <span className="mute">{p.title}</span></div>}
-                {j.cvFile && <div className="mute gs-cv">לצרף: <code>{j.cvFile}</code></div>}
-                <div className="gs-btns">
-                  {j.message
-                    ? <button type="button" className={'mark' + (copied === j.id ? ' on' : '')}
-                        onClick={() => copy(j.id, j.message!)}>{copied === j.id ? '✓ הועתק' : 'העתק הודעה'}</button>
-                    : <span />}
-                  {p?.url
-                    ? <a className="apply indirect" href={p.url} target="_blank" rel="noreferrer">פתח בלינקדאין</a>
-                    : <span />}
-                  <button type="button" className="apply" onClick={() => doneJob(r, j.id)}>טופל</button>
-                  <button type="button" className="closed" title="לא רלוונטי. המשרה הזאת תרד ולא תחזור"
-                    onClick={() => dropJob(j.id)}>מוותר</button>
-                </div>
+                <button type="button" className="closed gs-drop" title="לא רלוונטי. המשרה הזאת תרד ולא תחזור, וגם לא תופיע בהודעה"
+                  onClick={() => dropJob(j.id)}>מוותר</button>
               </div>
             ))}
+            {files.length === 1 && <div className="mute gs-cv">לצרף: <code>{files[0]}</code></div>}
+            <div className="gs-btns gs-btns3">
+              <button type="button" className={'mark' + (copied === r.id ? ' on' : '')}
+                onClick={() => copy(r.id, message)}>
+                {copied === r.id ? '✓ הועתק' : jobs.length > 1 ? `העתק הודעה (${jobs.length} משרות)` : 'העתק הודעה'}
+              </button>
+              {p?.url
+                ? <a className="apply indirect" href={p.url} target="_blank" rel="noreferrer">פתח בלינקדאין</a>
+                : <span />}
+              <button type="button" className="apply" onClick={() => doneCard(r)}>טופל</button>
+            </div>
           </div>
         );
       })}

@@ -310,6 +310,7 @@ export default async function Gold() {
       jobs: jobs.slice(0, 4).map((j) => ({ id: j.id, title: j.title, url: j.url, source: (j.sources ?? [j.source]).filter(Boolean).join(' + '), verified: isVerified(j), verifiedAt: j.live_checked_at ?? null, location: j.location ?? null, recruiterName: j.recruiter_name ?? null, recruiterUrl: j.recruiter_url ?? null,
         // הודעה וקובץ לכל משרה בנפרד: אותה חברה יכולה להחזיק משרת QA ומשרת פרויקטים,
         // ולכל אחת קישור וקובץ קורות חיים משלה.
+        foundFor: j.found_for ?? null,
         ...(() => {
           const jcv = cvFamilyForTitle(j.title) ?? 'project-release-manager';
           const jj = { title: j.title, url: j.url, foundFor: j.found_for };

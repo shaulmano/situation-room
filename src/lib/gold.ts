@@ -1,4 +1,4 @@
-import { englishCompany, isRecruiter, referralMessage } from '@/lib/outreach';
+import { cleanJobUrl, englishCompany, englishTitle, isRecruiter, referralMessage } from '@/lib/outreach';
 import { firstName } from '@/lib/wideReach';
 
 /**
@@ -140,4 +140,41 @@ export function goldConnectNote(opts: { name: string; company: string; jobTitle?
     : `I'm a Program / QA leader with 15+ years in high-tech, looking for my next role. I would be glad to connect and send you my CV.`;
   const note = `${hi} ${body} Thanks, Shaul`;
   return note.length <= 295 ? note : `${hi} I'm a Program / QA leader with 15+ years in high-tech and would be glad to connect and send you my CV. Thanks, Shaul`;
+}
+
+
+/**
+ * הודעה אחת למגייס/ת על כמה משרות באותה חברה. 22.11.2026, שאול: שתי הודעות
+ * לאותה מגייסת על משרות שונות נראות רע. משרה אחת: אותה הודעה כמו תמיד.
+ */
+export function goldMultiMessage(opts: {
+  contactName: string;
+  contactTitle?: string | null;
+  company: string;
+  jobs: { title: string; url: string | null; foundFor: string | null }[];
+}): string {
+  if (opts.jobs.length <= 1) {
+    return goldMessage({
+      contactName: opts.contactName, contactTitle: opts.contactTitle, company: opts.company,
+      job: opts.jobs[0] ?? null,
+    }).replace(/^Hi ,/, 'Hi,');
+  }
+  const ask = isRecruiter(opts.contactTitle)
+    ? "I'm attaching my CV for the following positions, and I would be glad if you could take a look:"
+    : "I'm attaching my CV for the following positions, and I would be glad if you could pass it on internally to the relevant recruiters:";
+  const items = opts.jobs.map((j) => {
+    const title = englishTitle({ jobTitle: j.title, foundFor: j.foundFor });
+    const link = cleanJobUrl(j.url);
+    return link ? `- ${title}: ${link}` : `- ${title}`;
+  });
+  return [
+    `Hi ${firstName(opts.contactName)},`,
+    `I saw that you work at ${englishCompany(opts.company)}.`,
+    ask,
+    '',
+    ...items,
+    '',
+    'Thanks a lot,',
+    'Shaul',
+  ].join('\n').replace(/^Hi ,/, 'Hi,');
 }
