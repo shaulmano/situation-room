@@ -688,3 +688,4 @@ a.dup-title{text-decoration:underline;text-underline-offset:2px}
 .gs-job{flex-wrap:wrap}
 .gs-job .gs-drop{width:auto!important;flex:none;align-self:flex-start;min-width:92px}
 .gold-simple .gs-job a{color:var(--ink)}
+.cn-acts>span:empty{display:none}

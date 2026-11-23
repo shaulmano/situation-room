@@ -159,45 +159,47 @@ export default function ReachList(
         </div>
       )}
 
-      {live.map((r) => (
-        <div className="row reach-row" key={r.id}>
-          <div className="reach-who">
-            <b>{r.name}</b>
-            <span className="chip mute">{BUCKET_LABEL[r.bucket]}</span>
-            {r.followUp && <span className="chip mute">פנייה שנייה</span>}
+      <div className="cn-list">
+        {live.map((r) => (
+          <div className="cn-card" key={r.id}>
+            <div className="cn-info">
+              <div className="cn-top">
+                <b className="cn-name">{r.name}</b>
+                <span className="chip mute">{BUCKET_LABEL[r.bucket]}</span>
+                {r.followUp && <span className="chip mute">פנייה שנייה</span>}
+              </div>
+              <div className="cn-title">
+                {[r.title, r.company].filter(Boolean).join(' · ')}
+              </div>
+            </div>
+            <div className="cn-acts">
+              <button
+                type="button"
+                className={'cn-b' + (copied === r.id ? ' on' : '')}
+                onClick={() => copy(r)}
+              >
+                {copied === r.id ? '✓ הועתק' : 'העתק הודעה'}
+              </button>
+              {r.url
+                ? <a className="cn-b" href={r.url} target="_blank" rel="noreferrer">פתח בלינקדאין</a>
+                : <span />}
+              <button
+                type="button" className="cn-b main" disabled={busy === r.id}
+                onClick={() => mark(r.id, 'sent')}
+              >
+                סמן שנשלח
+              </button>
+              <button
+                type="button" className="cn-b quiet" disabled={busy === r.id}
+                title="לא רלוונטי. יירד מהתור ולא יחזור"
+                onClick={() => mark(r.id, 'skipped')}
+              >
+                מוותר
+              </button>
+            </div>
           </div>
-          <div className="reach-sub">
-            {[r.title, r.company].filter(Boolean).join(' · ')}
-          </div>
-          <div className="reach-acts">
-            <button
-              type="button"
-              className={'mark' + (copied === r.id ? ' on' : '')}
-              onClick={() => copy(r)}
-            >
-              {copied === r.id ? '✓ הועתק' : 'העתק הודעה'}
-            </button>
-            {r.url && (
-              <a className="apply indirect" href={r.url} target="_blank" rel="noreferrer">
-                פתח בלינקדאין
-              </a>
-            )}
-            <button
-              type="button" className="apply" disabled={busy === r.id}
-              onClick={() => mark(r.id, 'sent')}
-            >
-              סמן שנשלח
-            </button>
-            <button
-              type="button" className="closed" disabled={busy === r.id}
-              title="לא רלוונטי. יירד מהתור ולא יחזור"
-              onClick={() => mark(r.id, 'skipped')}
-            >
-              מוותר
-            </button>
-          </div>
-        </div>
-      ))}
+        ))}
+      </div>
     </>
   );
 }
