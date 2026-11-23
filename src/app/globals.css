@@ -700,3 +700,13 @@ a.dup-title{text-decoration:underline;text-underline-offset:2px}
   .gold-simple.cn-card{grid-template-columns:1fr!important}
   .gold-simple .cn-acts{grid-template-columns:1fr 1fr}
 }
+
+/* זהב, בלוקים פנימיים: אותו כרטיס. מידע בצד ימין, כפתורים בצד שמאל, כל כרטיס פנימי בצבע ההפוך מההורה */
+.gold-sec.cn-card{display:grid!important;grid-template-columns:minmax(0,1fr) auto!important;align-items:center!important;gap:12px!important}
+.gold-sec .cn-info{min-width:0;display:flex;flex-direction:column;gap:.35rem}
+.gold-sec .cn-acts{grid-template-columns:repeat(2,minmax(104px,auto))}
+@media (min-width:1100px){.gold-sec .cn-acts{grid-template-columns:repeat(4,auto)}}
+@media (max-width:760px){.gold-sec.cn-card{grid-template-columns:1fr!important}.gold-sec .cn-acts{grid-template-columns:1fr 1fr}}
+.gold-card.c0 .gold-sec.cn-card{background:#FBF3D3;border:1px solid #E3CF86}
+.gold-card.c1 .gold-sec.cn-card,.gold-card.c2 .gold-sec.cn-card{background:#E8F2FA;border:1px solid #B4D0E6}
+.gold-foot{margin-top:.4rem}

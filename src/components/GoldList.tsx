@@ -173,7 +173,8 @@ export default function GoldList(
 
           <div className="gold-body">
           {r.jobs.map((j) => (
-            <div className="gold-sec" key={j.id}>
+            <div className="gold-sec cn-card" key={j.id}>
+              <div className="cn-info">
               <h4>משרה פתוחה</h4>
               <div className="gold-jt">
                 {j.url ? <a href={j.url} target="_blank" rel="noreferrer">{j.title}</a> : j.title}
@@ -184,26 +185,29 @@ export default function GoldList(
                   <> · מפרסם: <a href={j.recruiterUrl} target="_blank" rel="noreferrer">{j.recruiterName || 'פתח פרופיל'}</a></>
                 )}
               </div>
-              <div className="gold-acts"><MarkApplied id={j.id} internal /><GoldSkipJob id={j.id} /></div>
+              </div>
+              <div className="cn-acts cn-flow"><MarkApplied id={j.id} internal /><GoldSkipJob id={j.id} /></div>
             </div>
           ))}
 
           {people.map((p) => (
-            <div className="gold-sec" key={p.id}>
+            <div className="gold-sec cn-card" key={p.id}>
+              <div className="cn-info">
               <h4>{r.tier === 'blue' ? 'איש גיוס מאומת' : 'איש קשר שלך'}</h4>
               <div className="gold-pn">
                 <b>{p.name}</b>
                 <span className="mute">{p.title}</span>
               </div>
-              <div className="gold-acts three">
+              </div>
+              <div className="cn-acts">
                 <button
-                  type="button" className={'mark' + (copied === p.id ? ' on' : '')}
+                  type="button" className={'cn-b' + (copied === p.id ? ' on' : '')}
                   onClick={() => copy(p.id, p.message)}
                 >{copied === p.id ? '✓ הועתק' : 'העתק הודעה'}</button>
                 {p.url
-                  ? <a className="apply indirect" href={p.url} target="_blank" rel="noreferrer">פתח בלינקדאין</a>
+                  ? <a className="cn-b" href={p.url} target="_blank" rel="noreferrer">פתח בלינקדאין</a>
                   : <span />}
-                <button type="button" className="closed"
+                <button type="button" className="cn-b quiet"
                   title="לא רלוונטי. יירד ולא יחזור"
                   onClick={() => skipPerson(p.id)}>מוותר</button>
               </div>
@@ -211,34 +215,38 @@ export default function GoldList(
           ))}
 
           {finds.map((f) => (
-            <div className="gold-sec" key={f.id}>
+            <div className="gold-sec cn-card" key={f.id}>
+              <div className="cn-info">
               <h4>איש גיוס שנמצא, לא חבר שלך</h4>
               <div className="gold-pn">
                 <b>{f.name}</b>
                 <span className="mute">{f.headline}</span>
               </div>
               <div className="gold-meta">בקשת חברות עם הערה. את הקובץ שולחים אחרי שהוא מאשר.</div>
-              <div className="gold-acts four">
+              </div>
+              <div className="cn-acts">
                 <button
-                  type="button" className={'mark' + (copied === f.id ? ' on' : '')}
+                  type="button" className={'cn-b' + (copied === f.id ? ' on' : '')}
                   onClick={() => copy(f.id, f.note)}
                 >{copied === f.id ? '✓ הועתק' : 'העתק הערה'}</button>
-                <a className="apply indirect" href={f.url} target="_blank" rel="noreferrer">פתח בלינקדאין</a>
-                <button type="button" className="apply" onClick={() => markFind(f.id, 'asked')}>ביקשתי חברות</button>
-                <button type="button" className="closed" onClick={() => markFind(f.id, 'skipped')}>מוותר</button>
+                <a className="cn-b" href={f.url} target="_blank" rel="noreferrer">פתח בלינקדאין</a>
+                <button type="button" className="cn-b main" onClick={() => markFind(f.id, 'asked')}>ביקשתי חברות</button>
+                <button type="button" className="cn-b quiet" onClick={() => markFind(f.id, 'skipped')}>מוותר</button>
               </div>
             </div>
           ))}
 
-          <div className="gold-sec">
+          <div className="gold-sec cn-card">
+            <div className="cn-info">
             <h4>מגייס/ת שלא ברשימה</h4>
             <div className="gold-meta">לצרף: <code>{r.cvFile}</code></div>
-            <div className="gold-acts">
+            </div>
+            <div className="cn-acts">
               <button
-                type="button" className={'mark' + (copied === 'g' + r.id ? ' on' : '')}
+                type="button" className={'cn-b' + (copied === 'g' + r.id ? ' on' : '')}
                 onClick={() => copy('g' + r.id, r.genericMessage)}
               >{copied === 'g' + r.id ? '✓ הועתק' : 'העתק הודעה גנרית'}</button>
-              <a className="apply indirect" href={r.recruitersHref} target="_blank" rel="noreferrer">מגייסים בחברה</a>
+              <a className="cn-b" href={r.recruitersHref} target="_blank" rel="noreferrer">מגייסים בחברה</a>
             </div>
           </div>
 
@@ -261,12 +269,12 @@ export default function GoldList(
 
           {/* אותם שני כפתורים בכל כרטיס. כרטיס שנבנה ממשרה (בלי חברה ברשימה) סוגר
               את כל המשרות שלו, כי אין לו החלטה ברמת חברה. */}
-          <div className="gold-acts gold-foot">
-            <button type="button" className="apply" disabled={busy === r.id}
+          <div className="cn-acts gold-foot">
+            <button type="button" className="cn-b main" disabled={busy === r.id}
               onClick={() => (r.noCompany ? closeCard(r) : mark(r.id, 'done'))}>
               {r.people.length ? 'סמן שנשלח' : 'סמן שטופלה'}
             </button>
-            <button type="button" className="closed" disabled={busy === r.id}
+            <button type="button" className="cn-b quiet" disabled={busy === r.id}
               title="לא רלוונטי. יירד מהתור ולא יחזור"
               onClick={() => (r.noCompany ? closeCard(r) : mark(r.id, 'skipped'))}>מוותר</button>
           </div>
