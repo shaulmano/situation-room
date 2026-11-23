@@ -663,3 +663,14 @@ a.dup-title{text-decoration:underline;text-underline-offset:2px}
 .cn-b.main,.cn-flow>.main{border-color:#946526!important}
 .cn-b.on,.mark.on,.cn-flow>.on{border-color:#2f7d5b!important}
 .gold-sec{border:1px solid color-mix(in srgb,var(--btn-line) 55%,transparent)}
+
+/* 23.11.2026, שאול: תכלת וצהבהב בכל המסכים. בזהב הצבע נקבע לפי איש גיוס מאומת.
+   בשאר המסכים אין סיווג כזה, ולכן הצבעים מתחלפים בין כרטיס לכרטיס. */
+.cn-list>.cn-card:nth-child(odd),.list>.row:nth-child(odd),.row.job:nth-of-type(odd),
+.row.reach-row:nth-of-type(odd),.iq>.iq-row:nth-child(odd){background:#E8F2FA;border-color:#B4D0E6}
+.cn-list>.cn-card:nth-child(even),.list>.row:nth-child(even),.row.job:nth-of-type(even),
+.row.reach-row:nth-of-type(even),.iq>.iq-row:nth-child(even){background:#FBF3D3;border-color:#E3CF86}
+.rp-card{background:rgba(255,255,255,.55)!important}
+@media (prefers-color-scheme:dark){
+  .cn-list>.cn-card,.list>.row,.row.job,.row.reach-row,.iq>.iq-row{background:var(--surface)!important;border-color:var(--line)!important}
+}
