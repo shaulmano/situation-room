@@ -710,3 +710,10 @@ a.dup-title{text-decoration:underline;text-underline-offset:2px}
 .gold-card.c0 .gold-sec.cn-card{background:#FBF3D3;border:1px solid #E3CF86}
 .gold-card.c1 .gold-sec.cn-card,.gold-card.c2 .gold-sec.cn-card{background:#E8F2FA;border:1px solid #B4D0E6}
 .gold-foot{margin-top:.4rem}
+
+/* זהב, כרטיס משרות: הכפתורים בראש הכרטיס ולא באמצע, ו"מוותר" של משרה בקצה השורה שלה */
+.gold-simple.cn-card{align-items:start!important}
+.gold-simple .gs-job{display:flex!important;flex-wrap:nowrap!important;align-items:center;justify-content:space-between;gap:10px}
+.gold-simple .gs-job .gs-jt{flex:1;min-width:0}
+.gold-simple .gs-job .gs-drop{flex:none;align-self:center;min-width:84px;order:2}
+@media (max-width:760px){.gold-simple .gs-job{flex-wrap:wrap!important}.gold-simple .gs-job .gs-drop{width:100%!important}}
