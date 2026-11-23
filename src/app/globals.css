@@ -627,3 +627,9 @@ a.dup-title{text-decoration:underline;text-underline-offset:2px}
   min-height:38px!important;width:100%!important;padding:.5em .8em!important;font-size:.82rem!important;
   font-weight:700!important;border-radius:6px!important;text-align:center;text-decoration:none}
 @media (max-width:760px){.gold-acts,.gold-acts.three,.reach-acts{grid-template-columns:1fr 1fr}.gold-acts>*,.reach-acts>*{white-space:normal}}
+
+/* .row הוא flex ולכן הכפתורים נדחקו לצד הטקסט ולא תפסו רוחב (פנייה רחבה, 23.11).
+   כרטיס עם כפתורים הוא בלוק, והכפתורים ברוחב מלא. */
+.row.reach-row{display:block}
+.row.reach-row .reach-acts{width:100%;margin-top:.2rem}
+@media (max-width:760px){.reach-acts{grid-template-columns:1fr 1fr!important}}
