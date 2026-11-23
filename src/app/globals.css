@@ -610,8 +610,8 @@ a.dup-title{text-decoration:underline;text-underline-offset:2px}
 .radar-tile .rt-n{min-width:2.2ch;text-align:center;line-height:1}
 
 /* משרות זהב: אותו כרטיס ואותם כפתורים כמו בקשות חברות */
-.gold-simple{background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:12px 14px}
-.gold-simple .gs-job{background:transparent;border:0;border-top:1px solid var(--line);border-radius:0;padding:.5rem 0}
+.gold-simple{background:#E8F2FA;border:1px solid #B4D0E6;border-radius:12px;padding:12px 14px}
+.gold-simple .gs-job{background:rgba(255,255,255,.45);border:1px solid #B4D0E6;border-radius:8px;padding:.5rem .7rem}
 .gs-drop.cn-b{min-width:0;padding:.35em .8em;font-size:.8rem}
 .gs-acts4{margin-top:.2rem}
 .gs-acts4>span{display:none}
@@ -654,3 +654,12 @@ a.dup-title{text-decoration:underline;text-underline-offset:2px}
 .cn-b.main:hover,.cn-flow>.main:hover{background:#946526!important;filter:brightness(1.08)}
 /* כרטיס אדם בתוך כרטיס: אותו כרטיס, לא אפור שונה */
 .rp-card{background:var(--surface)!important;border:1px solid var(--line)}
+
+/* גבול כפתור אחד לכל הכפתורים, כהה מספיק כדי שיראה גם על בלוק תכלת וצהבהב.
+   הצבעים של הבלוקים (תכלת: איש גיוס מאומת, צהבהב: בלי) נשארים כפי שנקבעו. */
+:root{--btn-line:#A9B6C4}
+.apply,.mark,.closed,.apply.indirect,.cn-b,
+.cn-flow>button,.cn-flow>a,.gold-acts>*,.reach-acts>*{border-color:var(--btn-line)!important}
+.cn-b.main,.cn-flow>.main{border-color:#946526!important}
+.cn-b.on,.mark.on,.cn-flow>.on{border-color:#2f7d5b!important}
+.gold-sec{border:1px solid color-mix(in srgb,var(--btn-line) 55%,transparent)}
