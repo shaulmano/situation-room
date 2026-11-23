@@ -81,7 +81,8 @@ export default function GoldSimple({ ready, waiting, dropped }: { ready: GoldRow
           jobs: jobs.map((j) => ({ title: j.title, url: j.url, foundFor: j.foundFor ?? null })),
         });
         return (
-          <div className="gold-simple" key={r.id}>
+          <div className="gold-simple cn-card" key={r.id}>
+            <div className="cn-info">
             <div className="gs-co">
               <b>{r.name}</b>
             </div>
@@ -98,6 +99,7 @@ export default function GoldSimple({ ready, waiting, dropped }: { ready: GoldRow
               </div>
             ))}
             {files.length === 1 && <div className="mute gs-cv">לצרף: <code>{files[0]}</code></div>}
+            </div>
             <div className="cn-acts gs-acts4">
               <button type="button" className={'cn-b' + (copied === r.id ? ' on' : '')}
                 onClick={() => copy(r.id, message)}>
