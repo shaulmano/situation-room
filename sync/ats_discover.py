@@ -88,7 +88,7 @@ def slugs(name, website):
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument('--sizes', default='M,E')
-    ap.add_argument('--limit', type=int, default=1500)
+    ap.add_argument('--limit', type=int, default=350)
     ap.add_argument('--write', action='store_true')
     a = ap.parse_args()
     sizes = ",".join(q(x.strip()) for x in a.sizes.split(','))
@@ -127,12 +127,18 @@ def main():
         summary(f'== {pf}: {len(rows)} boards, {sum(r[3] for r in rows)} Israel postings')
         for n, tok, total, il in sorted(rows, key=lambda r: -r[3])[:15]:
             summary(f'  {n} [{tok}] {il}/{total}')
-    if a.write and keep:
-        vals = ",".join(f"({q(r[0]['id'])},{q(r[1])},{q(r[2])},{int(r[3])},{int(r[4])})" for r in keep)
+    if a.write:
+        # חברה שנבדקה ולא נמצא לה לוח מסומנת, כדי שלא תיבדק שוב בכל ריצה.
+        hit = {r[0]['id'] for r in keep}
+        rows = [(r[0]['id'], r[1], r[2], r[3], r[4]) for r in keep]
+        rows += [(c['id'], 'none', '', 0, 0) for c in comps if c['id'] not in hit]
+        if not rows:
+            return
+        vals = ",".join(f"({q(i)},{q(pf)},{q(tok) if tok else chr(39)*2},{int(t)},{int(il)})" for i, pf, tok, t, il in rows)
         sql("insert into company_ats (company_id, platform, token, postings, il_postings) values "
             + vals + " on conflict (company_id, platform, token) do update set postings=excluded.postings, "
             "il_postings=excluded.il_postings, checked_at=now()")
-        summary(f'wrote {len(keep)}')
+        summary(f'wrote {len(rows)} ({len(keep)} boards)')
 
 
 if __name__ == '__main__':
