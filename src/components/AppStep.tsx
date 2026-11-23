@@ -72,7 +72,7 @@ export default function AppStep({ id, status, stage, nextAt, nextKind }: Props) 
   };
 
   return (
-    <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, width: '100%', marginTop: 8 }}>
+    <div className="cn-flow" style={{ marginTop: 8 }}>
       {/* מה שההגשה הגיעה אליו נשאר על המסך גם אחרי דחייה. */}
       {stage && (
         <span className="chip ok" style={{ alignSelf: 'center' }}>
@@ -109,7 +109,7 @@ export default function AppStep({ id, status, stage, nextAt, nextKind }: Props) 
       {saved && <span className="chip mute" style={{ alignSelf: 'center' }}>{saved}</span>}
 
       {open && (
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, width: '100%' }}>
+        <div className="cn-flow">
           <input
             type="datetime-local" value={when} onChange={(e) => setWhen(e.target.value)}
             style={{ flex: '1 1 170px', minWidth: 0, padding: '.45em .6em',

@@ -199,7 +199,7 @@ export default function WarmPicker({ picks }: { picks: Pick[] }) {
             ))}
           </div>
 
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, alignItems: 'center' }}>
+          <div className="cn-flow">
             <button type="button" style={btn} disabled={busy || chosen.size === 0} onClick={queue}>
               {busy ? '…' : `הכן שליחה (${chosen.size})`}
             </button>
@@ -281,7 +281,7 @@ export default function WarmPicker({ picks }: { picks: Pick[] }) {
                 {p.queued?.body || 'אין נוסח'}
               </div>
 
-              <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, alignItems: 'center' }}>
+              <div className="cn-flow">
                 {/* 13.11.2026: כפתור "קורות החיים" הוסר. הוא נפל להורדה
                     רגילה כשתפריט השיתוף לא היה זמין, ובאייפון הורדה כזאת
                     מציגה את ה-PDF על כל המסך בלי שום דרך לסגור אותו.
@@ -342,7 +342,7 @@ export default function WarmPicker({ picks }: { picks: Pick[] }) {
       )}
 
       {picks.some((p) => p.queued && !['pending', 'test_sent'].includes(p.queued.status)) && (
-        <div style={{ marginTop: 10, display: 'flex', flexWrap: 'wrap', gap: 5 }}>
+        <div className="cn-flow" style={{ marginTop: 10 }}>
           {picks
             .filter((p) => p.queued && !['pending', 'test_sent'].includes(p.queued!.status))
             .map((p) => (

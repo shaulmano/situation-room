@@ -618,3 +618,12 @@ a.dup-title{text-decoration:underline;text-underline-offset:2px}
 
 /* כרטיסים: מחשב = מידע בצד וארבעה כפתורים בשורה. טלפון = מידע למעלה וכפתורים 2x2. */
 .gold-simple{display:flex;flex-direction:column;align-items:stretch;gap:.6rem}
+
+/* תוכן שאינו כפתור בתוך שורת כפתורים (צ'יפ, טקסט, קוד) תופס שורה שלמה */
+.cn-flow>:not(button):not(a){grid-column:1/-1;align-self:center}
+/* שורות כפתורים שנבנו במחלקות ישנות: אותה משפחה ואותה פריסה */
+.gold-acts,.gold-acts.three,.reach-acts{display:grid;grid-template-columns:repeat(4,minmax(92px,auto));gap:6px;justify-content:start}
+.gold-acts>*,.reach-acts>*{display:inline-flex!important;align-items:center;justify-content:center;box-sizing:border-box;
+  min-height:38px!important;width:100%!important;padding:.5em .8em!important;font-size:.82rem!important;
+  font-weight:700!important;border-radius:6px!important;text-align:center;text-decoration:none}
+@media (max-width:760px){.gold-acts,.gold-acts.three,.reach-acts{grid-template-columns:1fr 1fr}.gold-acts>*,.reach-acts>*{white-space:normal}}

@@ -233,7 +233,7 @@ export default function JobBrief({
         onChange={(e) => { setText(e.target.value); setState(''); }}
         placeholder="הדבק כאן…"
       />
-      <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center' }}>
+      <div className="cn-flow">
         <button
           type="button"
           style={btn}
@@ -277,7 +277,7 @@ export default function JobBrief({
             </span>
             {/* הפקודה עצמה על השורה, ולא במקום אחר שצריך לזכור. מי שלא רוצה
                 לחכות לשעה העגולה פשוט מעתיק אותה לקלוד. */}
-            <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center' }}>
+            <div className="cn-flow">
               <span style={{ fontSize: '.76rem', color: 'var(--muted)' }}>
                 רוצה שזה יקרה עכשיו? כתוב לקלוד:
               </span>
@@ -294,7 +294,7 @@ export default function JobBrief({
         )}
 
         {req && req.status === 'error' && (
-          <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center' }}>
+          <div className="cn-flow">
             <span className="chip crit">{req.note || 'הייצור נכשל'}</span>
             <button type="button" style={btn} onClick={() => askForCv(req.id)}>נסה שוב</button>
           </div>
@@ -302,7 +302,7 @@ export default function JobBrief({
 
         {req && req.status === 'done' && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-          <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center' }}>
+          <div className="cn-flow">
             {req.filename ? (
               <button type="button" style={btn} onClick={deliverCv}>
                 {dlMsg || 'הורד קורות חיים'}

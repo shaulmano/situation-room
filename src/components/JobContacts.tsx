@@ -432,7 +432,7 @@ function Contact({
               resize: 'vertical',
             }}
           />
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginTop: 6, alignItems: 'center' }}>
+          <div className="cn-flow" style={{ marginTop: 6 }}>
             <span style={{ fontSize: '.72rem', color: 'var(--muted)' }}>קורות חיים:</span>
             {CVS.map(([id, label]) => (
               <button
@@ -450,7 +450,7 @@ function Contact({
             ))}
           </div>
 
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginTop: 6 }}>
+          <div className="cn-flow" style={{ marginTop: 6 }}>
             <button type="button" style={button} onClick={copy}>
               {copied ? 'הועתק' : 'העתק'}
             </button>
