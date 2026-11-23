@@ -641,3 +641,16 @@ a.dup-title{text-decoration:underline;text-underline-offset:2px}
 .job-acts{width:100%}
 .job-acts>details,.job-acts>div{grid-column:1/-1}
 .job-acts .dup{margin:0}
+
+/* תקן צבע אחד לכל הכפתורים: בהירים, מסגרת אפורה (לא לבנה), בלי צבע ייחודי לכל מסך.
+   רק הפעולה הראשית (.main) ממולאת. ירוק רק למצב "בוצע" (.on). */
+.apply,.mark,.closed,.apply.indirect,.cn-b,
+.cn-flow>button,.cn-flow>a,.gold-acts>*,.reach-acts>*{
+  background:transparent!important;border:1px solid var(--line)!important;color:var(--ink)!important;box-shadow:none}
+.cn-b.quiet,.cn-flow>.quiet{color:var(--muted)!important}
+.cn-b.on,.mark.on,.cn-flow>.on{border-color:#2f7d5b!important;color:#2f7d5b!important}
+.cn-b.main,.cn-flow>.main{background:#946526!important;border-color:#946526!important;color:#fff!important}
+.apply:hover,.mark:hover,.closed:hover,.cn-b:hover{background:var(--raised)!important;filter:none}
+.cn-b.main:hover,.cn-flow>.main:hover{background:#946526!important;filter:brightness(1.08)}
+/* כרטיס אדם בתוך כרטיס: אותו כרטיס, לא אפור שונה */
+.rp-card{background:var(--surface)!important;border:1px solid var(--line)}

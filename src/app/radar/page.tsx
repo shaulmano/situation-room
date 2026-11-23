@@ -192,7 +192,7 @@ export default async function Radar({
 
               <RadarPeople people={peopleFor(j)} />
 
-              <div className="actions">
+              <div className="cn-flow">
                 <a className="apply" href={j.url} target="_blank" rel="noreferrer">
                   לעמוד המשרה
                 </a>
