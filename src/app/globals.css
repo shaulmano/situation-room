@@ -678,3 +678,13 @@ a.dup-title{text-decoration:underline;text-underline-offset:2px}
 /* בלוק בתוך בלוק בצבע אחר מההורה: אדם בכרטיס משרה מקבל את הצבע ההפוך */
 .list>.row:nth-child(odd) .rp-card,.row.job:nth-of-type(odd) .rp-card{background:#FBF3D3!important;border-color:#E3CF86}
 .list>.row:nth-child(even) .rp-card,.row.job:nth-of-type(even) .rp-card{background:#E8F2FA!important;border-color:#B4D0E6}
+
+/* זהב: בלוק פנימי בצבע ההפוך מההורה (תכלת בתוך צהבהב, צהבהב בתוך תכלת), לא לבן.
+   הכפתור "מוותר" של משרה בודדת בגודל כפתור רגיל ולא נמתח על כל הרוחב. */
+.gold-simple .gs-job{background:#FBF3D3!important;border:1px solid #E3CF86!important}
+.gold-card.c0 .gold-sec{background:#FBF3D3;border:1px solid #E3CF86}
+.gold-card.c1 .gold-sec{background:#E8F2FA;border:1px solid #B4D0E6}
+.gold-card.c2 .gold-sec{background:#E8F2FA;border:1px solid #B4D0E6}
+.gs-job{flex-wrap:wrap}
+.gs-job .gs-drop{width:auto!important;flex:none;align-self:flex-start;min-width:92px}
+.gold-simple .gs-job a{color:var(--ink)}
