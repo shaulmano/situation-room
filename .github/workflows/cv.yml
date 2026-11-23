@@ -26,7 +26,7 @@ on:
   workflow_dispatch:
     inputs:
       mode:
-        description: 'fetch, render, audit, dismissals, migrate, query, checkapi, poster, replies, referrals, referral_pdf, referral_mark, ats_mail, ats_mail_write, boards, boards_add, boards_probe, messaged, pitched, rejections, rejections_write, mail_selftest, mail_test or mail_send'
+        description: 'fetch, render, audit, dismissals, migrate, query, checkapi, poster, replies, referrals, referral_pdf, referral_mark, ats_mail, ats_mail_write, boards, boards_add, boards_probe, ats_discover, ats_read, messaged, pitched, rejections, rejections_write, mail_selftest, mail_test or mail_send'
         required: true
         default: 'fetch'
       migration:
@@ -251,6 +251,23 @@ jobs:
               # דברים לאורך כל 2026.
               python sync/boards.py read > /tmp/boards.json
               python sync/seo_jobs.py "$(cat /tmp/boards.json)"
+              python sync/score.py missing
+              ;;
+          esac
+
+      # 23.11.2026: גילוי מערכת הגיוס של כל חברה ברשימה, וקריאת הלוחות שנמצאו.
+      - name: Company ATS discovery and read
+        if: startsWith(inputs.mode, 'ats_')
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+          SUPABASE_PROJECT_REF: ${{ secrets.SUPABASE_PROJECT_REF }}
+          ARGS: ${{ inputs.content }}
+        run: |
+          case "${{ inputs.mode }}" in
+            ats_discover) python sync/ats_discover.py $ARGS --write ;;
+            *)
+              python sync/ats_read.py > /tmp/ats.json
+              python sync/seo_jobs.py "$(cat /tmp/ats.json)"
               python sync/score.py missing
               ;;
           esac
