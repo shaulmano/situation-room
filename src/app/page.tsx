@@ -18,6 +18,7 @@ import DuplicateCheck from '@/components/DuplicateCheck';
 import { loadApplied, priorApplication } from '@/lib/priorApplication';
 import { DAILY_TARGET, israelDayStart } from '@/lib/wideReach';
 import { internalApplied } from '@/lib/internalApplied';
+import { goldReadyCount } from '@/lib/goldCount';
 
 export const dynamic = 'force-dynamic';
 
@@ -88,6 +89,7 @@ export default async function Dashboard({
   const appliedIds = new Set(applied.rows.map((a: any) => a.job_id).filter(Boolean));
   // כמה פניות רחבות נשארו להיום. ראה src/lib/wideReach.
   const reachLeft = Math.max(0, DAILY_TARGET - (wideToday.count ?? 0));
+  const goldReady = await goldReadyCount(sb);
   const { count: connectWaiting } = await sb.from('gold_recruiters').select('id', { count: 'exact', head: true })
     .is('contacted_at', null).is('skipped_at', null);
   // 15.11.2026: "יש לי תחושה שהגשתי כבר למשרות האלו". אותה משרה מלוח אחר
@@ -443,9 +445,9 @@ export default async function Dashboard({
       <Link className="radar-tile" href="/gold">
         <span className="rt-t">
           <b>חברות זהב ←</b>
-          <span>חברות שיש בהן מי שאתה מכיר, 40 ביום</span>
+          <span>{goldReady === null ? 'חברות שיש בהן מי שאתה מכיר' : goldReady === 0 ? 'אין כרגע משרה עם איש גיוס מאומת' : 'משרות מוכנות לפנייה'}</span>
         </span>
-        <span className="rt-n">★</span>
+        <span className="rt-n">{goldReady ?? '★'}</span>
       </Link>
 
       <Link className="radar-tile" href="/reach">
