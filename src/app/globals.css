@@ -572,3 +572,19 @@ a.dup-title{text-decoration:underline;text-underline-offset:2px}
   .cn-acts{grid-template-columns:1fr 1fr}
   .cn-b{min-width:0;padding:.7em .5em}
 }
+
+/* 23.11.2026, שאול: "נראה מעולה בטלפון ובמחשב, תחיל את זה על כל מקום שיש כפתור."
+   גודל, יישור ופינות אחידים לכל הכפתורים. הצבעים נשארים לפי משפחה. */
+.apply,.mark,.closed{
+  display:inline-flex;align-items:center;justify-content:center;box-sizing:border-box;
+  min-height:38px;font-size:.86rem;font-weight:700;line-height:1.2;border-radius:6px;text-align:center;
+}
+.apply,.mark{padding:.5em .9em}
+.closed{padding:.5em .7em}
+.apply.indirect{border-width:1px;border-style:solid}
+.reach-acts{display:grid;grid-template-columns:repeat(4,auto);justify-content:start;gap:6px}
+.reach-acts > *{width:auto;min-width:92px;min-height:38px;font-size:.86rem;padding:.5em .9em;border-radius:6px}
+@media (max-width:760px){
+  .reach-acts{grid-template-columns:1fr 1fr}
+  .reach-acts > *{min-width:0;width:100%;padding:.7em .5em}
+}
