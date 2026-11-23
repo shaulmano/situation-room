@@ -439,8 +439,8 @@ export default async function Dashboard({
           <b>מכרים: מה לעשות היום ←</b>
           <span>
             {warmToday === null ? 'הגשות של היום שיש בהן מי שאתה מכיר'
-              : warmToday === 0 ? 'אין כרגע פנייה דרך מכר שמחכה'
-              : 'הגשות של היום שמחכות לפנייה דרך מכר'}
+              : warmToday === 0 ? 'אין כרגע תגובה או פנייה שמחכות'
+              : 'תגובות והגשות של היום שמחכות לך'}
           </span>
         </span>
         <span className="rt-n">{warmToday ?? '←'}</span>
