@@ -31,6 +31,9 @@ export type ReachContact = {
   li_seen_at?: string | null;
   /** קיבל את הפנייה הראשונה בגל מאי 2026. ראה migration 0049. */
   first_pitch_at?: string | null;
+  /** ענה לו. מי שענה אינו מקבל פנייה שנייה. */
+  replied_at?: string | null;
+  reply_url?: string | null;
 };
 
 // מגייס ראשון, כי "VP People" הוא גיוס ולא בכיר לענייננו.
@@ -109,6 +112,18 @@ export function looksLikeAgency(company?: string | null, title?: string | null):
   return AGENCY_NAME.test(c);
 }
 
+/**
+ * פנייה שנייה למגייסים.
+ *
+ * 23.11.2026. שאול: "אתה אומר שנגמרו המגייסות בחברות הייטק בישראל? יש
+ * אלפים." נמדד: 680 מגייסים בחברות אמיתיות, ול-634 מהם כבר כתב ולא ענו.
+ * הכלל מ-15.11 ("כבר כתבתי להם, זה סתם") הוציא את כולם מהתור. הוא אישר
+ * נוסח שני, קצר, שאומר שזה עדכון ולא היכרות.
+ */
+export function isFollowUp(c: { title?: string | null; li_seen_at?: string | null; first_pitch_at?: string | null }): boolean {
+  return bucketOf(c.title) === 'recruiter' && !!(c.li_seen_at || c.first_pitch_at);
+}
+
 export function eligible(c: ReachContact, now = Date.now()): boolean {
   if (!c.linkedin_url) return false;
   if (c.wide_sent_at || c.wide_skipped_at) return false;
@@ -118,12 +133,16 @@ export function eligible(c: ReachContact, now = Date.now()): boolean {
   // שיחה קיימת בלינקדאין פירושה שכבר כתב לו. 15.11.2026: "כולן כבר
   // קיבלו ממני לפני כמה חודשים את ההודעה הראשונה... זה נראה לי סתם
   // שליחה כי גם אז לא ענו לי."
-  if (c.li_seen_at) return false;
+  // 23.11.2026: מגייס בחברה אמיתית שכבר כתבת לו ולא ענה מקבל פנייה שנייה,
+  // ראה `isFollowUp`. לכל השאר שיחה קיימת עדיין פוסלת.
+  const recruiterFollowUp = bucket === 'recruiter';
+  if (c.li_seen_at && !recruiterFollowUp) return false;
   // **וגל מאי 2026 הוא פנייה לכל דבר.** 920 בקשות חברות יצאו אז עם
   // הערה שאומרת "actively looking for my next role as a Senior Program
   // Manager / QA Leader. Happy to send my CV if anything fits", כלומר
   // בדיוק ההודעה הראשונה. ראה migration 0049.
-  if (c.first_pitch_at) return false;
+  if (c.first_pitch_at && !recruiterFollowUp) return false;
+  if (c.replied_at || c.reply_url) return false;
   // **מגייס, רק אם הוא מגייס של חברה אמיתית.**
   if (bucket === 'recruiter' && looksLikeAgency(c.company, c.title)) return false;
   if (c.contacted_at) {
@@ -172,6 +191,9 @@ export function sortQueue(rows: ReachContact[], dayKey = israelDayStart().slice(
     const ba = ORDER[bucketOf(a.title)!] ?? 9;
     const bb = ORDER[bucketOf(b.title)!] ?? 9;
     if (ba !== bb) return ba - bb;
+    const fa = isFollowUp(a) ? 1 : 0;
+    const fb = isFollowUp(b) ? 1 : 0;
+    if (fa !== fb) return fa - fb;
     const ra = r.get(a.id) ?? 0;
     const rb = r.get(b.id) ?? 0;
     if (ra !== rb) return ra - rb;
@@ -277,10 +299,22 @@ export function firstName(full?: string | null): string {
  * מה שנשאר הוא מה שהקובץ לא אומר: מה הוא מחפש, ומה הוא מבקש. **אל
  * תוסיף לזה שורות.** כל תוספת כאן כבר נוסתה ונפסלה.
  */
-export function wideMessage(c: ReachContact | { full_name?: string | null }): string {
+export function wideMessage(c: ReachContact | { full_name?: string | null; title?: string | null; li_seen_at?: string | null; first_pitch_at?: string | null }): string {
   // 15.11.2026, שאול: "זה יותר אישי". זאת ההתאמה האישית היחידה בהודעה
   // קבועה, ולכן היא שווה את עצמה.
   const name = firstName((c as any).full_name) || 'there';
+  if (isFollowUp(c as any)) {
+    // הנוסח שאושר ב-23.11.2026, מילה במילה. אל תשנה בלי לשאול.
+    return [
+      `Hi ${name},`,
+      '',
+      'I wrote to you a while back when I started looking for my next role. Quick update: ' +
+        "I'm still looking for a Program, Project or QA management role in Israel, and I'm attaching my CV. " +
+        "If anything is open now, or you hear of something, I'd be glad to talk.",
+      'Thanks,',
+      'Shaul',
+    ].join('\n');
+  }
   return [
     `Hi ${name},`,
     '',

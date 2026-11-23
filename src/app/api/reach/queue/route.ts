@@ -24,7 +24,7 @@ export async function POST(req: NextRequest) {
 
   const sb = serverClient();
   const { data: rows, error } = await sb.from('contacts')
-    .select('id, full_name, linkedin_url, wide_sent_at, wide_skipped_at')
+    .select('id, full_name, title, li_seen_at, first_pitch_at, linkedin_url, wide_sent_at, wide_skipped_at')
     .in('id', ids);
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 
@@ -45,7 +45,7 @@ export async function POST(req: NextRequest) {
 
   const { error: insErr } = await sb.from('li_outbox').insert(fresh.map((r: any) => ({
     contact_id: r.id, profile_url: r.linkedin_url, to_name: r.full_name ?? null,
-    message: wideMessage({ full_name: displayName(r.full_name) }), cv_file: WIDE_CV_FILE, job_id: null, kind: 'wide',
+    message: wideMessage({ full_name: displayName(r.full_name), title: r.title, li_seen_at: r.li_seen_at, first_pitch_at: r.first_pitch_at }), cv_file: WIDE_CV_FILE, job_id: null, kind: 'wide',
   })));
   if (insErr) return NextResponse.json({ error: insErr.message }, { status: 500 });
   const { error: upErr } = await sb.from('contacts')

@@ -2,7 +2,7 @@ import Link from 'next/link';
 import { serverClient } from '@/lib/server';
 import ReachList, { type ReachRow } from '@/components/ReachList';
 import {
-  AUTO_SEND_PER_DAY, DAILY_TARGET, RECRUITERS_ONLY, WIDE_CV_FILE, bucketOf, displayName, eligible, israelDayStart,
+  AUTO_SEND_PER_DAY, DAILY_TARGET, RECRUITERS_ONLY, WIDE_CV_FILE, bucketOf, displayName, eligible, isFollowUp, israelDayStart,
   looksLikeAgency, sortQueue, wideMessage, type ReachContact,
 } from '@/lib/wideReach';
 
@@ -22,7 +22,7 @@ async function fetchPool(sb: ReturnType<typeof serverClient>) {
   for (let from = 0; from < 6000; from += 1000) {
     const { data, error } = await sb.from('contacts')
       .select('id, full_name, title, company, linkedin_url, contacted_at, '
-        + 'wide_sent_at, wide_skipped_at, left_company_at, li_seen_at, first_pitch_at')
+        + 'wide_sent_at, wide_skipped_at, left_company_at, li_seen_at, first_pitch_at, replied_at, reply_url')
       .is('wide_sent_at', null)
       .is('wide_skipped_at', null)
       .not('linkedin_url', 'is', null)
@@ -106,6 +106,7 @@ export default async function Reach() {
     url: c.linkedin_url ?? null,
     bucket: bucketOf(c.title)!,
     message: wideMessage(c),
+    followUp: isFollowUp(c),
   }));
 
   const pool = queue.length;
@@ -123,8 +124,9 @@ export default async function Reach() {
     if (c.left_company_at) continue;
     const b = bucketOf(c.title);
     if (!b) { out.bucket++; continue; }
-    if (c.first_pitch_at) { out.pitch++; continue; }
-    if (c.li_seen_at) { out.thread++; continue; }
+    if (c.replied_at || c.reply_url) { out.thread++; continue; }
+    if (c.first_pitch_at && b !== 'recruiter') { out.pitch++; continue; }
+    if (c.li_seen_at && b !== 'recruiter') { out.thread++; continue; }
     if (b === 'recruiter' && looksLikeAgency(c.company, c.title)) { out.agency++; continue; }
     // כל השערים האחרים עברו, ולכן מי שאינו זכאי כאן נפל על כלל 60 הימים.
     if (!eligible(c)) out.recent++;
@@ -148,7 +150,7 @@ export default async function Reach() {
         <summary>◀ מי לא נכנס לתור, ולמה</summary>
         <ul className="reach-why">
           <li><b>{out.pitch}</b> קיבלו את ההודעה הראשונה בגל מאי 2026, בבקשת חברות או בהודעה</li>
-          <li><b>{out.thread}</b> כבר יש איתם שיחה פתוחה בלינקדאין</li>
+          <li><b>{out.thread}</b> ענו לך, או שיש איתם שיחה פתוחה והם אינם מגייסים</li>
           <li><b>{out.agency}</b> מגייסים, אבל בחברת השמה ולא בחברה שמגייסת לעצמה</li>
           <li><b>{out.recent}</b> פנית אליהם על משרה קונקרטית בפחות מ-60 יום</li>
           <li><b>{out.bucket}</b> התפקיד שלהם אינו גיוס, אינו בתחום ואינו בכיר</li>
@@ -157,7 +159,7 @@ export default async function Reach() {
 
       <ReachList
         rows={rows}
-        sample={wideMessage({ full_name: rows[0]?.name ?? 'Mor Barki' })}
+        sample={rows[0]?.message ?? wideMessage({ full_name: 'Mor Barki' })}
         cvFile={WIDE_CV_FILE}
         target={DAILY_TARGET}
         doneToday={done}

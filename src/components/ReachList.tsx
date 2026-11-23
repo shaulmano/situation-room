@@ -12,6 +12,8 @@ export type ReachRow = {
   /** ההודעה שלו, עם שמו הפרטי בפתיחה. נבנית בשרת כדי שמה שמוצג
    *  בתצוגה המקדימה ומה שמועתק יהיו אותו דבר. */
   message: string;
+  /** פנייה שנייה: כבר כתבת לו והוא לא ענה. */
+  followUp?: boolean;
 };
 
 /**
@@ -132,7 +134,7 @@ export default function ReachList(
       )}
 
       <p className="hint">
-        הנוסח קבוע וזהה לכולם. <b>העתק</b>, <b>פתח בלינקדאין</b>, הדבק, צרף את{' '}
+        הנוסח קבוע לפי סוג השורה (חדש או פנייה שנייה). <b>העתק</b>, <b>פתח בלינקדאין</b>, הדבק, צרף את{' '}
         <code>{cvFile}</code>, שלח, ואז <b>סמן שנשלח</b>.
         {/* 15.11.2026, שאול: "בגדול יש לי את הקובץ ב files של האייפון
             וגם בלינקדאין". לכן זה קישור קטן ולא כפתור: הוא נחוץ רק
@@ -162,6 +164,7 @@ export default function ReachList(
           <div className="reach-who">
             <b>{r.name}</b>
             <span className="chip mute">{BUCKET_LABEL[r.bucket]}</span>
+            {r.followUp && <span className="chip mute">פנייה שנייה</span>}
           </div>
           <div className="reach-sub">
             {[r.title, r.company].filter(Boolean).join(' · ')}
