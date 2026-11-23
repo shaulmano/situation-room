@@ -206,38 +206,16 @@ export default async function Radar({
       </div>
 
       <style>{`
-        main { padding: 12px 14px 40px; max-width: 760px; margin: 0 auto; }
-        .head { display: flex; align-items: baseline; justify-content: space-between;
-                gap: 10px; flex-wrap: wrap; }
-        h1 { font-size: 1.25rem; margin: 0 0 2px; }
-        .sub { color: var(--muted); font-size: .8rem; line-height: 1.5; margin: 6px 0 14px; }
-        .alert { background: color-mix(in srgb, var(--bad) 14%, var(--surface));
-                 border: 1px solid var(--bad); border-radius: 8px; padding: 10px;
-                 font-size: .85rem; margin-bottom: 12px; }
-        .empty { background: var(--raised); border: 1px solid var(--hair);
-                 border-radius: 8px; padding: 14px; font-size: .85rem;
-                 line-height: 1.6; color: var(--muted); }
-        .chips { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 12px; }
-        .chip { font-size: .72rem; padding: .25em .6em; border-radius: 999px;
-                border: 1px solid var(--hair); background: var(--raised);
-                color: var(--muted); white-space: nowrap; }
-        .chip.on { background: var(--accent); color: #fff; border-color: var(--accent); }
-        .list { display: flex; flex-direction: column; gap: 8px; }
-        .row { display: block; background: var(--surface); border: 1px solid var(--hair);
-               border-radius: 8px; padding: 12px 14px; }
-        .row .rp { width: 100%; }
+        .chips { display: flex; flex-wrap: wrap; gap: 6px; margin: 4px 0 12px; }
+        .chips a.chip { text-decoration: none; border: 1px solid var(--btn-line);
+                        background: transparent; color: var(--ink); padding: .3em .8em; font-size: .8rem; }
+        .chips a.chip.on { background: #946526; border-color: #946526; color: #fff; }
+        .list { display: flex; flex-direction: column; gap: 8px; margin-top: 10px; }
         .rowtop { display: flex; align-items: flex-start; justify-content: space-between; gap: 8px; }
-        .title { font-weight: 700; font-size: .92rem; line-height: 1.35; }
-        .meta { color: var(--muted); font-size: .76rem; margin-top: 4px;
+        .title { font-weight: 700; font-size: .95rem; line-height: 1.35; color: var(--ink); text-decoration: none; }
+        .meta { color: var(--muted); font-size: .8rem; margin-top: 4px;
                 display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
-        /* אותו עימוד של "בקשות חברות": ארבעה בשורה במחשב, שניים על שניים בטלפון. */
-        .actions { display: grid; grid-template-columns: repeat(4, auto); justify-content: start;
-                   gap: 6px; margin-top: 10px; }
-        .actions > * { min-width: 92px; white-space: nowrap; }
-        @media (max-width: 760px) {
-          .actions { grid-template-columns: 1fr 1fr; }
-          .actions > * { min-width: 0; width: 100%; padding: .7em .5em; }
-        }
+        .row .rp { width: 100%; }
       `}</style>
     </main>
   );

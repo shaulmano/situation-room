@@ -674,3 +674,7 @@ a.dup-title{text-decoration:underline;text-underline-offset:2px}
 @media (prefers-color-scheme:dark){
   .cn-list>.cn-card,.list>.row,.row.job,.row.reach-row,.iq>.iq-row{background:var(--surface)!important;border-color:var(--line)!important}
 }
+
+/* בלוק בתוך בלוק בצבע אחר מההורה: אדם בכרטיס משרה מקבל את הצבע ההפוך */
+.list>.row:nth-child(odd) .rp-card,.row.job:nth-of-type(odd) .rp-card{background:#FBF3D3!important;border-color:#E3CF86}
+.list>.row:nth-child(even) .rp-card,.row.job:nth-of-type(even) .rp-card{background:#E8F2FA!important;border-color:#B4D0E6}
