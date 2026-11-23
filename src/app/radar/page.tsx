@@ -223,18 +223,20 @@ export default async function Radar({
                 color: var(--muted); white-space: nowrap; }
         .chip.on { background: var(--accent); color: #fff; border-color: var(--accent); }
         .list { display: flex; flex-direction: column; gap: 8px; }
-        .row { background: var(--surface); border: 1px solid var(--hair);
-               border-radius: 8px; padding: 10px; }
+        .row { display: block; background: var(--surface); border: 1px solid var(--hair);
+               border-radius: 8px; padding: 12px 14px; }
+        .row .rp { width: 100%; }
         .rowtop { display: flex; align-items: flex-start; justify-content: space-between; gap: 8px; }
         .title { font-weight: 700; font-size: .92rem; line-height: 1.35; }
         .meta { color: var(--muted); font-size: .76rem; margin-top: 4px;
                 display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
-        .actions { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
-        .apply { font-size: .78rem; font-weight: 700; padding: .45em .9em;
-                 border-radius: 6px; background: var(--accent); color: #fff; }
-        /* 390 פיקסלים: הכפתורים לא נדחסים לשורה אחת צרה. */
-        @media (max-width: 420px) {
-          .actions > * { flex: 1 1 auto; text-align: center; }
+        /* אותו עימוד של "בקשות חברות": ארבעה בשורה במחשב, שניים על שניים בטלפון. */
+        .actions { display: grid; grid-template-columns: repeat(4, auto); justify-content: start;
+                   gap: 6px; margin-top: 10px; }
+        .actions > * { min-width: 92px; white-space: nowrap; }
+        @media (max-width: 760px) {
+          .actions { grid-template-columns: 1fr 1fr; }
+          .actions > * { min-width: 0; width: 100%; padding: .7em .5em; }
         }
       `}</style>
     </main>
