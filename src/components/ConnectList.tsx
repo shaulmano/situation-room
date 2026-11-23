@@ -43,23 +43,27 @@ export default function ConnectList({ rows }: { rows: ConnectRow[] }) {
           <p>החיפוש במחשב מוסיף אותם בכל ריצה.</p>
         </div>
       )}
-      {live.map((r) => (
-        <div className="row reach-row" key={r.id}>
-          <div className="reach-who">
-            <b>{r.name}</b>
-            <span className="chip mute">{r.company}</span>
+      <div className="cn-list">
+        {live.map((r) => (
+          <div className="cn-card" key={r.id}>
+            <div className="cn-info">
+              <div className="cn-top">
+                <b className="cn-name">{r.name}</b>
+                <span className="cn-co">{r.company}</span>
+              </div>
+              <div className="cn-title">{r.headline}</div>
+            </div>
+            <div className="cn-acts">
+              <button type="button" className={'cn-b' + (copied === r.id ? ' on' : '')} onClick={() => copy(r)}>
+                {copied === r.id ? '✓ הועתק' : 'העתק הערה'}
+              </button>
+              <a className="cn-b" href={r.url} target="_blank" rel="noreferrer">פתח בלינקדאין</a>
+              <button type="button" className="cn-b main" onClick={() => mark(r.id, 'asked')}>ביקשתי</button>
+              <button type="button" className="cn-b quiet" onClick={() => mark(r.id, 'skipped')}>מוותר</button>
+            </div>
           </div>
-          <div className="reach-sub">{r.headline}</div>
-          <div className="reach-acts">
-            <button type="button" className={'mark' + (copied === r.id ? ' on' : '')} onClick={() => copy(r)}>
-              {copied === r.id ? '✓ הועתק' : 'העתק הערה'}
-            </button>
-            <a className="apply indirect" href={r.url} target="_blank" rel="noreferrer">פתח בלינקדאין</a>
-            <button type="button" className="apply" onClick={() => mark(r.id, 'asked')}>ביקשתי</button>
-            <button type="button" className="closed" onClick={() => mark(r.id, 'skipped')}>מוותר</button>
-          </div>
-        </div>
-      ))}
+        ))}
+      </div>
     </>
   );
 }
