@@ -616,9 +616,5 @@ a.dup-title{text-decoration:underline;text-underline-offset:2px}
 .gs-acts4{margin-top:.2rem}
 .gs-acts4>span{display:none}
 
-/* החלטה 23.11.2026: אותו מבנה אנכי במחשב ובטלפון, בכל המסכים.
-   מידע למעלה, כפתורים 2x2 מתחת. אין פריסה נפרדת למסך רחב. */
-.cn-card{grid-template-columns:1fr!important;gap:10px!important;align-items:stretch}
-.cn-acts,.cn-flow,.rp-card .cn-acts{grid-template-columns:1fr 1fr!important;max-width:520px}
-.cn-b,.cn-flow>button,.cn-flow>a{min-width:0!important}
-.gold-simple{display:flex!important;flex-direction:column!important;align-items:stretch!important;gap:.6rem!important}
+/* כרטיסים: מחשב = מידע בצד וארבעה כפתורים בשורה. טלפון = מידע למעלה וכפתורים 2x2. */
+.gold-simple{display:flex;flex-direction:column;align-items:stretch;gap:.6rem}
