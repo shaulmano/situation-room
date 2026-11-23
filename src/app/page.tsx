@@ -88,6 +88,8 @@ export default async function Dashboard({
   const appliedIds = new Set(applied.rows.map((a: any) => a.job_id).filter(Boolean));
   // כמה פניות רחבות נשארו להיום. ראה src/lib/wideReach.
   const reachLeft = Math.max(0, DAILY_TARGET - (wideToday.count ?? 0));
+  const { count: connectWaiting } = await sb.from('gold_recruiters').select('id', { count: 'exact', head: true })
+    .is('contacted_at', null).is('skipped_at', null);
   // 15.11.2026: "יש לי תחושה שהגשתי כבר למשרות האלו". אותה משרה מלוח אחר
   // היא כתובת אחרת, ולכן מזהה לבדו לא תופס אותה. ראה priorApplication.ts.
   const priorIdx = applied.idx;
@@ -456,6 +458,14 @@ export default async function Dashboard({
           </span>
         </span>
         <span className="rt-n">{reachLeft}</span>
+      </Link>
+
+      <Link className="radar-tile" href="/connect">
+        <span className="rt-t">
+          <b>בקשות חברות ←</b>
+          <span>מגייסים שנמצאו בחברות שאינך מחובר אליהן</span>
+        </span>
+        <span className="rt-n">{connectWaiting}</span>
       </Link>
 
       <Link className="radar-tile" href="/radar">
