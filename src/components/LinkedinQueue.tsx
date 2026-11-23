@@ -390,9 +390,7 @@ export default function LinkedinQueue({ picks }: { picks: Pick[] }) {
             {/* alignItems על השורה ולא alignSelf על כל שבב: הכפתורים
                 גבוהים מהשבבים בגלל הריפוד, ובלי זה השבב נצמד לראש
                 השורה. "הכפתור של נשלח לא מיושר". */}
-            <div style={{
-              display: 'flex', flexWrap: 'wrap', gap: 6, alignItems: 'center',
-            }}>
+            <div className="cn-flow">
               <button
                 type="button"
                 style={copied[p.contact.id]

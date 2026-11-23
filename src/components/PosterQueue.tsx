@@ -270,9 +270,7 @@ export default function PosterQueue(
               </div>
             )}
 
-            <div style={{
-              display: 'flex', flexWrap: 'wrap', gap: 6, alignItems: 'center',
-            }}>
+            <div className="cn-flow">
               <button
                 type="button"
                 style={copied[key(r)]

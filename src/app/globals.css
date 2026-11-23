@@ -593,3 +593,18 @@ a.dup-title{text-decoration:underline;text-underline-offset:2px}
 .rp-card{background:var(--raised)}
 .rp-card .cn-acts{grid-template-columns:repeat(3,auto)}
 @media (max-width:760px){.rp-card .cn-acts{grid-template-columns:1fr 1fr}.rp-card .cn-acts .main{grid-column:1/-1}}
+
+/* שורת כפתורים אחידה לכל מקום שבו הכפתורים אינם בכרטיס cn-card:
+   ארבעה בשורה במחשב, שניים על שניים בטלפון, אותו גובה ורוחב.
+   !important כי חלק מהרכיבים עדיין נושאים style מוטבע לכפתור. */
+.cn-flow{display:grid;grid-template-columns:repeat(4,minmax(92px,auto));gap:6px;justify-content:start;align-items:stretch}
+.cn-flow>button,.cn-flow>a{display:inline-flex!important;align-items:center;justify-content:center;
+  box-sizing:border-box;min-height:38px!important;min-width:92px;width:100%!important;padding:.5em .8em!important;
+  font-size:.82rem!important;font-weight:700!important;border-radius:6px!important;white-space:nowrap;text-align:center;text-decoration:none}
+@media (max-width:760px){
+  .cn-flow{grid-template-columns:1fr 1fr}
+  .cn-flow>button,.cn-flow>a{min-width:0;white-space:normal}
+}
+/* אריחי דף הבית: אותו גובה, מספר/כוכב באותו גודל */
+.radar-tile{min-height:64px;align-items:center}
+.radar-tile .rt-n{min-width:2.2ch;text-align:center;line-height:1}

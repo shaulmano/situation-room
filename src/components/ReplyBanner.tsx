@@ -179,7 +179,7 @@ export default function ReplyBanner({ rows }: { rows: ReplyRow[] }) {
               </div>
             )}
 
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginTop: 8 }}>
+            <div className="cn-flow" style={{ marginTop: 8 }}>
               {r.draft && (
                 <button
                   type="button" className="apply" style={btn}

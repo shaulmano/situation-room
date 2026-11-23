@@ -87,7 +87,7 @@ export default function InviteQueue({ rows }: { rows: Invite[] }) {
               צרף את הקובץ: <b>{cvFileName(null)}</b>
             </div>
 
-            <div className="iq-actions">
+            <div className="cn-flow">
               <button type="button" className="apply" onClick={() => copy(r)}>
                 {copied[r.id] ? '✓ הועתק' : 'העתק הודעה'}
               </button>
@@ -138,13 +138,8 @@ export default function InviteQueue({ rows }: { rows: Invite[] }) {
                   border-radius: 6px; padding: 9px 10px; margin: 8px 0 6px;
                   direction: ltr; text-align: left; }
         .iq-file { font-size: .74rem; color: var(--muted); margin-bottom: 8px; }
-        .iq-actions { display: flex; flex-wrap: wrap; gap: 6px; }
-        .iq-actions > * { font-size: .78rem; font-weight: 700; padding: .45em .9em;
-                          border-radius: 6px; }
         .iq-link { background: var(--raised); color: var(--muted);
                    border: 1px solid var(--hair); }
-        /* 390 פיקסלים: שלושה כפתורים לא נדחסים לשורה אחת. */
-        @media (max-width: 420px) { .iq-actions > * { flex: 1 1 auto; text-align: center; } }
       `}</style>
     </div>
   );
