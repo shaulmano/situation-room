@@ -19,6 +19,7 @@ import { loadApplied, priorApplication } from '@/lib/priorApplication';
 import { DAILY_TARGET, israelDayStart } from '@/lib/wideReach';
 import { internalApplied } from '@/lib/internalApplied';
 import { goldReadyCount } from '@/lib/goldCount';
+import { warmTodayCount } from '@/lib/warmCount';
 
 export const dynamic = 'force-dynamic';
 
@@ -90,6 +91,7 @@ export default async function Dashboard({
   // כמה פניות רחבות נשארו להיום. ראה src/lib/wideReach.
   const reachLeft = Math.max(0, DAILY_TARGET - (wideToday.count ?? 0));
   const goldReady = await goldReadyCount(sb);
+  const warmToday = await warmTodayCount(sb);
   const { count: connectWaiting } = await sb.from('gold_recruiters').select('id', { count: 'exact', head: true })
     .is('contacted_at', null).is('skipped_at', null);
   // 15.11.2026: "יש לי תחושה שהגשתי כבר למשרות האלו". אותה משרה מלוח אחר
@@ -363,17 +365,6 @@ export default async function Dashboard({
           ישר למכרים לטאב היום... אלה שני המקומות שאני עובד איתם."
           prefetch: המסך הזה נטען לפני הלחיצה, בזמן שהוא קורא את חדר המצב,
           ולכן המעבר מיידי במקום להמתין לשליפות של מכרים. */}
-      <Link
-        href="/warm?tab=today"
-        prefetch
-        className="apply"
-        style={{
-          display: 'block', textAlign: 'center', margin: '14px 0 4px',
-          padding: '.8em', fontSize: '.95rem', fontWeight: 800,
-        }}
-      >
-        מכרים: מה לעשות היום ←
-      </Link>
 
       <div className="screen-head">
         <h2>{source || 'חדשות היום'}</h2>
@@ -441,6 +432,20 @@ export default async function Dashboard({
           בלתי נראית, והקו התחתון של העוגן נשאר. עכשיו זאת קובייה בטיפול
           של `.kpi.hero`, עם מסגרת בצבע המבטא ועם מספר, שהוא גם מה שממלא
           את הרווח שהוא סימן באדום. */}
+      {/* 23.11.2026, שאול: "זה צריך להיות חלק מהמטה ולהחזיק את מספר הפריטים שמחכים".
+          היה כפתור רחב מעל הרשימה, ועכשיו אריח כמו השאר ועם המספר. */}
+      <Link className="radar-tile" href="/warm?tab=today" prefetch>
+        <span className="rt-t">
+          <b>מכרים: מה לעשות היום ←</b>
+          <span>
+            {warmToday === null ? 'הגשות של היום שיש בהן מי שאתה מכיר'
+              : warmToday === 0 ? 'אין כרגע פנייה דרך מכר שמחכה'
+              : 'הגשות של היום שמחכות לפנייה דרך מכר'}
+          </span>
+        </span>
+        <span className="rt-n">{warmToday ?? '←'}</span>
+      </Link>
+
       {/* 20.11.2026: חברות זהב, המסך העיקרי. נוסף לשאר ולא במקומו. */}
       <Link className="radar-tile" href="/gold">
         <span className="rt-t">
