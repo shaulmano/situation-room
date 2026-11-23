@@ -7,6 +7,10 @@ import MarkClosed from '@/components/MarkClosed';
 import PriorApplied from '@/components/PriorApplied';
 import { loadApplied, priorApplication } from '@/lib/priorApplication';
 import { internalApplied } from '@/lib/internalApplied';
+import RadarPeople, { type RadarPerson } from '@/components/RadarPeople';
+import { companyKey } from '@/lib/contacts';
+import { goldConnectNote, goldMessage, loadAliases } from '@/lib/gold';
+import { cvFamilyForTitle, cvFileFor } from '@/lib/outreach';
 
 export const dynamic = 'force-dynamic';
 
@@ -66,6 +70,52 @@ export default async function Radar({
     return acc;
   }, {});
   const shown = source ? all.filter((j: any) => (j.source || 'SEO') === source) : all;
+
+  // מי אפשר לפנות בחברה של כל משרה: איש קשר מאומת קודם, ואחריו מגייס שנמצא
+  // בחיפוש. בלי אף אחד אין שורה. 23.11.2026, לבקשת שאול. נשאר ברדאר ולא עובר
+  // לזהב.
+  const aliases = await loadAliases(sb);
+  const keyOf = (j: any) => { const k = companyKey(j.company); return k ? (aliases.get(k) ?? k) : ''; };
+  const keys = [...new Set(shown.map(keyOf).filter(Boolean))];
+  const verifiedBy = new Map<string, any[]>();
+  const foundBy = new Map<string, any[]>();
+  const since = new Date(Date.now() - 14 * 864e5).toISOString();
+  for (let i = 0; i < keys.length; i += 100) {
+    const chunk = keys.slice(i, i + 100);
+    const { data: vc } = await sb.from('contacts')
+      .select('id, full_name, title, linkedin_url, verified_key')
+      .eq('verified_ok', true).gte('verified_at', since).is('left_company_at', null)
+      .in('verified_key', chunk);
+    for (const c of (vc ?? []) as any[]) verifiedBy.set(c.verified_key, [...(verifiedBy.get(c.verified_key) ?? []), c]);
+    const { data: cs } = await sb.from('companies').select('id, company_key').in('company_key', chunk);
+    const idKey = new Map((cs ?? []).map((c: any) => [c.id, c.company_key]));
+    if (idKey.size) {
+      const { data: fr } = await sb.from('gold_recruiters')
+        .select('id, company_id, full_name, headline, profile_url')
+        .in('company_id', [...idKey.keys()]).is('contacted_at', null).is('skipped_at', null);
+      for (const f of (fr ?? []) as any[]) {
+        const k = idKey.get(f.company_id) as string;
+        foundBy.set(k, [...(foundBy.get(k) ?? []), f]);
+      }
+    }
+  }
+  const peopleFor = (j: any): RadarPerson[] => {
+    const k = keyOf(j);
+    const job = { title: j.title, url: j.url, foundFor: j.found_for ?? null };
+    const cvId = cvFamilyForTitle(j.title) ?? 'project-release-manager';
+    const ver = (verifiedBy.get(k) ?? []).slice(0, 2);
+    if (ver.length) {
+      return ver.map((c) => ({
+        kind: 'contact' as const, id: c.id, name: c.full_name, title: c.title, url: c.linkedin_url, jobId: j.id,
+        message: goldMessage({ contactName: c.full_name, contactTitle: c.title, company: j.company, job, cvId }),
+        cvFile: cvFileFor(cvId, j.title),
+      }));
+    }
+    return (foundBy.get(k) ?? []).slice(0, 2).map((f) => ({
+      kind: 'find' as const, id: f.id, name: f.full_name, title: f.headline, url: f.profile_url, jobId: j.id,
+      message: goldConnectNote({ name: f.full_name, company: j.company, jobTitle: j.title }),
+    }));
+  };
 
   return (
     <main>
@@ -139,6 +189,8 @@ export default async function Radar({
                 {/* הגיל מוצג ולא מסנן. שאול מחליט, לא השער. */}
                 {age && <span className={`chip age-${age.tone}`}>{age.label}</span>}
               </div>
+
+              <RadarPeople people={peopleFor(j)} />
 
               <div className="actions">
                 <a className="apply" href={j.url} target="_blank" rel="noreferrer">

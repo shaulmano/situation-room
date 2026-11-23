@@ -588,3 +588,8 @@ a.dup-title{text-decoration:underline;text-underline-offset:2px}
   .reach-acts{grid-template-columns:1fr 1fr}
   .reach-acts > *{min-width:0;width:100%;padding:.7em .5em}
 }
+
+.rp{display:flex;flex-direction:column;gap:6px;margin-top:8px}
+.rp-card{background:var(--raised)}
+.rp-card .cn-acts{grid-template-columns:repeat(3,auto)}
+@media (max-width:760px){.rp-card .cn-acts{grid-template-columns:1fr 1fr}.rp-card .cn-acts .main{grid-column:1/-1}}
