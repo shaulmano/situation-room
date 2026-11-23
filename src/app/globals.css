@@ -608,3 +608,17 @@ a.dup-title{text-decoration:underline;text-underline-offset:2px}
 /* אריחי דף הבית: אותו גובה, מספר/כוכב באותו גודל */
 .radar-tile{min-height:64px;align-items:center}
 .radar-tile .rt-n{min-width:2.2ch;text-align:center;line-height:1}
+
+/* משרות זהב: אותו כרטיס ואותם כפתורים כמו בקשות חברות */
+.gold-simple{background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:12px 14px}
+.gold-simple .gs-job{background:transparent;border:0;border-top:1px solid var(--line);border-radius:0;padding:.5rem 0}
+.gs-drop.cn-b{min-width:0;padding:.35em .8em;font-size:.8rem}
+.gs-acts4{margin-top:.2rem}
+.gs-acts4>span{display:none}
+
+/* החלטה 23.11.2026: אותו מבנה אנכי במחשב ובטלפון, בכל המסכים.
+   מידע למעלה, כפתורים 2x2 מתחת. אין פריסה נפרדת למסך רחב. */
+.cn-card{grid-template-columns:1fr!important;gap:10px!important;align-items:stretch}
+.cn-acts,.cn-flow,.rp-card .cn-acts{grid-template-columns:1fr 1fr!important;max-width:520px}
+.cn-b,.cn-flow>button,.cn-flow>a{min-width:0!important}
+.gold-simple{display:flex!important;flex-direction:column!important;align-items:stretch!important;gap:.6rem!important}

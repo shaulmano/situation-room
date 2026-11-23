@@ -84,8 +84,6 @@ export default function GoldSimple({ ready, waiting, dropped }: { ready: GoldRow
           <div className="gold-simple" key={r.id}>
             <div className="gs-co">
               <b>{r.name}</b>
-              <button type="button" className="closed gs-all" title="מוותר על כל המשרות שנשארו בכרטיס"
-                onClick={() => drop(r)}>✕ כל הכרטיס</button>
             </div>
             {p && <div className="gs-who"><b>{p.name}</b> <span className="mute">{p.title}</span></div>}
             {jobs.map((j) => (
@@ -95,20 +93,22 @@ export default function GoldSimple({ ready, waiting, dropped }: { ready: GoldRow
                   <span className="mute"> · {[j.location, j.source].filter(Boolean).join(' · ')}</span>
                   {files.length > 1 && j.cvFile && <div className="mute gs-cv">לצרף: <code>{j.cvFile}</code></div>}
                 </div>
-                <button type="button" className="closed gs-drop" title="לא רלוונטי. המשרה הזאת תרד ולא תחזור, וגם לא תופיע בהודעה"
+                <button type="button" className="cn-b quiet gs-drop" title="לא רלוונטי. המשרה הזאת תרד ולא תחזור, וגם לא תופיע בהודעה"
                   onClick={() => dropJob(j.id)}>מוותר</button>
               </div>
             ))}
             {files.length === 1 && <div className="mute gs-cv">לצרף: <code>{files[0]}</code></div>}
-            <div className="gs-btns gs-btns3">
-              <button type="button" className={'mark' + (copied === r.id ? ' on' : '')}
+            <div className="cn-acts gs-acts4">
+              <button type="button" className={'cn-b' + (copied === r.id ? ' on' : '')}
                 onClick={() => copy(r.id, message)}>
-                {copied === r.id ? '✓ הועתק' : jobs.length > 1 ? `העתק הודעה (${jobs.length} משרות)` : 'העתק הודעה'}
+                {copied === r.id ? '✓ הועתק' : jobs.length > 1 ? `העתק הודעה (${jobs.length})` : 'העתק הודעה'}
               </button>
               {p?.url
-                ? <a className="apply indirect" href={p.url} target="_blank" rel="noreferrer">פתח בלינקדאין</a>
+                ? <a className="cn-b" href={p.url} target="_blank" rel="noreferrer">פתח בלינקדאין</a>
                 : <span />}
-              <button type="button" className="apply" onClick={() => doneCard(r)}>טופל</button>
+              <button type="button" className="cn-b quiet" title="מוותר על כל המשרות שנשארו בכרטיס"
+                onClick={() => drop(r)}>מוותר על הכל</button>
+              <button type="button" className="cn-b main" onClick={() => doneCard(r)}>טופל</button>
             </div>
           </div>
         );
