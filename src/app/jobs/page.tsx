@@ -373,6 +373,7 @@ export default async function Jobs({
                     </span>
                   )}
                 </span>
+                <div className="cn-flow job-acts">
                 {(() => {
                   const t = applyTarget(j);
                   return t ? (
@@ -422,6 +423,7 @@ export default async function Jobs({
                       .find(Boolean) as any) ?? null
                   }
                 />
+                </div>
               </div>
             );
           })}

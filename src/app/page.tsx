@@ -556,6 +556,7 @@ export default async function Dashboard({
                     <span className="chip mute">{m.cv_id}</span>
                   </span>
                 </span>
+                <div className="cn-flow job-acts">
                 {t && (
                   <a
                     className={'apply' + (t.indirect ? ' indirect' : '')}
@@ -602,6 +603,7 @@ export default async function Dashboard({
                       .find(Boolean) as any) ?? null
                   }
                 />
+                </div>
               </div>
             );
           })}

@@ -633,3 +633,11 @@ a.dup-title{text-decoration:underline;text-underline-offset:2px}
 .row.reach-row{display:block}
 .row.reach-row .reach-acts{width:100%;margin-top:.2rem}
 @media (max-width:760px){.reach-acts{grid-template-columns:1fr 1fr!important}}
+
+/* כרטיס משרה: בלוק. מידע למעלה, כפתורים בתקן האחיד מתחת.
+   פאנלים שנפתחים (פרטים, מכרים, כפילות) תופסים שורה שלמה. */
+.row.job{display:block}
+.row.job .grow{display:block;width:100%;margin-bottom:8px}
+.job-acts{width:100%}
+.job-acts>details,.job-acts>div{grid-column:1/-1}
+.job-acts .dup{margin:0}

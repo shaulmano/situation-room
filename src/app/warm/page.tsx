@@ -743,6 +743,7 @@ async function WarmBody({
                     <span className="chip src">{j.source}</span>
                   </span>
                 </span>
+                <div className="cn-flow job-acts">
 
                 {t && (
                   <a
@@ -763,6 +764,7 @@ async function WarmBody({
                          url: j.url, foundFor: j.found_for,
                          applied: appliedIds.has(j.id) }}
                 />
+                </div>
               </div>
             );
           })}
