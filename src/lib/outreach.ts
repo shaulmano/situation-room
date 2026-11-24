@@ -434,17 +434,19 @@ export function inviteMessage(opts: {
 }
 
 /**
- * הערה לבקשת חברות למי שמגייס למשרה (24.11.2026). הנמען הוא איש HR או מגייס,
- * לא מנהל התפקיד, ולכן ההערה אומרת רק שיש מועמד שמתעניין במשרה הזאת, ולא
- * מה שאול עושה. שאול: "היא לא פונה למקצוע של מי שאני פונה אליו".
- * לינקדאין מגבילה ל-200 תווים בחשבון חינמי, ולכן כותרת ארוכה נושרת.
+ * הערה לבקשת חברות למי שמגייס בחברה (24.11.2026). הנמען הוא איש HR או מגייס.
+ * **היא לא מציינת את שם המשרה**: המשרה שהובילה לחברה יכולה להיות Product
+ * או כל דבר אחר, והפנייה היא על מה ששאול מחפש, ניהול תוכניות, פרויקטים,
+ * שחרורים או הנהגת איכות. שאול: "המשרה פרודקט אבל הפניה למגייסת היא לא
+ * פרודקט". לינקדאין מגבילה ל-200 תווים בחשבון חינמי.
  */
-export function connectNote(title?: string | null, company?: string | null): string {
-  const tail = ' 25 years in tech, 15 leading teams, most recently in enterprise SaaS. Happy to send my CV.';
+export function connectNote(_title?: string | null, company?: string | null): string {
   const co = (company ?? '').trim();
-  const t = (title ?? '').trim();
-  const full = `Hi, I saw the ${t} role at ${co} and I'm interested.${tail}`;
-  if (t && co && full.length <= 200) return full;
-  const mid = co ? `Hi, I saw your open role at ${co} and I'm interested.` : "Hi, I saw your open role and I'm interested.";
-  return (mid + tail).slice(0, 200);
+  const head = co
+    ? `Hi, I'm looking for my next role in project, program or release management, or QA leadership, and saw ${co} is hiring.`
+    : "Hi, I'm looking for my next role in project, program or release management, or QA leadership.";
+  const tail = ' 25 years in tech, 15 leading teams, enterprise SaaS. Happy to send my CV.';
+  const full = head + tail;
+  if (full.length <= 200) return full;
+  return (head.replace(', or QA leadership', '') + tail).slice(0, 200);
 }
