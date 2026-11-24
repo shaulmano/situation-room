@@ -42,7 +42,8 @@ export default function MarkApplied({ id, cvId, internal }: { id: string; cvId?:
 
   if (internal && ask && !done) {
     return (
-      <span style={{ display: 'block', width: '100%' }}>
+      <span style={{ display: 'block', width: '100%', padding: 10, border: '1px solid var(--btn-line, #c9d3dd)', borderRadius: 10, background: 'rgba(255,255,255,.55)' }}>
+        <b style={{ display: 'block', marginBottom: 6 }}>למי פנית? (בקשת חברות ששלחת)</b>
         <input
           dir="ltr" value={url} onChange={(e) => setUrl(e.target.value)}
           placeholder="קישור לפרופיל של מי שפנית אליו"
