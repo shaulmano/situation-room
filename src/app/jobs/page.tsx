@@ -397,7 +397,7 @@ export default async function Jobs({
                 ))}
                 <CopyGeneric
                   text={goldGenericMessage(j.company, { title: j.title, url: j.url, foundFor: j.found_for }, m.cv_id)}
-                  file={cvFileFor(m.cv_id, j.title)}
+                  file={cvFileFor(m.cv_id, j.title)} jobId={j.id}
                 />
                 <MarkApplied id={j.id} cvId={m.cv_id} />
                 <MarkApplied id={j.id} cvId={m.cv_id} internal />
