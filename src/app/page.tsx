@@ -92,6 +92,10 @@ export default async function Dashboard({
   const reachLeft = Math.max(0, DAILY_TARGET - (wideToday.count ?? 0));
   const goldReady = await goldReadyCount(sb);
   const warmToday = await warmTodayCount(sb);
+  // 24.11.2026, שאול: "מי אישר אותי". אותו תנאי כמו התור בלשונית "אישר חברות".
+  const acc = await sb.from('contacts').select('id', { count: 'exact', head: true })
+    .not('invite_accepted_at', 'is', null).is('contacted_at', null).is('skipped_at', null);
+  const acceptedWaiting: number | null = acc.error ? null : (acc.count ?? 0);
   const { count: connectWaiting } = await sb.from('gold_recruiters').select('id', { count: 'exact', head: true })
     .is('contacted_at', null).is('skipped_at', null);
   // 15.11.2026: "יש לי תחושה שהגשתי כבר למשרות האלו". אותה משרה מלוח אחר
@@ -444,6 +448,19 @@ export default async function Dashboard({
           </span>
         </span>
         <span className="rt-n">{warmToday ?? '←'}</span>
+      </Link>
+
+      {/* 24.11.2026, שאול: "מי אישר אותי", מתחת למכרים. */}
+      <Link className="radar-tile" href="/warm?tab=invites" prefetch>
+        <span className="rt-t">
+          <b>מי אישר אותי ←</b>
+          <span>
+            {acceptedWaiting === null ? 'מי שאישר את בקשת החברות שלך'
+              : acceptedWaiting === 0 ? 'אין כרגע מי שאישר וממתין לקורות חיים'
+              : 'אישרו חברות, ומחכים להודעה עם קורות החיים'}
+          </span>
+        </span>
+        <span className="rt-n">{acceptedWaiting ?? '←'}</span>
       </Link>
 
       {/* 20.11.2026: חברות זהב, המסך העיקרי. נוסף לשאר ולא במקומו. */}
