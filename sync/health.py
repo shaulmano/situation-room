@@ -42,13 +42,20 @@ DROPPED_ON_PURPOSE = ('drushim', 'alljobs', 'secretjobs', 'gotfriends', 'malam')
 
 
 def sources_gone_quiet():
-    """מקור שהביא בעבר ולא מביא בשבוע האחרון. זה הכישלון שחזר כל חודש."""
+    """מקור שהביא בעבר ולא מביא בשבוע האחרון. זה הכישלון שחזר כל חודש.
+
+    24.11.2026: שורות שהחיפוש הבוליאני בגוגל הביא (`seo`) לא נספרות. 35 מתוך
+    45 שורות ה-Comeet ו-כל 12 שורות ה-Workday הגיעו משם, ורובן ב-14-15.11,
+    לפני שנוסף האימות שפוסל מודעה שנסגרה. אחרי האימות הן מפסיקות להיכתב,
+    וזה התיקון עובד ולא תקלה. ההתראה על Comeet ו-Workday הייתה ירידה
+    מדומה: הסורק עצמו סרק 106 משרות והכל כבר היה ידוע.
+    """
     rows = sql(
         "select source, "
         "count(*) filter (where first_seen >= now() - interval '7 days') recent, "
         "count(*) filter (where first_seen >= now() - interval '37 days' "
         "                   and first_seen <  now() - interval '7 days') before "
-        "from jobs where on_target group by source"
+        "from jobs where on_target and not coalesce(seo, false) group by source"
     )
     dead = [r['source'] for r in rows
             if int(r['before']) >= MIN_HISTORY and int(r['recent']) == 0
