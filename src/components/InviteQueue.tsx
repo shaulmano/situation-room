@@ -117,7 +117,7 @@ export default function InviteQueue({ rows }: { rows: Invite[] }) {
                 {r.profile ? 'פרופיל' : `מצא את ${r.name.split(/\s+/)[0]}`}
               </a>
               <button type="button" className="iq-link" onClick={() => mark(r)}>
-                שנשלח
+                סמן שנשלח
               </button>
             </div>
           </div>
