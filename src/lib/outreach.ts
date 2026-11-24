@@ -434,16 +434,17 @@ export function inviteMessage(opts: {
 }
 
 /**
- * הערה לבקשת חברות למגייס של משרה (24.11.2026). לינקדאין מגבילה ל-200 תווים
- * בחשבון חינמי, ולכן אם הכותרת ארוכה היא נושרת ונשארת "your open role".
- * בלי שם נמען: המגייס לא ידוע בשלב הזה.
+ * הערה לבקשת חברות למי שמגייס למשרה (24.11.2026). הנמען הוא איש HR או מגייס,
+ * לא מנהל התפקיד, ולכן ההערה אומרת רק שיש מועמד שמתעניין במשרה הזאת, ולא
+ * מה שאול עושה. שאול: "היא לא פונה למקצוע של מי שאני פונה אליו".
+ * לינקדאין מגבילה ל-200 תווים בחשבון חינמי, ולכן כותרת ארוכה נושרת.
  */
 export function connectNote(title?: string | null, company?: string | null): string {
-  const tail = 'I lead program delivery in enterprise SaaS, 25 years in tech, and would be glad to connect.';
+  const tail = ' 25 years in tech, 15 leading teams, most recently in enterprise SaaS. Happy to send my CV.';
   const co = (company ?? '').trim();
   const t = (title ?? '').trim();
-  const full = `Hi, I saw the ${t} role at ${co}. ${tail}`;
+  const full = `Hi, I saw the ${t} role at ${co} and I'm interested.${tail}`;
   if (t && co && full.length <= 200) return full;
-  const mid = co ? `Hi, I saw your open role at ${co}. ` : 'Hi, I saw your open role. ';
+  const mid = co ? `Hi, I saw your open role at ${co} and I'm interested.` : "Hi, I saw your open role and I'm interested.";
   return (mid + tail).slice(0, 200);
 }
