@@ -432,3 +432,18 @@ export function inviteMessage(opts: {
   ];
   return lines.join('\n');
 }
+
+/**
+ * הערה לבקשת חברות למגייס של משרה (24.11.2026). לינקדאין מגבילה ל-200 תווים
+ * בחשבון חינמי, ולכן אם הכותרת ארוכה היא נושרת ונשארת "your open role".
+ * בלי שם נמען: המגייס לא ידוע בשלב הזה.
+ */
+export function connectNote(title?: string | null, company?: string | null): string {
+  const tail = 'I lead program delivery in enterprise SaaS, 25 years in tech, and would be glad to connect.';
+  const co = (company ?? '').trim();
+  const t = (title ?? '').trim();
+  const full = `Hi, I saw the ${t} role at ${co}. ${tail}`;
+  if (t && co && full.length <= 200) return full;
+  const mid = co ? `Hi, I saw your open role at ${co}. ` : 'Hi, I saw your open role. ';
+  return (mid + tail).slice(0, 200);
+}

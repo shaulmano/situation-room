@@ -9,6 +9,8 @@ import { loadApplied, priorApplication } from '@/lib/priorApplication';
 import PriorApplied from '@/components/PriorApplied';
 import DuplicateCheck from '@/components/DuplicateCheck';
 import Dismiss from '@/components/Dismiss';
+import CopyNote from '@/components/CopyNote';
+import { connectNote } from '@/lib/outreach';
 import DismissAll from '@/components/DismissAll';
 import JobBrief from '@/components/JobBrief';
 import JobContacts from '@/components/JobContacts';
@@ -387,13 +389,15 @@ export default async function Jobs({
                   ) : null;
                 })()}
                 {directLinks(j).map((d) => (
+                  <span key={d.label} style={{ display: 'contents' }}>
                   <a
-                    key={d.label}
                     className="apply indirect"
                     href={d.href} target="_blank" rel="noreferrer"
                   >
                     {d.label}
                   </a>
+                  {d.label === 'מגייסים' && <CopyNote text={connectNote(j.title, j.company)} />}
+                  </span>
                 ))}
                 <CopyGeneric
                   text={goldGenericMessage(j.company, { title: j.title, url: j.url, foundFor: j.found_for }, m.cv_id)}

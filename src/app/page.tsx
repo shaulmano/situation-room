@@ -11,6 +11,8 @@ import JobBrief from '@/components/JobBrief';
 import JobContacts from '@/components/JobContacts';
 import MarkApplied from '@/components/MarkApplied';
 import CopyGeneric from '@/components/CopyGeneric';
+import CopyNote from '@/components/CopyNote';
+import { connectNote } from '@/lib/outreach';
 import { cvFileFor } from '@/lib/outreach';
 import MarkClosed from '@/components/MarkClosed';
 import PriorApplied from '@/components/PriorApplied';
@@ -591,13 +593,15 @@ export default async function Dashboard({
                   </a>
                 )}
                 {directLinks(j).map((d) => (
+                  <span key={d.label} style={{ display: 'contents' }}>
                   <a
-                    key={d.label}
                     className="apply indirect"
                     href={d.href} target="_blank" rel="noreferrer"
                   >
                     {d.label}
                   </a>
+                  {d.label === 'מגייסים' && <CopyNote text={connectNote(j.title, j.company)} />}
+                  </span>
                 ))}
                 <CopyGeneric
                   text={goldGenericMessage(j.company, { title: j.title, url: j.url, foundFor: j.found_for }, m.cv_id)}
