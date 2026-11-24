@@ -28,7 +28,7 @@ async function fetchPoster(jobId: string) {
 // Applying happens on someone else's site, so nothing can observe it. This is
 // the one thing only Shaul can tell the system, and it has to cost one tap.
 export async function POST(req: NextRequest) {
-  const { id, cv_id, internal } = await req.json();
+  const { id, cv_id, internal, recruiter_url, recruiter_name } = await req.json();
   if (!id) return NextResponse.json({ error: 'missing id' }, { status: 400 });
 
   const sb = serverClient();
@@ -62,8 +62,26 @@ export async function POST(req: NextRequest) {
   if (error && internal) {
     await sb.from('applications').update({ channel: 'internal' }).eq('gmail_thread_id', `manual:${job.id}`);
   }
-  // הגשה פנימית אינה צריכה מפרסם: הפנייה היא למי שעובד שם.
-  if (internal) return NextResponse.json({ ok: true });
+  // הגשה פנימית אינה צריכה מפרסם: הפנייה היא למי שעובד שם. אבל אם הוא נתן
+  // למי פנה, זה נרשם כבקשת חברות שיצאה (poster_request_at), ולכן המגייס נכנס
+  // ל"ממתין לאישור" במפרסמים, מקושר למשרה. הסימון נגזר מהפרופיל ולא מהשם.
+  if (internal) {
+    const u = typeof recruiter_url === 'string' ? recruiter_url.trim() : '';
+    if (u && u.includes('linkedin.com/in/')) {
+      let nm = typeof recruiter_name === 'string' ? recruiter_name.trim() : '';
+      if (!nm) {
+        const slug = decodeURIComponent(u.split('/in/')[1]?.split(/[/?#]/)[0] ?? '');
+        nm = slug.replace(/-[0-9a-f]{6,}$/i, '').split('-').filter(Boolean)
+          .map((w) => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
+      }
+      await sb.from('jobs').update({
+        recruiter_url: u,
+        recruiter_name: nm || null,
+        poster_request_at: new Date().toISOString(),
+      }).eq('id', job.id);
+    }
+    return NextResponse.json({ ok: true });
+  }
 
   // רק ללינקדאין ורק אם אין כבר מפרסם שמור. אין טעם לשלוח ראנר על משרה
   // שהסריקה כבר הביאה את המפרסם שלה.
