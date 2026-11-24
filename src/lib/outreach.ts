@@ -381,6 +381,10 @@ export function posterMessage(opts: {
 /**
  * המכתב למי שאישר בקשת חברות.
  *
+ * 24.11.2026, שאול: ההודעה נקראה כמו של מנהל QA ולא עוזרת לו כשהוא מחפש
+ * מנהל פרויקטים או שחרורים. הנוסח פותח עכשיו בניהול פרויקטים, תוכניות ושחרורים,
+ * ו-QA הוא החצי השני.
+ *
  * 15.11.2026, שאול: "מי שמאשר או מאשרת חברות, לשלוח לה או לו מכתב להגשת
  * קורות חיים כמו שאני שולח לכולם. המכתב צריך להיות יותר אישי עם התעניינות
  * למקרה שיש להם משרות פתוחות".
@@ -407,17 +411,19 @@ export function inviteMessage(opts: {
     '',
     'Thanks for connecting.',
     '',
-    'A short introduction: I have 25 years in QA and program management, '
-      + 'the last 15 of them leading teams, most recently as Head of QA and '
-      + 'Professional Services at Qmarkets.',
+    'A short introduction: I have 25 years in tech, the last 15 leading '
+      + 'teams. I run project, program and release delivery in enterprise '
+      + 'SaaS, most recently at Qmarkets, across 3+ product lines and a live '
+      + 'portfolio of 70-120 enterprise customers. Quality leadership is the '
+      + 'other half of my background.',
     '',
     recruiter
-      ? 'I am looking for my next role now, in QA leadership or project and '
-        + 'program management. If anything open on your side could be a fit, '
-        + 'I would be glad to hear about it.'
-      : 'I am looking for my next role now, in QA leadership or project and '
-        + 'program management. If you happen to hear of something that fits, '
-        + 'I would appreciate you keeping me in mind.',
+      ? 'I am looking for my next role now: project, program or release '
+        + 'management, or QA leadership. If anything open on your side could '
+        + 'be a fit, I would be glad to hear about it.'
+      : 'I am looking for my next role now: project, program or release '
+        + 'management, or QA leadership. If you happen to hear of something '
+        + 'that fits, I would appreciate you keeping me in mind.',
     '',
     'My CV is attached either way.',
     '',
