@@ -3,6 +3,7 @@ import { useMemo, useState } from 'react';
 import { cvFileFor, isRecruiter, referralMessage } from '@/lib/outreach';
 import { jobAge } from '@/lib/age';
 import { type Pick } from './WarmPicker';
+import CvFilePick from '@/components/CvFilePick';
 
 // התור של לינקדאין.
 //
@@ -382,9 +383,7 @@ export default function LinkedinQueue({ picks }: { picks: Pick[] }) {
                 בדיוק כפי שהוא נקרא אצלו, כדי שלא יצטרך לנחש איזו גרסה. */}
             <div style={{ fontSize: '.78rem', marginBottom: 8 }}>
               <b>קובץ לצרף:</b>{' '}
-              <span style={{ fontFamily: 'ui-monospace, monospace', fontSize: '.74rem' }}>
-                {cvFileFor(p.job.cvId, p.job.title)}
-              </span>
+              <CvFilePick file={cvFileFor(p.job.cvId, p.job.title)} id={p.job.id} />
             </div>
 
             {/* alignItems על השורה ולא alignSelf על כל שבב: הכפתורים

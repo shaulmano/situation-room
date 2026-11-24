@@ -3,6 +3,7 @@ import { useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { type WarmContact } from '@/lib/contacts';
 import { cvFileFor } from '@/lib/outreach';
+import CvFilePick from '@/components/CvFilePick';
 
 // בחירת אנשי קשר לפנייה, ושליחה לתור.
 //
@@ -263,9 +264,7 @@ export default function WarmPicker({ picks }: { picks: Pick[] }) {
                   הבסיס שלו, ושמו כתוב כאן כדי שיראה מראש מה יוצא. */}
               <div style={{ fontSize: '.78rem', marginBottom: 4 }}>
                 <b>קובץ מצורף:</b>{' '}
-                <span style={{ fontFamily: 'ui-monospace, monospace', fontSize: '.74rem' }}>
-                  {cvFileFor(p.job.cvId, p.job.title)}
-                </span>
+                <CvFilePick file={cvFileFor(p.job.cvId, p.job.title)} id={p.job.id} />
               </div>
 
               {/* ההודעה עצמה, כמו שהיא. pre-wrap כדי שהשורות יישארו כפי

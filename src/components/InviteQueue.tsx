@@ -1,6 +1,7 @@
 'use client';
 import { useState } from 'react';
 import { cvFileName, inviteMessage, isRecruiter } from '@/lib/outreach';
+import CvFilePick from '@/components/CvFilePick';
 
 // "אישר חברות".
 //
@@ -84,7 +85,7 @@ export default function InviteQueue({ rows }: { rows: Invite[] }) {
             <pre className="iq-msg">{text}</pre>
 
             <div className="iq-file">
-              צרף את הקובץ: <b>{cvFileName(null)}</b>
+              צרף את הקובץ: <CvFilePick file={cvFileName(null)} id={'invite-' + r.id} />
             </div>
 
             <div className="cn-flow">

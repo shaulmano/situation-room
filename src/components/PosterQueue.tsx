@@ -1,6 +1,7 @@
 'use client';
 import { useState } from 'react';
 import { cvFileName, posterMessage, posterNote } from '@/lib/outreach';
+import CvFilePick from '@/components/CvFilePick';
 
 // שלח לאלו שפרסמת היום.
 //
@@ -260,9 +261,7 @@ export default function PosterQueue(
             {(r.connected || at(r, 'requestAt')) ? (
               <div style={{ fontSize: '.78rem', marginBottom: 8 }}>
                 <b>קובץ לצרף:</b>{' '}
-                <span style={{ fontFamily: 'ui-monospace, monospace', fontSize: '.74rem' }}>
-                  {cvFileName(r.cvId)}
-                </span>
+                <CvFilePick file={cvFileName(r.cvId)} id={r.jobIds[0]} />
               </div>
             ) : (
               <div style={{ fontSize: '.74rem', color: 'var(--muted)', marginBottom: 8 }}>

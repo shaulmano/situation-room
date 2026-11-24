@@ -1,5 +1,6 @@
 'use client';
 import { useState } from 'react';
+import CvFilePick from '@/components/CvFilePick';
 
 export type RadarPerson = {
   kind: 'contact' | 'find';
@@ -47,7 +48,7 @@ export default function RadarPeople({ people }: { people: RadarPerson[] }) {
               <b className="cn-name">{p.name}</b>
               <span className="cn-co">{p.kind === 'contact' ? 'מאומת, בקשרים שלך' : 'נמצא בחיפוש, לא בקשרים'}</span>
             </div>
-            <div className="cn-title">{p.title}{p.kind === 'contact' && p.cvFile ? ` · לצרף: ${p.cvFile}` : ''}</div>
+            <div className="cn-title">{p.title}{p.kind === 'contact' && p.cvFile ? <> · לצרף: <CvFilePick file={p.cvFile} id={p.jobId} /></> : ''}</div>
           </div>
           <div className="cn-acts">
             <button type="button" className={'cn-b' + (copied === p.id ? ' on' : '')} onClick={() => copy(p)}>

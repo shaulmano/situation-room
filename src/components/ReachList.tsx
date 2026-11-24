@@ -1,6 +1,7 @@
 'use client';
 import { useState } from 'react';
 import { BUCKET_LABEL, type ReachBucket } from '@/lib/wideReach';
+import CvFilePick from '@/components/CvFilePick';
 
 export type ReachRow = {
   id: string;
@@ -135,7 +136,7 @@ export default function ReachList(
 
       <p className="hint">
         הנוסח קבוע לפי סוג השורה (חדש או פנייה שנייה). <b>העתק</b>, <b>פתח בלינקדאין</b>, הדבק, צרף את{' '}
-        <code>{cvFile}</code>, שלח, ואז <b>סמן שנשלח</b>.
+        <CvFilePick file={cvFile} id="reach" />, שלח, ואז <b>סמן שנשלח</b>.
         {/* 15.11.2026, שאול: "בגדול יש לי את הקובץ ב files של האייפון
             וגם בלינקדאין". לכן זה קישור קטן ולא כפתור: הוא נחוץ רק
             כשקורות החיים מתעדכנים. */}

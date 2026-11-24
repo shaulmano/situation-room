@@ -2,6 +2,7 @@
 import MarkApplied from './MarkApplied';
 import GoldSkipJob from './GoldSkipJob';
 import { Fragment, useState } from 'react';
+import CvFilePick from '@/components/CvFilePick';
 
 export type GoldRow = {
   id: string;
@@ -239,7 +240,7 @@ export default function GoldList(
           <div className="gold-sec cn-card">
             <div className="cn-info">
             <h4>מגייס/ת שלא ברשימה</h4>
-            <div className="gold-meta">לצרף: <code>{r.cvFile}</code></div>
+            <div className="gold-meta">לצרף: <CvFilePick file={r.cvFile} id={'gold-' + r.id} /></div>
             </div>
             <div className="cn-acts">
               <button

@@ -2,6 +2,7 @@
 import { useState } from 'react';
 import type { GoldRow } from './GoldList';
 import { goldMultiMessage } from '@/lib/gold';
+import CvFilePick from '@/components/CvFilePick';
 
 /**
  * מסך זהב בגרסה הפשוטה. 22.11.2026, שאול: "הוספנו הרבה והכל רק מסרבל".
@@ -92,7 +93,7 @@ export default function GoldSimple({ ready, waiting, dropped }: { ready: GoldRow
                 <div className="gs-jt">
                   {j.url ? <a href={j.url} target="_blank" rel="noreferrer">{j.title}</a> : j.title}
                   <span className="mute"> · {[j.location, j.source].filter(Boolean).join(' · ')}</span>
-                  {files.length > 1 && j.cvFile && <div className="mute gs-cv">לצרף: <code>{j.cvFile}</code></div>}
+                  {j.cvFile && <div className="mute gs-cv">לצרף: <CvFilePick file={j.cvFile} id={j.id} /></div>}
                 </div>
                 <button type="button" className="cn-b quiet gs-drop" title="לא רלוונטי. המשרה הזאת תרד ולא תחזור, וגם לא תופיע בהודעה"
                   onClick={() => dropJob(j.id)}>מוותר</button>
