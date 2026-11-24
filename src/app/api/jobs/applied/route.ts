@@ -28,7 +28,7 @@ async function fetchPoster(jobId: string) {
 // Applying happens on someone else's site, so nothing can observe it. This is
 // the one thing only Shaul can tell the system, and it has to cost one tap.
 export async function POST(req: NextRequest) {
-  const { id, cv_id, internal, recruiter_url, recruiter_name } = await req.json();
+  const { id, cv_id, internal, recruiter_url, recruiter_name, messaged } = await req.json();
   if (!id) return NextResponse.json({ error: 'missing id' }, { status: 400 });
 
   const sb = serverClient();
@@ -77,7 +77,10 @@ export async function POST(req: NextRequest) {
       await sb.from('jobs').update({
         recruiter_url: u,
         recruiter_name: nm || null,
-        poster_request_at: new Date().toISOString(),
+        // מחובר כבר ושלח הודעה פרטית: זה צעד ההודעה, לא בקשת חברות שממתינה.
+        ...(messaged
+          ? { poster_sent_at: new Date().toISOString() }
+          : { poster_request_at: new Date().toISOString() }),
       }).eq('id', job.id);
     }
     return NextResponse.json({ ok: true });

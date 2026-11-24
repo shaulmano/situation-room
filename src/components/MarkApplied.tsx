@@ -14,7 +14,7 @@ export default function MarkApplied({ id, cvId, internal }: { id: string; cvId?:
 
   // Same reason as Dismiss: the row leaves the feed once the application is
   // recorded, so take it off screen on the tap instead of a second later.
-  async function mark(e: React.MouseEvent<HTMLButtonElement>, withRecruiter = false) {
+  async function mark(e: React.MouseEvent<HTMLButtonElement>, withRecruiter = false, messaged = false) {
     const row = (e.currentTarget as HTMLElement).closest('.row');
     setDone(true);
 
@@ -23,7 +23,7 @@ export default function MarkApplied({ id, cvId, internal }: { id: string; cvId?:
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         id, cv_id: cvId, internal: !!internal,
-        ...(withRecruiter && url.trim() ? { recruiter_url: url.trim(), recruiter_name: name.trim() } : {}),
+        ...(withRecruiter && url.trim() ? { recruiter_url: url.trim(), recruiter_name: name.trim(), messaged } : {}),
       }),
     }).catch(() => null);
 
@@ -56,6 +56,10 @@ export default function MarkApplied({ id, cvId, internal }: { id: string; cvId?:
         />
         <button type="button" className="mark" disabled={pending || !url.trim()} onClick={(e) => mark(e, true)}>
           סמן שנשלחה בקשה
+        </button>{' '}
+        <button type="button" className="mark" disabled={pending || !url.trim()} onClick={(e) => mark(e, true, true)}
+          title="כבר מחוברים, ושלחת הודעה פרטית. נרשם כנשלח, בלי להמתין לאישור">
+          כבר מחוברים, שלחתי הודעה
         </button>{' '}
         <button type="button" className="mark" disabled={pending} onClick={(e) => mark(e, false)}>
           בלי מגייס
