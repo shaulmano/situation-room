@@ -332,4 +332,5 @@ export const WIDE_CV_ID = 'project-release-manager';
 // הקובץ שהוא נתן ב-15.11: Shaul_Mano_Project_Release_Manager.pdf.
 // הכותרת שלו היא "Project & Program Manager | Release Manager |
 // Delivery | Enterprise SaaS", והוא כבר קיים במסד תחת המזהה הזה.
-export const WIDE_CV_FILE = 'Shaul_Mano_Project_Release_Manager.pdf';
+// 24.11.2026: קובץ אחד מאוחד לכולם.
+export const WIDE_CV_FILE = 'Shaul_Mano.pdf';

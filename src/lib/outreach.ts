@@ -18,13 +18,18 @@
 // את הרעיון לשמור את הקבצים במסד.
 //
 // השמות הם כפי שהקבצים נקראים אצלו. שינוי שם אצלו מחייב שינוי כאן.
+//
+// 24.11.2026, שאול: "change the file within the site for every job". קובץ אחד
+// מאוחד לכל המשרות, Shaul_Mano.pdf. המפה נשארת כדי שהניקוד והכותרת ימשיכו
+// להבדיל בין משפחות, ואם יחזרו קבצים נפרדים מחליפים רק את הערכים כאן.
+const ONE_CV = 'Shaul_Mano.pdf';
 const FILE_NAME: Record<string, string> = {
-  qa: 'Shaul_Mano_QA_Manager.pdf',
-  program: 'Shaul_Mano_Project_Manager.pdf',
+  qa: ONE_CV,
+  program: ONE_CV,
   // 13.11.2026, שאול: "Project and release מחליף את Delivery".
-  delivery: 'Shaul_Mano_Project_Release_Manager.pdf',
-  release: 'Shaul_Mano_Release_Manager.pdf',
-  'project-release-manager': 'Shaul_Mano_Project_Release_Manager.pdf',
+  delivery: ONE_CV,
+  release: ONE_CV,
+  'project-release-manager': ONE_CV,
 };
 
 export function cvFileName(cvId?: string | null): string {
