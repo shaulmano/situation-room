@@ -167,6 +167,38 @@ def reply_body():
     return body, rows
 
 
+def invites_body():
+    """התראה על מי שאישר בקשת חברות ועוד לא יצא עליו פוש.
+
+    25.11.2026, שאול: "אתה תתריע לי על כל אחד שאישר ושאפשר לשלוח?"
+    רשימת הקשרים כוללת גם מי ששאול עצמו אישר, ולכן הפוש רק למי שיש
+    הוכחה שפנו אליו: סימון פנייה כלשהו, או בקשה שסומנה על משרה שהוא
+    פרסם. עד שלושה ימים אחורה, כדי שאישור ישן לא יצא כהתראה חדשה.
+    """
+    rows = sql(
+        "select c.id, c.full_name from contacts c "
+        "where c.invite_accepted_at is not null and c.invite_pushed_at is null "
+        "and c.invite_accepted_at > now() - interval '3 days' "
+        "and (reached_at(c) is not null or (slug_of(c.linkedin_url) <> '' and exists ("
+        "select 1 from jobs j where slug_of(j.recruiter_url) = slug_of(c.linkedin_url) "
+        "and j.poster_request_at is not null))) "
+        "order by c.invite_accepted_at limit 20"
+    )
+    if not rows:
+        print("no new acceptances to announce")
+        return None, []
+    names = " · ".join((r["full_name"] or "")[:28] for r in rows[:MAX_TITLES])
+    extra = len(rows) - MAX_TITLES
+    body = {
+        "title": "אישור חברות" if len(rows) == 1 else "%d אישרו חברות" % len(rows),
+        "body": names + (" ועוד %d" % extra if extra > 0 else "") + ". אפשר לשלוח הודעה",
+        "url": "/warm",
+        "tag": "invites",
+        "count": len(rows),
+    }
+    return body, rows
+
+
 def main():
     mode = sys.argv[1] if len(sys.argv) > 1 else "jobs"
     subs = sql("select endpoint, p256dh, auth from push_subscriptions where failures < 5")
@@ -210,6 +242,16 @@ def main():
         ids = ",".join(q(r["id"]) for r in rows)
         sql("update contacts set reply_pushed_at = now() where id in (%s)" % ids)
         print("announced %d replies" % len(rows))
+        return
+
+    if mode == "invites":
+        body, rows = invites_body()
+        if not body:
+            return
+        send_to_all(subs, body)
+        ids = ",".join(q(r["id"]) for r in rows)
+        sql("update contacts set invite_pushed_at = now() where id in (%s)" % ids)
+        print("announced %d acceptances" % len(rows))
         return
 
     rows = sql(

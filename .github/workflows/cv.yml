@@ -147,7 +147,12 @@ jobs:
           SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
           SUPABASE_PROJECT_REF: ${{ secrets.SUPABASE_PROJECT_REF }}
           PAYLOAD: ${{ inputs.content }}
-        run: python sync/invites_mark.py "$PAYLOAD"
+        run: |
+          # 25.11.2026: פוש על כל אישור. cryptography חייב להיות מותקן,
+          # אחרת הרישום מצליח והפוש נופל בשקט.
+          pip install cryptography
+          python sync/invites_mark.py "$PAYLOAD"
+          python sync/notify_push.py invites
 
       - name: Record under-the-radar jobs
         if: inputs.mode == 'seo'

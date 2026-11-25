@@ -31,6 +31,8 @@ export type PosterRow = {
   posterUrl: string;
   /** האם שאול מחובר אליו: הכתובת תואמת לאיש קשר מדרגה ראשונה שלו. */
   connected: boolean;
+  /** מתי אישר את בקשת החברות. מי שאישר יושב ב"אישרו" עד שנשלחה לו ההודעה. */
+  acceptedAt?: string | null;
   /** שמות המשרות הנוספות של אותו מפרסם, אם יש. */
   alsoTitles: string[];
   appliedAt: string | null;
@@ -47,7 +49,7 @@ export default function PosterQueue(
   { rows, noPoster = 0 }: { rows: PosterRow[]; noPoster?: number },
 ) {
   const [shown, setShown] = useState(BATCH);
-  const [tab, setTab] = useState<'open' | 'waiting' | 'sent' | 'replied' | 'skipped'>('open');
+  const [tab, setTab] = useState<'open' | 'accepted' | 'waiting' | 'sent' | 'replied' | 'skipped'>('open');
   const [copied, setCopied] = useState<Record<string, boolean>>({});
   const [msg, setMsg] = useState('');
   const [local, setLocal] = useState<Record<string, Partial<PosterRow>>>({});
@@ -60,12 +62,16 @@ export default function PosterQueue(
   const skipped = rows.filter((r) => at(r, 'skippedAt'));
   // "בתור" הוא מה שעוד לא עשית עליו כלום. מי שהבקשה אליו יצאה יושב
   // ב"ממתין לאישור" עד שתשלח לו את ההודעה עצמה, ולא נעלם.
-  const open = live.filter((r) => !at(r, 'sentAt') && !at(r, 'requestAt'));
-  const waiting = live.filter((r) => at(r, 'requestAt') && !at(r, 'sentAt'));
+  // מי שאישר מקבל טאב משלו: זה הצעד היחיד שדורש ממך פעולה עכשיו, ולא
+  // הוא ולא "ממתין" לא יציגו אותו פעמיים.
+  const accepted = live.filter((r) => r.acceptedAt && !at(r, 'sentAt'));
+  const open = live.filter((r) => !at(r, 'sentAt') && !at(r, 'requestAt') && !r.acceptedAt);
+  const waiting = live.filter((r) => at(r, 'requestAt') && !at(r, 'sentAt') && !r.acceptedAt);
   const sent = live.filter((r) => at(r, 'sentAt'));
   const replied = live.filter((r) => at(r, 'repliedAt'));
 
   const view = tab === 'open' ? open
+    : tab === 'accepted' ? accepted
     : tab === 'waiting' ? waiting
     : tab === 'sent' ? sent
     : tab === 'skipped' ? skipped
@@ -175,6 +181,7 @@ export default function PosterQueue(
 
       <div className="filters" style={{ marginBottom: 10 }}>
         {([
+          ['accepted', 'אישרו', accepted.length],
           ['open', 'בתור', open.length],
           ['waiting', 'ממתין לאישור', waiting.length],
           ['sent', 'נשלחו', sent.length],
@@ -212,7 +219,8 @@ export default function PosterQueue(
 
       {list.length === 0 && (
         <p className="screen-note" style={{ margin: 0 }}>
-          {tab === 'open' ? 'פנית לכל המפרסמים.'
+          {tab === 'accepted' ? 'אף אחד לא אישר ועדיין לא קיבל הודעה.'
+            : tab === 'open' ? 'פנית לכל המפרסמים.'
             : tab === 'waiting' ? 'אין בקשת חברות שממתינה לאישור.'
             : tab === 'sent' ? 'עוד לא סימנת אף פנייה כנשלחה.'
             : tab === 'skipped' ? 'לא ויתרת על אף אחד.'
@@ -231,12 +239,17 @@ export default function PosterQueue(
           >
             <div style={{ fontWeight: 700, fontSize: '.86rem' }}>
               {r.posterName}
-              {!r.connected && !at(r, 'requestAt') && (
+              {r.acceptedAt && !at(r, 'sentAt') && (
+                <span className="chip" style={{ marginInlineStart: 6 }}>
+                  אישר חברות, אפשר לשלוח
+                </span>
+              )}
+              {!r.connected && !r.acceptedAt && !at(r, 'requestAt') && (
                 <span className="chip mute" style={{ marginInlineStart: 6 }}>
                   לא מחובר, בקשת חברות
                 </span>
               )}
-              {!r.connected && at(r, 'requestAt') && !at(r, 'sentAt') && (
+              {!r.connected && !r.acceptedAt && at(r, 'requestAt') && !at(r, 'sentAt') && (
                 <span className="chip mute" style={{ marginInlineStart: 6 }}>
                   הבקשה יצאה, שלח כשתאושר
                 </span>

@@ -215,12 +215,18 @@ async function WarmBody({
     (postedRows ?? []).map((a: any) => slugOf(a.jobs?.recruiter_url)).filter(Boolean)
   )];
   const { data: knownPosters } = posterSlugs.length
-    ? await sb.from('contacts').select('linkedin_url')
+    ? await sb.from('contacts').select('linkedin_url, invite_accepted_at')
         .or(posterSlugs.map((s) => `linkedin_url.ilike.%/in/${s}%`).join(','))
     : { data: [] as any[] };
   const knownSlugs = new Set(
     (knownPosters ?? []).map((c: any) => slugOf(c.linkedin_url)).filter(Boolean)
   );
+  // מי שאישר את בקשת החברות. זה מה שמעביר כרטיס מ"ממתין לאישור" אל "אישרו".
+  const acceptedBySlug = new Map<string, string>();
+  for (const c of (knownPosters ?? []) as any[]) {
+    const sg = slugOf(c.linkedin_url);
+    if (sg && c.invite_accepted_at) acceptedBySlug.set(sg, c.invite_accepted_at);
+  }
 
   // כרטיס אחד לאדם ולא אחד למשרה. נמדד ב-13.11: מתוך 17 ההגשות שיש להן
   // מפרסם, שלושה אנשים פרסמו שתיים כל אחד. שני כרטיסים לאותו אדם היו
@@ -261,7 +267,8 @@ async function WarmBody({
       url: a.jobs.url ?? null,
       posterName: a.jobs.recruiter_name as string,
       posterUrl: a.jobs.recruiter_url as string,
-      connected: knownSlugs.has(slug),
+      connected: knownSlugs.has(slug) || acceptedBySlug.has(slug),
+      acceptedAt: acceptedBySlug.get(slug) ?? null,
       alsoTitles: [],
       appliedAt: a.sent_at ?? null,
       requestAt: a.jobs.poster_request_at ?? null,
