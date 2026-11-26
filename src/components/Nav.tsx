@@ -6,6 +6,7 @@ import ClearBadge from './ClearBadge';
 
 const ITEMS: { href: string; label: string; icon: string; wide?: boolean }[] = [
   { href: '/',             label: 'חדר המצב', icon: '◉' },
+  { href: '/today',        label: 'להיום',    icon: '☑', wide: true },
   { href: '/gold',         label: 'חברות זהב', icon: '★', wide: true },
   { href: '/jobs',         label: 'משרות',    icon: '▤' },
   { href: '/applications', label: 'הגשות',    icon: '↗' },
