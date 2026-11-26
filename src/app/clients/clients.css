@@ -64,7 +64,8 @@
 .hx-empty{padding:30px;text-align:center;color:var(--t3)}
 .hx-more{display:block;margin:12px auto;min-height:44px;padding:0 24px;border:1px solid #AEC2D6;border-radius:6px;background:#fff;font:inherit;cursor:pointer}
 @media (max-width:900px){
-  .hx{grid-template-columns:1fr}
+  .hx{grid-template-columns:minmax(0,1fr)}
+  .hx-side{min-width:0;max-width:100vw}
   .hx-side{position:static;height:auto;padding:10px 10px 0;overflow:visible}
   .hx-brand{padding:0 6px 8px;margin-bottom:6px;border:0}
   .hx-side nav{display:flex;gap:6px;overflow-x:auto;padding-bottom:10px}
