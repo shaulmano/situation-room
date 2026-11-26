@@ -17,6 +17,8 @@ export const STAGES = ['משרה פתוחה', 'נשלחה הודעה', 'ענתה
 export type ClientJob = {
   id: string; title: string; company: string; url: string | null;
   stage: number; ageDays: number | null; applied: boolean;
+  /** מפתח איחוד: מזהה לינקדאין כשיש, אחרת מזהה המשרה. */
+  dk: string;
   /** ימים מאז ההגשה, רק למשרה שהוגשה. */
   appliedDays: number | null; silent: boolean;
   /** מזהה שורת ההגשה, כדי לרשום ראיון או סגירה. */
@@ -80,6 +82,7 @@ export async function loadClients(sb: any): Promise<{ clients: Client[]; error?:
 
     // משרות לפי חברה: פתוחות ומתאימות, ועוד כל משרה שהוגש אליה.
     const jobsByCo = new Map<string, Map<string, ClientJob>>();
+    const dkById = new Map<string, string>();
     const put = (j: any, applied: boolean, status?: string | null, stage?: string | null, sentAt?: string | null, appId?: string | null, note?: string | null) => {
       if (!j?.id) return;
       const k = keyOf(j.company); if (!k) return;
@@ -87,13 +90,14 @@ export async function loadClients(sb: any): Promise<{ clients: Client[]; error?:
       // אותה משרה בלינקדאין יכולה להיכנס פעמיים עם כותרת שונה ואותו מזהה בסוף הכתובת (AMAREL, 26.11.2026).
       const li = typeof j.url === 'string' ? j.url.match(/linkedin\.com\/jobs\/view\/[^?#]*?(\d{8,})\/?(?:[?#]|$)/) : null;
       const dk = li ? 'li:' + li[1] : j.id;
+      dkById.set(j.id, dk);
       const prev = m.get(dk);
       const closed = applied && (status === 'rejected' || status === 'offer');
       const st = closed ? 7 : applied ? (stage === 'interview' || status === 'interview' ? 6 : stage === 'call' || status === 'conversation' ? 5 : 4) : 1;
       const closeReason = !closed ? null : status === 'offer' ? 'הצעה' : note === CLOSED_NOTE ? 'המשרה נסגרה' : 'נדחה';
       if (!prev || st > prev.stage) {
         m.set(dk, {
-          id: j.id, title: j.title, company: j.company, url: j.url ?? null, applied, stage: st,
+          id: j.id, dk, title: j.title, company: j.company, url: j.url ?? null, applied, stage: st,
           appliedDays: applied && sentAt ? Math.max(0, Math.round((Date.now() - new Date(sentAt).getTime()) / 864e5)) : null,
           silent: applied && status === 'silent', appId: appId ?? null, closed, closeReason,
           ageDays: j.first_seen ? Math.max(0, Math.round((Date.now() - new Date(j.first_seen).getTime()) / 864e5)) : null,
@@ -107,6 +111,14 @@ export async function loadClients(sb: any): Promise<{ clients: Client[]; error?:
     type Extra = 'note' | 'connectedOn' | 'acceptedAt' | 'contactedAt' | 'repliedAt';
     // מי שכבר קיבל ממנו פנייה ראשונה (גל מאי) או שיש איתו שיחה: לא מציעים לו הודעה כללית נוספת.
     const pitched = new Set<string>();
+    // 26.11.2026, שאול: משרה אחת בחברה מוצעת לכל מי שמכיר שם, ומרגע שסימן "שלחתי" אצל אחד, אצל השאר הצעד נעלם.
+    // רק פנייה שנרשמה עם משרה (last_job_id) סופרת. פנייה כללית בלי משרה לא מכסה אף משרה.
+    const via = new Map<string, { id: string; name: string }>();
+    for (const c of contacts as any[]) {
+      if (!c.contacted_at || !c.last_job_id || c.skipped_at || c.left_company_at) continue;
+      const k = dkById.get(c.last_job_id) ?? c.last_job_id;
+      if (!via.has(k)) via.set(k, { id: 'c:' + c.id, name: c.full_name ?? '' });
+    }
     const mk = (base: Omit<Client, 'jobs' | 'stage' | 'next' | 'urgent' | 'companyKey' | 'silentCount' | Extra> & Partial<Pick<Client, Extra>> & { companyKey: string },
                 contactedJobId: string | null, contacted: boolean, replied: boolean, urgent: boolean): Client => {
       const jobs = [...(jobsByCo.get(base.companyKey)?.values() ?? [])];
@@ -117,13 +129,17 @@ export async function loadClients(sb: any): Promise<{ clients: Client[]; error?:
       // משרה שנסגרה לא מקדמת את הלקוח: הוא מתקדם לפי המשרה החיה הרחוקה ביותר.
       const live = jobs.filter((j) => !j.closed);
       const stage = live.length ? live.reduce((s, j) => Math.max(s, j.stage), 0) : jobs.length ? 7 : 0;
-      const open = jobs.filter((j) => !j.applied);
+      const openAll = jobs.filter((j) => !j.applied);
+      const covered = (j: ClientJob) => { const v = via.get(j.dk); return !!v && v.id !== base.id; };
+      const open = openAll.filter((j) => !covered(j));
+      const coveredBy = openAll.length && !open.length ? via.get(openAll[0].dk)?.name ?? '' : '';
       const silentCount = jobs.filter((j) => j.silent).length;
       let next: string | null = null;
       if (base.kind === 'prior') next = null; // בקשה מלפני חודשים שלא אושרה: אין מה לעשות איתה מעבר לעקוב
       else if (urgent) next = 'ענתה: לענות לה';
       else if (silentCount >= SILENT_LIMIT && !(base.contactedAt ?? null)) next = 'פנה ישירות, לא להגיש עוד';
       else if (base.status === 'requested') next = 'מחכה לאישור חברות';
+      else if (coveredBy) next = `מחכה: פנית דרך ${coveredBy}`;
       else if (open.length && base.status === 'none') next = 'לשלוח בקשת חברות';
       else if (open.length && !contacted) next = 'לשלוח הודעה';
       // מנהל פיתוח או מגייס/ת חבר בלי משרה פתוחה: הודעת היכרות כללית, שמבקשת שיזכור אותו. לא כשכבר פנה אליו.
