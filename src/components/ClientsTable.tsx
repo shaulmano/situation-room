@@ -1,7 +1,7 @@
 'use client';
 import { useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { STAGES, type Client } from '@/lib/clients';
+import { STAGES, SILENT_LIMIT, type Client } from '@/lib/clients';
 
 type Group = 'recruiter' | 'dev' | 'other';
 const GL: Record<Group, string> = { recruiter: 'מגייסות ו-HR', dev: 'מנהלי פיתוח', other: 'אחרים' };
@@ -140,6 +140,7 @@ export default function ClientsTable({ clients }: { clients: Client[] }) {
               <div className="hx-who">
                 <b>{c.name || '(ללא שם)'}</b>
                 <span>{[c.company, c.title].filter(Boolean).join(' · ')}</span>
+                {c.silentCount >= SILENT_LIMIT && <em className="hx-tag">{c.silentCount} הגשות בלי מענה</em>}
               </div>
               <div><span className={'hx-pill ' + c.status}>{SL[c.status]}</span></div>
               <div className="hx-jobs">
@@ -149,7 +150,7 @@ export default function ClientsTable({ clients }: { clients: Client[] }) {
                 <Bar stage={c.stage} />
                 <small>{c.stage ? STAGES[c.stage - 1] : 'ממתין למשרה'}</small>
               </div>
-              <div className={'hx-next' + (c.urgent ? ' red' : '')}>{c.next ?? '—'}</div>
+              <div className={'hx-next' + (c.urgent || c.next?.startsWith('פנה ישירות') ? ' red' : '')}>{c.next ?? '—'}</div>
               <div className="hx-go">{open === c.id ? '▴' : '▾'}</div>
             </div>
             {open === c.id && (

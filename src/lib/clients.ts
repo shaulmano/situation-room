@@ -8,6 +8,8 @@ import { companyKey } from '@/lib/contacts';
  * באותם תנאים שבהם משתמשים שאר המסכים. הסטטוסים לא נשמרים: הם מחושבים בכל
  * טעינה, כדי שלא יתנתקו מהמציאות כמו `manual_dup`.
  */
+/** מעל מספר הגשות כזה בלי מענה לאותה חברה, ממליצים לפנות ישירות ולא להגיש עוד. */
+export const SILENT_LIMIT = 3;
 export const STAGES = ['משרה פתוחה', 'נשלחה הודעה', 'ענתה', 'שיחה נקבעה', 'הוגשה', 'ראיון', 'נסגרה'] as const;
 
 export type ClientJob = {
@@ -24,6 +26,8 @@ export type Client = {
   status: 'none' | 'requested' | 'friend';
   jobs: ClientJob[]; stage: number;
   next: string | null; urgent: boolean; replyText: string | null;
+  /** כמה הגשות לחברה הזאת נשארו בלי מענה. */
+  silentCount: number;
   note: string | null; connectedOn: string | null; acceptedAt: string | null;
   contactedAt: string | null; repliedAt: string | null;
 };
@@ -87,7 +91,7 @@ export async function loadClients(sb: any): Promise<{ clients: Client[]; error?:
     for (const a of apps) put(a.jobs, true, a.status, a.stage, a.sent_at);
 
     type Extra = 'note' | 'connectedOn' | 'acceptedAt' | 'contactedAt' | 'repliedAt';
-    const mk = (base: Omit<Client, 'jobs' | 'stage' | 'next' | 'urgent' | 'companyKey' | Extra> & Partial<Pick<Client, Extra>> & { companyKey: string },
+    const mk = (base: Omit<Client, 'jobs' | 'stage' | 'next' | 'urgent' | 'companyKey' | 'silentCount' | Extra> & Partial<Pick<Client, Extra>> & { companyKey: string },
                 contactedJobId: string | null, contacted: boolean, replied: boolean, urgent: boolean): Client => {
       const jobs = [...(jobsByCo.get(base.companyKey)?.values() ?? [])];
       for (const j of jobs) {
@@ -96,13 +100,15 @@ export async function loadClients(sb: any): Promise<{ clients: Client[]; error?:
       jobs.sort((a, b) => b.stage - a.stage || (a.ageDays ?? 999) - (b.ageDays ?? 999));
       const stage = jobs.reduce((s, j) => Math.max(s, j.stage), 0);
       const open = jobs.filter((j) => !j.applied);
+      const silentCount = jobs.filter((j) => j.silent).length;
       let next: string | null = null;
       if (urgent) next = 'ענתה: לענות לה';
+      else if (silentCount >= SILENT_LIMIT && !(base.contactedAt ?? null)) next = 'פנה ישירות, לא להגיש עוד';
       else if (base.status === 'requested') next = 'מחכה לאישור חברות';
       else if (open.length && base.status === 'none') next = 'לשלוח בקשת חברות';
       else if (open.length && !contacted) next = 'לשלוח הודעה';
       else if (open.length && contacted && !replied) next = 'מחכה לתשובה';
-      return { note: null, connectedOn: null, acceptedAt: null, contactedAt: null, repliedAt: null, ...base, jobs, stage, next, urgent };
+      return { note: null, connectedOn: null, acceptedAt: null, contactedAt: null, repliedAt: null, ...base, silentCount, jobs, stage, next, urgent };
     };
 
     const out: Client[] = [];

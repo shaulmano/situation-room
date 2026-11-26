@@ -91,3 +91,4 @@
 .hx-msg{font-size:.85rem;color:var(--ok);align-self:center}
 .hx-b:disabled{opacity:.45;cursor:default}
 @media (max-width:900px){.hx-fgrid{grid-template-columns:1fr}}
+.hx-tag{display:inline-block;align-self:flex-start;margin-top:3px;font-style:normal;font-size:.72rem;font-weight:600;color:var(--crit);background:var(--crit-wash);border-radius:999px;padding:2px 10px}
