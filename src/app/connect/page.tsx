@@ -2,6 +2,8 @@ import Link from 'next/link';
 import { serverClient } from '@/lib/server';
 import ConnectList, { type ConnectRow } from '@/components/ConnectList';
 import { goldConnectNote } from '@/lib/gold';
+import ConnectJobs from '@/components/ConnectJobs';
+import { loadJobConnect, JOB_CONNECT_DAILY } from '@/lib/jobConnect';
 
 export const dynamic = 'force-dynamic';
 
@@ -15,6 +17,7 @@ export const dynamic = 'force-dynamic';
  */
 export default async function Connect() {
   const sb = serverClient();
+  const jc = await loadJobConnect(sb);
   const [{ data: fr, error }, { count: asked }] = await Promise.all([
     sb.from('gold_recruiters')
       .select('id, company_id, full_name, headline, profile_url, found_at')
@@ -49,6 +52,14 @@ export default async function Connect() {
         וסמן <b>ביקשתי</b>. כשהוא מאשר, הוא מופיע ב"אישר חברות" וממתין למכתב עם קורות החיים.
         {' '}בקשו כבר: <b>{asked ?? 0}</b>.
       </p>
+      <h2>לפי משרה פתוחה</h2>
+      <p className="sub">
+        חברות שיש בהן משרה שמתאימה לך ואין בהן אף איש קשר שלך. <b>חפש מגייסים</b> פותח חיפוש בלינקדאין באותה חברה,
+        <b> העתק הערה</b> נושא את שם המשרה. שום שם לא נשמר כאן. עד {JOB_CONNECT_DAILY} ביום, וגם ויתור נספר.
+      </p>
+      {jc.error && <div className="alert">שגיאה בשליפה: {jc.error}</div>}
+      <ConnectJobs rows={jc.rows} left={jc.left} done={jc.done} quota={JOB_CONNECT_DAILY} />
+      <h2>מגייסים שנמצאו</h2>
       <ConnectList rows={rows} />
     </main>
   );
