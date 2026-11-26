@@ -97,6 +97,21 @@ function ReplyBox({ c }: { c: Client }) {
   );
 }
 
+/** מחזיר לרשימה מי שסומן "לא לפנות". אותו שדה שכותב גם "מוותר" בפנייה הרחבה. */
+function Unskip({ c }: { c: Client }) {
+  const [busy, setBusy] = useState(false);
+  const refresh = useContext(Refresh);
+  async function undo() {
+    setBusy(true);
+    const r = await fetch('/api/contacts', { method: 'PATCH', headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ id: c.id.slice(2), skipped: false }) }).catch(() => null);
+    setBusy(false);
+    if (!r || !r.ok) { alert('לא נשמר. נסה שוב.'); return; }
+    refresh();
+  }
+  return <><span>סומן: לא לפנות</span> <button className="hx-nbtn" disabled={busy} onClick={undo}>החזר לרשימה</button></>;
+}
+
 function Bar({ stage }: { stage: number }) {
   return (
     <div className="hx-bar" title={stage ? STAGES[stage - 1] : 'אין משרה'}>
@@ -331,6 +346,7 @@ function Inner({ clients, initial }: { clients: Client[]; initial?: { waiting?: 
                 {c.next && /^(לשלוח|פנה ישירות)/.test(c.next) && (c.jobs.length > 0 || c.kind === 'contact')
                   ? <button className="hx-nbtn" onClick={() => setAct(act === c.id ? null : c.id)}>{c.next}</button>
                   : c.urgent ? <button className="hx-nbtn" onClick={() => toggle(c.id, 'jobs')}>{c.next}</button>
+                  : c.skipped && c.kind === 'contact' ? <Unskip c={c} />
                   : (c.next ?? '—')}
               </div>
               <div className="hx-gos">

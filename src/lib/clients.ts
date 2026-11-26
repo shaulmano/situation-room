@@ -34,6 +34,8 @@ export type Client = {
   next: string | null; urgent: boolean; replyText: string | null; replyDraft?: string | null;
   /** כמה הגשות לחברה הזאת נשארו בלי מענה. */
   silentCount: number;
+  /** סומן "לא לפנות" (או ויתור בפנייה הרחבה): אין צעד הבא עד שמחזירים. */
+  skipped?: boolean;
   note: string | null; connectedOn: string | null; acceptedAt: string | null;
   contactedAt: string | null; repliedAt: string | null;
 };
@@ -150,6 +152,7 @@ export async function loadClients(sb: any): Promise<{ clients: Client[]; error?:
       // "לא לפנות" נכתב ל-skipped_at. בלי זה הלחיצה לא שינתה כלום על המסך אחרי רענון (26.11.2026).
       // תגובה שממתינה לתשובה נשארת: היא קודמת לסימון.
       const last = out[out.length - 1];
+      if (c.skipped_at) last.skipped = true;
       if (c.skipped_at && !last.urgent) last.next = null;
     }
     // אותו אדם כחבר וגם כבקשה: החבר גובר. זיהוי לפי פרופיל, ובלעדיו לפי שם וחברה.
