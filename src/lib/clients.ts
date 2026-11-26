@@ -121,8 +121,8 @@ export async function loadClients(sb: any): Promise<{ clients: Client[]; error?:
       else if (base.status === 'requested') next = 'מחכה לאישור חברות';
       else if (open.length && base.status === 'none') next = 'לשלוח בקשת חברות';
       else if (open.length && !contacted) next = 'לשלוח הודעה';
-      // מנהל פיתוח חבר בלי משרה פתוחה: הודעת היכרות כללית, שמבקשת שיזכור אותו. לא כשכבר פנה אליו.
-      else if (!open.length && base.kind === 'contact' && base.group === 'dev' && base.status === 'friend' && !contacted && !replied && !pitched.has(base.id)) next = 'לשלוח הודעה';
+      // מנהל פיתוח או מגייס/ת חבר בלי משרה פתוחה: הודעת היכרות כללית, שמבקשת שיזכור אותו. לא כשכבר פנה אליו.
+      else if (!open.length && base.kind === 'contact' && (base.group === 'dev' || base.group === 'recruiter') && base.status === 'friend' && !contacted && !replied && !pitched.has(base.id)) next = 'לשלוח הודעה';
       else if (open.length && contacted && !replied) next = 'מחכה לתשובה';
       return { note: null, connectedOn: null, acceptedAt: null, contactedAt: null, repliedAt: null, ...base, silentCount, jobs, stage, next, urgent };
     };
