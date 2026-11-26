@@ -151,3 +151,28 @@
 .hx-jlink span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0}
 .hx-side nav{scrollbar-width:none}.hx-side nav::-webkit-scrollbar{display:none}
 .hx-jlink{margin-inline:0;max-width:calc(100% + 0px)}
+
+/* ===== 26.11.2026, שאול: כל הכפתורים באותה שורה, בכל בלוק ובכל מסך =====
+   מוקטנים או מוגדלים כדי להיכנס. אין כפתור מתחת לכפתור. הטקסט יכול לרדת שורה
+   בתוך הכפתור, הכפתור עצמו לא. רשימת בחירה של אנשים (.hx-pick) היא רשימה ולא שורת כפתורים.
+   מסך חדש משתמש באחת המחלקות האלה ולא כותב CSS לכפתורים. */
+.cn-flow,.cn-acts,.gold-acts,.reach-acts,.filters,.hx-acts,.hx-chips,.cn-line,.hx-gos,
+.rp-card .cn-acts,.gold-simple .cn-acts,.gold-sec .cn-acts,.hx-job .hx-acts,.hx-reply .hx-acts,.hx-act .hx-acts{
+  display:flex!important;flex-wrap:wrap!important;gap:6px!important;grid-template-columns:none!important;align-items:stretch!important}
+.cn-flow>:is(button,a,summary),.cn-acts>:is(button,a),.gold-acts>:is(button,a),.reach-acts>:is(button,a),
+.filters>:is(button,a),.hx-acts>:is(button,a,.hx-b),.hx-chips>button,.hx-gos>button,
+.hx-job .hx-acts>:is(button,a),.hx-reply .hx-acts>:is(button,a),.hx-act .hx-acts>:is(button,a),.cn-line>:is(button,a){
+  flex:1 1 0!important;min-width:0!important;width:auto!important;max-width:none!important;
+  display:inline-flex!important;align-items:center;justify-content:center;text-align:center;
+  white-space:normal!important;overflow-wrap:anywhere;line-height:1.15;min-height:36px;
+  padding:.3em .3em!important;font-size:clamp(.6rem,2.5vw,.85rem)!important;margin:0!important}
+/* כל מה שאינו כפתור בתוך הבלוק (כותרת, הערה, תג) תופס שורה משלו, והכפתורים נשארים יחד */
+.cn-flow>details,.cn-flow>:not(button):not(a):not(details),.cn-acts>:not(button):not(a),.filters>:not(button):not(a),
+.hx-acts>:not(button):not(a):not(.hx-b),.hx-chips>:not(button){flex:0 0 100%!important}
+.hx-acts>.hx-tag{flex:0 0 auto!important}
+.hx-job .hx-acts>.hx-pick{flex:0 0 100%!important}
+/* שורת איש קשר: השם ראשון והכפתורים אחריו, אותה שורה. בלוקים רחבים (טיוטה, בחירת קו"ח) יורדים שורה */
+.cn-line>span:first-child{flex:2 1 0!important;min-width:0!important}
+.cn-line>span[style*="display: flex"]{flex:0 0 100%!important}
+.cn-line>:is(button,a){font-size:clamp(.58rem,2.3vw,.76rem)!important}
+.hx-nbtn,.hx-go{white-space:normal;line-height:1.15}

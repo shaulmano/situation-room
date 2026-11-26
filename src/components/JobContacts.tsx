@@ -308,6 +308,7 @@ function Contact({
 
   return (
     <div
+      className="cn-line"
       style={{
         ...line,
         ...(done ? {
