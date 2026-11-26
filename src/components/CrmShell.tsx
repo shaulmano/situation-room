@@ -35,7 +35,7 @@ export default function CrmShell({ children }: { children: React.ReactNode }) {
   // כל כפתור, קישור ותג בלי tooltip מקבל את הטקסט שלו, כדי שכשהטקסט מוקטן בשורה אחת אפשר לקרוא אותו במעבר עכבר.
   useEffect(() => {
     const fill = () => document.querySelectorAll<HTMLElement>('.hx-main button:not([title]), .hx-main a:not([title]), .hx-main summary:not([title]), .hx-main .hx-pill:not([title]), .hx-main .hx-tag:not([title])').forEach((el) => {
-      const t = (el.innerText || '').replace(/\s+/g, ' ').trim();
+      const t = (el.textContent || '').replace(/\s+/g, ' ').trim();
       if (t) el.title = t.slice(0, 120);
     });
     fill();
