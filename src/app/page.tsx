@@ -103,7 +103,6 @@ export default async function Dashboard({
     .is('contacted_at', null).is('skipped_at', null);
   // 26.11.2026: גם חברות עם משרה פתוחה ובלי איש קשר, ראה src/lib/jobConnect.
   const jobConnect = await loadJobConnect(sb);
-  const connectTotal = (connectWaiting ?? 0) + jobConnect.rows.length;
   // 15.11.2026: "יש לי תחושה שהגשתי כבר למשרות האלו". אותה משרה מלוח אחר
   // היא כתובת אחרת, ולכן מזהה לבדו לא תופס אותה. ראה priorApplication.ts.
   const priorIdx = applied.idx;
@@ -493,9 +492,12 @@ export default async function Dashboard({
       <Link className="radar-tile" href="/connect">
         <span className="rt-t">
           <b>בקשות חברות ←</b>
-          <span>{jobConnect.rows.length} חברות עם משרה פתוחה ובלי איש קשר, ומגייסים שנמצאו</span>
+          <span>מגייסים בחברות שאינך מחובר אליהן</span>
         </span>
-        <span className="rt-n">{connectTotal}</span>
+        <span className="rt-pair">
+          <span className="rt-col"><span className="rt-n">{jobConnect.rows.length}</span><small>לפי משרה</small></span>
+          <span className="rt-col"><span className="rt-n">{connectWaiting ?? 0}</span><small>נמצאו</small></span>
+        </span>
       </Link>
 
       <Link className="radar-tile" href="/radar">

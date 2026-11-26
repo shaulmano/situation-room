@@ -415,6 +415,9 @@ a.kpi:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
   font-size: 1.7rem; line-height: 1; color: var(--accent); flex: none;
   font-variant-numeric: tabular-nums;
 }
+.radar-tile .rt-pair { display: flex; gap: 14px; flex: none; }
+.radar-tile .rt-col { display: flex; flex-direction: column; align-items: center; gap: 3px; }
+.radar-tile .rt-col small { font-size: .68rem; color: var(--muted); }
 .radar-tile:active { transform: scale(.99); }
 
 /* פנייה רחבה. 15.11.2026: "מספר שיורד מול העיניים על כל פניה".
