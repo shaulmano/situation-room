@@ -183,3 +183,11 @@
 .hx-pick.row1>.hx-b{flex:1 1 0!important;min-width:0!important;width:auto!important;white-space:normal!important;font-size:clamp(.6rem,2.5vw,.85rem)!important;padding:.3em .3em!important}
 .hx-pick.row1>.hx-sel{flex:3 1 0;min-width:0;min-height:40px;font:inherit;font-size:.85rem;border:1px solid #AEC2D6;border-radius:6px;background:#fff;color:var(--t1);padding:0 8px;width:auto}
 .hx-pick.row1>.hx-b.main{flex:0 0 auto!important;padding:0 14px!important}
+
+/* חברות בלי איש קשר (26.11.2026) */
+.hx-orph{margin-top:1rem;border:1px solid var(--line,#ddd);padding:.6rem .8rem;background:var(--surface,#fff)}
+.hx-orph summary{cursor:pointer;font-weight:600}
+.hx-orph-row{padding:.5rem 0;border-top:1px solid var(--line,#eee)}
+.hx-orph-row b{margin-inline-end:.5rem}
+.hx-orph-acts{display:flex;flex-wrap:nowrap;gap:.4rem;margin-top:.4rem}
+.hx-orph-acts>*{flex:1 1 0;min-width:0;text-align:center;font-size:clamp(.6rem,2.5vw,.85rem);overflow-wrap:anywhere}

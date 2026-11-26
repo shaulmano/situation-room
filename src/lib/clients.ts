@@ -56,7 +56,10 @@ async function pageAll(build: (from: number, to: number) => any, size = 1000, ca
   return out;
 }
 
-export async function loadClients(sb: any): Promise<{ clients: Client[]; error?: string }> {
+/** חברה עם משרה פתוחה ומתאימה, ובלי אף איש קשר, מגייס או בקשה במערכת. */
+export type Orphan = { company: string; jobs: { id: string; title: string; url: string | null; ageDays: number | null }[] };
+
+export async function loadClients(sb: any): Promise<{ clients: Client[]; orphans: Orphan[]; error?: string }> {
   try {
     const since = new Date(Date.now() - 30 * 864e5).toISOString();
     const [contacts, gold, matches, apps, aliasRows, prior] = await Promise.all([
@@ -199,8 +202,19 @@ export async function loadClients(sb: any): Promise<{ clients: Client[]; error?:
         status: 'none', replyText: null, note: `בקשה או הודעה נשלחה ב-${r.sent_on ?? 'מאי'}, ולא אושרה`,
       }, null, false, false, false));
     }
-    return { clients: out };
+    // 26.11.2026, שאול: משרה בחברה בלי אף לקוח לא יורדת בין הכיסאות. מחושב, לא נשמר.
+    const haveCo = new Set(out.map((c) => c.companyKey).filter(Boolean));
+    const orphans: Orphan[] = [];
+    for (const [k, m] of jobsByCo) {
+      if (haveCo.has(k)) continue;
+      const open = [...m.values()].filter((j) => !j.applied && !j.closed);
+      if (!open.length) continue;
+      open.sort((a, b) => (a.ageDays ?? 999) - (b.ageDays ?? 999));
+      orphans.push({ company: open[0].company, jobs: open.map((j) => ({ id: j.id, title: j.title, url: j.url, ageDays: j.ageDays })) });
+    }
+    orphans.sort((a, b) => (a.jobs[0].ageDays ?? 999) - (b.jobs[0].ageDays ?? 999));
+    return { clients: out, orphans };
   } catch (e: any) {
-    return { clients: [], error: String(e?.message ?? e) };
+    return { clients: [], orphans: [], error: String(e?.message ?? e) };
   }
 }
