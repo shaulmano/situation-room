@@ -19,6 +19,7 @@ import PriorApplied from '@/components/PriorApplied';
 import DuplicateCheck from '@/components/DuplicateCheck';
 import { loadApplied, priorApplication } from '@/lib/priorApplication';
 import { DAILY_TARGET, israelDayStart } from '@/lib/wideReach';
+import { loadJobConnect } from '@/lib/jobConnect';
 import { internalApplied } from '@/lib/internalApplied';
 import { goldReadyCount } from '@/lib/goldCount';
 import { warmTodayCount } from '@/lib/warmCount';
@@ -100,6 +101,9 @@ export default async function Dashboard({
   const acceptedWaiting: number | null = acc.error ? null : (acc.count ?? 0);
   const { count: connectWaiting } = await sb.from('gold_recruiters').select('id', { count: 'exact', head: true })
     .is('contacted_at', null).is('skipped_at', null);
+  // 26.11.2026: גם חברות עם משרה פתוחה ובלי איש קשר, ראה src/lib/jobConnect.
+  const jobConnect = await loadJobConnect(sb);
+  const connectTotal = (connectWaiting ?? 0) + jobConnect.rows.length;
   // 15.11.2026: "יש לי תחושה שהגשתי כבר למשרות האלו". אותה משרה מלוח אחר
   // היא כתובת אחרת, ולכן מזהה לבדו לא תופס אותה. ראה priorApplication.ts.
   const priorIdx = applied.idx;
@@ -489,9 +493,9 @@ export default async function Dashboard({
       <Link className="radar-tile" href="/connect">
         <span className="rt-t">
           <b>בקשות חברות ←</b>
-          <span>מגייסים שנמצאו בחברות שאינך מחובר אליהן</span>
+          <span>{jobConnect.rows.length} חברות עם משרה פתוחה ובלי איש קשר, ומגייסים שנמצאו</span>
         </span>
-        <span className="rt-n">{connectWaiting}</span>
+        <span className="rt-n">{connectTotal}</span>
       </Link>
 
       <Link className="radar-tile" href="/radar">
