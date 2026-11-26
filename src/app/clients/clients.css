@@ -75,3 +75,7 @@
   .hx-job{grid-template-columns:1fr}
   .hx-acts .hx-b{flex:1 1 calc(50% - 8px)}
 }
+
+/* המסך תופס את כל הרוחב: ה-shell הגלובלי מגביל ל-1000px. */
+.shell:has(.hx){max-width:none;padding:0}
+.hx-main{max-width:none}

@@ -115,7 +115,7 @@ export default function ClientsTable({ clients }: { clients: Client[] }) {
                   {c.jobs.length === 0 && <div className="mut">אין כרגע משרה מתאימה בחברה הזאת. כשתיכנס, הלקוח יעלה כאן לבד.</div>}
                   {c.jobs.map((j) => (
                     <div key={j.id} className="hx-job">
-                      <div className="hx-jt"><b>{j.title}</b><span>{j.company}{j.ageDays !== null ? ` · לפני ${j.ageDays} ימים` : ''}</span></div>
+                      <div className="hx-jt"><b>{j.title}</b><span>{j.company}{j.applied && j.appliedDays !== null ? ` · הוגשה לפני ${j.appliedDays} ימים${j.silent ? ' · בלי מענה' : ''}` : j.ageDays !== null ? ` · פורסמה לפני ${j.ageDays} ימים` : ''}</span></div>
                       <div className="hx-stage"><Bar stage={j.stage} /><small>{STAGES[j.stage - 1]}</small></div>
                       <div className="hx-acts">
                         {j.url && <a className="hx-b" href={j.url} target="_blank" rel="noreferrer">פתח משרה</a>}
