@@ -70,7 +70,55 @@ def probe(c):
     return dict(c, platform=None, token='', total=0, il=0, target=[])
 
 
+LEGAL = re.compile(r"(ltd|limited|inc|incorporated|llc|corp|corporation|gmbh|בעמ)$")
+
+
+def key(name):
+    return LEGAL.sub("", re.sub(r"[\W_]+", "", (name or "").lower()))
+
+
+def cover():
+    """משרות מתאימות פתוחות מול אנשי קשר באותה חברה. קריאה בלבד."""
+    jobs = sql("select id, title, company from jobs where on_target and dismissed_at is null "
+               "and closed_at is null and first_seen > now() - interval '30 days'")
+    try:
+        applied = {r['job_id'] for r in sql("select job_id from applications")}
+    except Exception:
+        applied = set()
+    al = {r['alias_key']: r['company_key'] for r in sql("select alias_key, company_key from company_aliases")}
+    cts = sql("select company_key, title, left_company_at from contacts where company_key is not null and company_key<>''")
+    rec = re.compile(r'recruit|talent|hr |human resources|acquisition|גיוס|משאבי אנוש', re.I)
+    dev = re.compile(r'cto|vp r&d|vp eng|head of (r&d|eng)|engineering manager|פיתוח', re.I)
+    by = {}
+    for c in cts:
+        if c.get('left_company_at'):
+            continue
+        d = by.setdefault(c['company_key'], [0, 0, 0])
+        d[0] += 1
+        t = c.get('title') or ''
+        d[1] += bool(rec.search(t))
+        d[2] += bool(dev.search(t))
+    jobs = [j for j in jobs if j['id'] not in applied]
+    cos = {}
+    for j in jobs:
+        k = key(j['company'])
+        k = al.get(k, k)
+        cos.setdefault(k, []).append(j)
+    withc = [k for k in cos if k in by]
+    withr = [k for k in cos if k in by and by[k][1]]
+    withd = [k for k in cos if k in by and by[k][2]]
+    summary(f'open target jobs not applied, last 30 days: {len(jobs)} in {len(cos)} companies')
+    summary(f'companies with any contact: {len(withc)} ({sum(len(cos[k]) for k in withc)} jobs)')
+    summary(f'  with a recruiter/HR contact: {len(withr)} ({sum(len(cos[k]) for k in withr)} jobs)')
+    summary(f'  with a dev-manager contact: {len(withd)} ({sum(len(cos[k]) for k in withd)} jobs)')
+    summary(f'companies with NO contact: {len(cos) - len(withc)} ({sum(len(v) for k, v in cos.items() if k not in by)} jobs)')
+    for k in sorted(withc, key=lambda k: -len(cos[k]))[:25]:
+        summary(f'  {k}: jobs {len(cos[k])}, contacts {by[k][0]}, recruiters {by[k][1]}, dev {by[k][2]} | {cos[k][0]["title"][:50]}')
+
+
 def main():
+    if len(sys.argv) > 1 and sys.argv[1] == 'cover':
+        return cover()
     n = int(sys.argv[1]) if len(sys.argv) > 1 else 100
     rows = sql(
         "with rc as (select company_key, mode() within group (order by company) name, count(*) people "
