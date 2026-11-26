@@ -89,6 +89,7 @@ export async function POST(req: NextRequest) {
 export async function PATCH(req: NextRequest) {
   const body = (await req.json().catch(() => null)) as
     | { id?: unknown; phone?: unknown; note?: unknown; contacted?: unknown;
+        fullName?: unknown; title?: unknown; company?: unknown; email?: unknown;
         jobId?: unknown; replyDone?: unknown; leftCompany?: unknown;
         skipped?: unknown }
     | null;
@@ -98,6 +99,23 @@ export async function PATCH(req: NextRequest) {
   const patch: Record<string, string | null> = { updated_at: new Date().toISOString() };
   if (typeof body?.phone === 'string') patch.phone = body.phone.trim() || null;
   if (typeof body?.note === 'string') patch.note = body.note.trim() || null;
+  // 26.11.2026, מסך לקוחות: עריכת פרטי איש קשר. שם לא נמחק (חובה), והחברה
+  // מושכת איתה את company_key, כי ההצלבה למשרות נעשית לפיו.
+  // **ייבוא חדש של Connections.csv יכתוב מחדש שם, תפקיד וחברה** מהקובץ של
+  // לינקדאין, ולכן עריכה של השדות האלה עלולה להידרס בייבוא הבא.
+  if (typeof body?.fullName === 'string' && body.fullName.trim()) patch.full_name = body.fullName.trim();
+  if (typeof body?.title === 'string') patch.title = body.title.trim() || null;
+  if (typeof body?.company === 'string') {
+    patch.company = body.company.trim() || null;
+    patch.company_key = companyKey(body.company);
+  }
+  if (typeof body?.email === 'string') {
+    const e = body.email.trim();
+    if (e && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e)) {
+      return NextResponse.json({ error: 'כתובת מייל לא תקינה' }, { status: 400 });
+    }
+    patch.email = e || null;
+  }
   // Marking an outreach is a timestamp, not a flag: the job screen shows how
   // long ago it was, which is what decides whether to follow up.
   // "טיפלתי" על תגובה. replied_at נשאר: הוא העדות שהוא ענה, ו-reply_done_at

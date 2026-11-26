@@ -79,3 +79,15 @@
 /* המסך תופס את כל הרוחב: ה-shell הגלובלי מגביל ל-1000px. */
 .shell:has(.hx){max-width:none;padding:0}
 .hx-main{max-width:none}
+
+.hx-edit{display:flex;flex-direction:column;gap:12px}
+.hx-fgrid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
+.hx-f{display:flex;flex-direction:column;gap:3px}.hx-f.wide{grid-column:1/-1}
+.hx-f small{font-size:.72rem;color:var(--t3);font-weight:500}
+.hx-f input,.hx-f textarea{font:inherit;min-height:42px;border:1px solid var(--line);border-radius:6px;padding:8px 10px;background:#fff;color:var(--t1)}
+.hx-f input:focus,.hx-f textarea:focus{outline:2px solid var(--brand)}
+.hx-f input:disabled,.hx-f textarea:disabled{background:#F7FAFC;color:var(--t2)}
+.hx-facts{display:flex;flex-wrap:wrap;gap:6px 20px;font-size:.8rem;color:var(--t2)}.hx-facts b{color:var(--t1);font-weight:500}
+.hx-msg{font-size:.85rem;color:var(--ok);align-self:center}
+.hx-b:disabled{opacity:.45;cursor:default}
+@media (max-width:900px){.hx-fgrid{grid-template-columns:1fr}}

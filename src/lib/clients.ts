@@ -24,6 +24,8 @@ export type Client = {
   status: 'none' | 'requested' | 'friend';
   jobs: ClientJob[]; stage: number;
   next: string | null; urgent: boolean; replyText: string | null;
+  note: string | null; connectedOn: string | null; acceptedAt: string | null;
+  contactedAt: string | null; repliedAt: string | null;
 };
 
 const REC = /recruit|talent|\bhr\b|human resources|acquisition|sourcer|גיוס|משאבי אנוש|מגייס/i;
@@ -45,7 +47,7 @@ export async function loadClients(sb: any): Promise<{ clients: Client[]; error?:
     const since = new Date(Date.now() - 30 * 864e5).toISOString();
     const [contacts, gold, matches, apps, aliasRows] = await Promise.all([
       pageAll((a, b) => sb.from('contacts')
-        .select('id, full_name, title, company, company_key, linkedin_url, email, phone, contacted_at, replied_at, '
+        .select('id, full_name, title, company, company_key, linkedin_url, email, phone, note, connected_on, contacted_at, replied_at, '
           + 'reply_done_at, reply_text, invite_accepted_at, left_company_at, last_job_id, skipped_at')
         .order('id').range(a, b)),
       pageAll((a, b) => sb.from('gold_recruiters')
@@ -84,7 +86,8 @@ export async function loadClients(sb: any): Promise<{ clients: Client[]; error?:
     for (const m of matches) put(m.jobs, false);
     for (const a of apps) put(a.jobs, true, a.status, a.stage, a.sent_at);
 
-    const mk = (base: Omit<Client, 'jobs' | 'stage' | 'next' | 'urgent' | 'companyKey'> & { companyKey: string },
+    type Extra = 'note' | 'connectedOn' | 'acceptedAt' | 'contactedAt' | 'repliedAt';
+    const mk = (base: Omit<Client, 'jobs' | 'stage' | 'next' | 'urgent' | 'companyKey' | Extra> & Partial<Pick<Client, Extra>> & { companyKey: string },
                 contactedJobId: string | null, contacted: boolean, replied: boolean, urgent: boolean): Client => {
       const jobs = [...(jobsByCo.get(base.companyKey)?.values() ?? [])];
       for (const j of jobs) {
@@ -99,7 +102,7 @@ export async function loadClients(sb: any): Promise<{ clients: Client[]; error?:
       else if (open.length && base.status === 'none') next = 'לשלוח בקשת חברות';
       else if (open.length && !contacted) next = 'לשלוח הודעה';
       else if (open.length && contacted && !replied) next = 'מחכה לתשובה';
-      return { ...base, jobs, stage, next, urgent };
+      return { note: null, connectedOn: null, acceptedAt: null, contactedAt: null, repliedAt: null, ...base, jobs, stage, next, urgent };
     };
 
     const out: Client[] = [];
@@ -114,6 +117,8 @@ export async function loadClients(sb: any): Promise<{ clients: Client[]; error?:
         company: c.company ?? null, companyKey: k, profile: c.linkedin_url ?? null,
         email: c.email ?? null, phone: c.phone ?? null, group, status: 'friend',
         replyText: replied && !c.reply_done_at ? (c.reply_text ?? null) : null,
+        note: c.note ?? null, connectedOn: c.connected_on ?? null, acceptedAt: c.invite_accepted_at ?? null,
+        contactedAt: c.contacted_at ?? null, repliedAt: c.replied_at ?? null,
       }, c.last_job_id ?? null, !!c.contacted_at, replied, replied && !c.reply_done_at));
     }
     for (const g of gold as any[]) {

@@ -1,5 +1,6 @@
 'use client';
 import { useMemo, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { STAGES, type Client } from '@/lib/clients';
 
 type Group = 'recruiter' | 'dev' | 'other';
@@ -10,6 +11,55 @@ function Bar({ stage }: { stage: number }) {
   return (
     <div className="hx-bar" title={stage ? STAGES[stage - 1] : 'אין משרה'}>
       {STAGES.map((s, i) => <i key={s} className={i < stage ? (stage >= 5 ? 'ok' : 'on') : ''} />)}
+    </div>
+  );
+}
+
+const fmt = (d?: string | null) => (d ? new Date(d).toLocaleDateString('he-IL', { day: 'numeric', month: 'numeric', year: '2-digit' }) : '—');
+
+function Editor({ c }: { c: Client }) {
+  const router = useRouter();
+  const editable = c.kind === 'contact';
+  const [f, setF] = useState({ fullName: c.name, title: c.title ?? '', company: c.company ?? '',
+    email: c.email ?? '', phone: c.phone ?? '', note: c.note ?? '' });
+  const [busy, setBusy] = useState(false);
+  const [msg, setMsg] = useState('');
+  const dirty = f.fullName !== c.name || f.title !== (c.title ?? '') || f.company !== (c.company ?? '')
+    || f.email !== (c.email ?? '') || f.phone !== (c.phone ?? '') || f.note !== (c.note ?? '');
+  async function save() {
+    setBusy(true); setMsg('');
+    const r = await fetch('/api/contacts', { method: 'PATCH', headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ id: c.id.slice(2), ...f }) });
+    setBusy(false);
+    if (!r.ok) { const j = await r.json().catch(() => ({})); setMsg(j.error ?? 'השמירה נכשלה'); return; }
+    setMsg('נשמר'); router.refresh();
+  }
+  const fld = (k: keyof typeof f, label: string, ltr = false) => (
+    <label className="hx-f"><small>{label}</small>
+      <input value={f[k]} dir={ltr ? 'ltr' : undefined} disabled={!editable}
+        onChange={(e) => { setF({ ...f, [k]: e.target.value }); setMsg(''); }} /></label>
+  );
+  return (
+    <div className="hx-edit">
+      <div className="hx-fgrid">
+        {fld('fullName', 'שם')}{fld('title', 'תפקיד')}{fld('company', 'חברה')}
+        {fld('phone', 'טלפון', true)}{fld('email', 'אימייל', true)}
+        <label className="hx-f wide"><small>הערות</small>
+          <textarea value={f.note} disabled={!editable} rows={2}
+            onChange={(e) => { setF({ ...f, note: e.target.value }); setMsg(''); }} /></label>
+      </div>
+      <div className="hx-facts">
+        <span>חיבור: <b>{fmt(c.connectedOn)}</b></span>
+        <span>אישר חברות: <b>{fmt(c.acceptedAt)}</b></span>
+        <span>פניתי: <b>{fmt(c.contactedAt)}</b></span>
+        <span>ענה: <b>{fmt(c.repliedAt)}</b></span>
+      </div>
+      <div className="hx-acts">
+        {editable && <button className="hx-b main" disabled={!dirty || busy} onClick={save}>{busy ? 'שומר…' : 'שמור'}</button>}
+        {c.profile && <a className="hx-b" href={c.profile} target="_blank" rel="noreferrer">פרופיל בלינקדאין</a>}
+        {msg && <span className="hx-msg">{msg}</span>}
+        {!editable && <span className="mut">נמצא בחיפוש מגייסים. עריכה אחרי שיאשר חברות.</span>}
+      </div>
     </div>
   );
 }
@@ -104,12 +154,7 @@ export default function ClientsTable({ clients }: { clients: Client[] }) {
             </div>
             {open === c.id && (
               <div className="hx-detail">
-                <div className="hx-dgrid">
-                  <div><small>חברה</small><b>{c.company || '—'}</b></div>
-                  <div><small>תפקיד</small><b>{c.title || '—'}</b></div>
-                  <div><small>אימייל</small><b dir="ltr">{c.email || '—'}</b></div>
-                  <div><small>טלפון</small><b dir="ltr">{c.phone || '—'}</b></div>
-                </div>
+                <Editor key={c.id} c={c} />
                 {c.replyText && <div className="hx-reply"><small>מה שכתבה לך</small>{c.replyText}</div>}
                 <div className="hx-jl">
                   {c.jobs.length === 0 && <div className="mut">אין כרגע משרה מתאימה בחברה הזאת. כשתיכנס, הלקוח יעלה כאן לבד.</div>}
@@ -124,9 +169,6 @@ export default function ClientsTable({ clients }: { clients: Client[] }) {
                       </div>
                     </div>
                   ))}
-                </div>
-                <div className="hx-acts">
-                  {c.profile && <a className="hx-b" href={c.profile} target="_blank" rel="noreferrer">פרופיל בלינקדאין</a>}
                 </div>
               </div>
             )}
