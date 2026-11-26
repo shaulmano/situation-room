@@ -14,9 +14,28 @@ import { israelDayStart } from '@/lib/wideReach';
  */
 export const JOB_CONNECT_DAILY = 10;
 
+export type Sector = 'saas' | 'cyber' | 'fintech' | 'it';
+export const SECTOR_LABEL: Record<Sector, string> = {
+  saas: 'SaaS', cyber: 'סייבר', fintech: 'פינטק', it: 'IT ארגוני',
+};
+
+// 26.11.2026. שאול ביקש לסנן לפי SaaS, סייבר, פינטק ו-IT ארגוני. אין במסד
+// שדה תחום לחברה, ולכן הסיווג נגזר מכאן, מהכותרת, שם החברה ותחילת התיאור.
+// **זה ניחוש ולא עובדה**: משרה יכולה לשאת כמה תגיות, ומי שלא תפסה אף אחת
+// מסומנת "לא סווג" ונשארת ברשימה. חישוב בזמן ההצגה, לא נשמר.
+const SECTOR_RE: Record<Sector, RegExp> = {
+  cyber: /\b(cyber|infosec|siem|soc analyst|threat|endpoint|firewall|zero.?trust|ransomware|appsec|devsecops|iam|identity security|security (?:platform|company|solution))\b|סייבר|אבטחת מידע|אבטחת סייבר/i,
+  fintech: /\b(fintech|insurtech|payments?|neobank|banking|lending|brokerage|trading platform|acquiring|wallet|blockchain|crypto|credit|wealth|regtech)\b|פינטק|תשלומים|פיננסי|סליקה|ביטוח דיגיטלי/i,
+  saas: /\b(saas|software as a service|multi.?tenant|cloud.?based platform|b2b platform|subscription)\b/i,
+  it: /\b(enterprise it|it manager|it operations|service desk|helpdesk|itsm|erp|sap|active directory|microsoft 365|digital transformation|system integrator|infrastructure manager)\b|מערכות מידע|ארגוני|אינטגרטור|תשתיות it|דסק שירות|העברת ענן/i,
+};
+export function classifySectors(text: string): Sector[] {
+  return (Object.keys(SECTOR_RE) as Sector[]).filter((k) => SECTOR_RE[k].test(text));
+}
+
 export type JobConnectRow = {
   key: string; company: string; jobId: string; jobTitle: string; jobUrl: string | null;
-  searchHref: string; note: string; ageDays: number;
+  searchHref: string; note: string; ageDays: number; sectors: Sector[];
 };
 
 export async function loadJobConnect(sb: any): Promise<{ rows: JobConnectRow[]; left: number; done: number; error?: string }> {
@@ -59,13 +78,24 @@ export async function loadJobConnect(sb: any): Promise<{ rows: JobConnectRow[]; 
   const known = await contactsByCompanyKeys(sb, [...bestByCo.keys()], 'company_key, left_company_at');
   const hasContact = new Set(known.filter((c: any) => !c.left_company_at).map((c: any) => c.company_key));
 
-  const rows = [...bestByCo.entries()]
+  // כל המועמדות, לא רק `left`: הסינון לפי תחום נעשה בצד הלקוח, והמכסה
+  // מוחלת אחריו. תחילת התיאור נשלפת רק למי שנשאר, לסיווג.
+  const cands = [...bestByCo.entries()]
     .filter(([k]) => !hasContact.has(k))
     .sort((a, b) => b[1].score - a[1].score)
-    .slice(0, left)
+    .slice(0, 80);
+  const descById = new Map<string, string>();
+  const ids = cands.map(([, m]) => m.jobs.id);
+  for (let i = 0; i < ids.length; i += 40) {
+    const { data: ds } = await sb.from('jobs').select('id, description').in('id', ids.slice(i, i + 40));
+    for (const d of (ds ?? []) as any[]) descById.set(d.id, String(d.description ?? '').slice(0, 3000));
+  }
+
+  const rows = cands
     .map(([k, m]) => {
       const j = m.jobs;
       return {
+        sectors: classifySectors(`${j.company} ${j.title} ${descById.get(j.id) ?? ''}`),
         key: k, company: j.company, jobId: j.id, jobTitle: j.title, jobUrl: j.url ?? null,
         searchHref: peopleAtCompanyHref(j.company, 'recruiter') ?? '',
         note: goldConnectNote({ name: '', company: j.company, jobTitle: j.title }),

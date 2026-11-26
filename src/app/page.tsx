@@ -495,7 +495,7 @@ export default async function Dashboard({
           <span>מגייסים בחברות שאינך מחובר אליהן</span>
         </span>
         <span className="rt-pair">
-          <span className="rt-col"><span className="rt-n">{jobConnect.rows.length}</span><small>לפי משרה</small></span>
+          <span className="rt-col"><span className="rt-n">{Math.min(jobConnect.left, jobConnect.rows.length)}</span><small>לפי משרה</small></span>
           <span className="rt-col"><span className="rt-n">{connectWaiting ?? 0}</span><small>נמצאו</small></span>
         </span>
       </Link>
