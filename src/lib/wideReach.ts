@@ -113,6 +113,27 @@ export function looksLikeAgency(company?: string | null, title?: string | null):
 }
 
 /**
+ * מגייסים בחברות השמה נכנסים לתור.
+ *
+ * 26.11.2026. שאול, על 18 מגייסים כאלה מהחברים של ניסן איטל: "תכניס את
+ * כולם, זה לא עולה לי כלום. אני צריך משרה אחת." מגייס בחברת השמה מכיר
+ * הרבה משרות בהרבה חברות, והנוסח הקיים ("if you hear of something, or
+ * have something open") אינו מבקש להעביר פנימית ולכן מתאים גם להם.
+ *
+ * **נשארים בחוץ:** מי שאין לו שם חברה, ויועצים ועצמאים לפי התפקיד. הם
+ * לא מגייסים שיש להם משרות. לכיבוי: false.
+ */
+export const ALLOW_AGENCY_RECRUITERS = true;
+
+export function agencyBlocked(company?: string | null, title?: string | null): boolean {
+  if (!looksLikeAgency(company, title)) return false;
+  if (!ALLOW_AGENCY_RECRUITERS) return true;
+  if (!(company ?? '').trim()) return true;
+  if (title && AGENCY_TITLE.test(title)) return true;
+  return false;
+}
+
+/**
  * פנייה שנייה למגייסים.
  *
  * 23.11.2026. שאול: "אתה אומר שנגמרו המגייסות בחברות הייטק בישראל? יש
@@ -144,7 +165,7 @@ export function eligible(c: ReachContact, now = Date.now()): boolean {
   if (c.first_pitch_at && !recruiterFollowUp) return false;
   if (c.replied_at || c.reply_url) return false;
   // **מגייס, רק אם הוא מגייס של חברה אמיתית.**
-  if (bucket === 'recruiter' && looksLikeAgency(c.company, c.title)) return false;
+  if (bucket === 'recruiter' && agencyBlocked(c.company, c.title)) return false;
   if (c.contacted_at) {
     const days = (now - new Date(c.contacted_at).getTime()) / 864e5;
     if (days < RECENT_DAYS) return false;

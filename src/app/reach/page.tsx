@@ -3,7 +3,7 @@ import { serverClient } from '@/lib/server';
 import ReachList, { type ReachRow } from '@/components/ReachList';
 import {
   AUTO_SEND_PER_DAY, DAILY_TARGET, RECRUITERS_ONLY, WIDE_CV_FILE, bucketOf, displayName, eligible, isFollowUp, israelDayStart,
-  looksLikeAgency, sortQueue, wideMessage, type ReachContact,
+  agencyBlocked, sortQueue, wideMessage, type ReachContact,
 } from '@/lib/wideReach';
 
 export const dynamic = 'force-dynamic';
@@ -127,7 +127,7 @@ export default async function Reach() {
     if (c.replied_at || c.reply_url) { out.thread++; continue; }
     if (c.first_pitch_at && b !== 'recruiter') { out.pitch++; continue; }
     if (c.li_seen_at && b !== 'recruiter') { out.thread++; continue; }
-    if (b === 'recruiter' && looksLikeAgency(c.company, c.title)) { out.agency++; continue; }
+    if (b === 'recruiter' && agencyBlocked(c.company, c.title)) { out.agency++; continue; }
     // כל השערים האחרים עברו, ולכן מי שאינו זכאי כאן נפל על כלל 60 הימים.
     if (!eligible(c)) out.recent++;
   }
@@ -151,7 +151,7 @@ export default async function Reach() {
         <ul className="reach-why">
           <li><b>{out.pitch}</b> קיבלו את ההודעה הראשונה בגל מאי 2026, בבקשת חברות או בהודעה</li>
           <li><b>{out.thread}</b> ענו לך, או שיש איתם שיחה פתוחה והם אינם מגייסים</li>
-          <li><b>{out.agency}</b> מגייסים, אבל בחברת השמה ולא בחברה שמגייסת לעצמה</li>
+          <li><b>{out.agency}</b> מגייסים בלי שם חברה, או יועצים ועצמאים</li>
           <li><b>{out.recent}</b> פנית אליהם על משרה קונקרטית בפחות מ-60 יום</li>
           <li><b>{out.bucket}</b> התפקיד שלהם אינו גיוס, אינו בתחום ואינו בכיר</li>
         </ul>
