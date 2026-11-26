@@ -9,6 +9,28 @@ type Group = 'recruiter' | 'dev' | 'other';
 const GL: Record<Group, string> = { recruiter: 'מגייסות ו-HR', dev: 'מנהלי פיתוח', other: 'אחרים' };
 const SL = { none: 'לא חבר', requested: 'נשלחה בקשה', friend: 'חבר' } as const;
 
+/** סימון אחד לשלב אחד. ההגשה והראיון והסגירה נרשמים דרך הנתיבים הקיימים. */
+function StepButtons({ j }: { j: import('@/lib/clients').ClientJob }) {
+  const router = useRouter();
+  const [busy, setBusy] = useState(false);
+  async function post(url: string, body: object) {
+    setBusy(true);
+    const r = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) }).catch(() => null);
+    setBusy(false);
+    if (!r || !r.ok) { alert('לא נשמר. נסה שוב.'); return; }
+    router.refresh();
+  }
+  if (!j.applied) return (<>
+    <button className="hx-b" disabled={busy} onClick={() => post('/api/jobs/applied', { id: j.id })}>הוגשה ישירות</button>
+    <button className="hx-b" disabled={busy} onClick={() => post('/api/jobs/applied', { id: j.id, internal: true })}>הוגשה דרך מכר או HR</button>
+  </>);
+  if (!j.appId || j.closed) return null;
+  return (<>
+    {j.stage < 6 && <button className="hx-b" disabled={busy} onClick={() => post('/api/applications/step', { id: j.appId, status: 'interview', kind: 'interview' })}>נקבע ראיון</button>}
+    <button className="hx-b" disabled={busy} onClick={() => post('/api/applications/step', { id: j.appId, status: 'rejected' })}>נסגרה, נדחה</button>
+  </>);
+}
+
 function Bar({ stage }: { stage: number }) {
   return (
     <div className="hx-bar" title={stage ? STAGES[stage - 1] : 'אין משרה'}>
@@ -229,6 +251,7 @@ export default function ClientsTable({ clients }: { clients: Client[] }) {
                       <div className="hx-stage"><Bar stage={j.stage} /><small>{STAGES[j.stage - 1]}</small></div>
                       <div className="hx-acts">
                         {j.url && <a className="hx-b" href={j.url} target="_blank" rel="noreferrer">פתח משרה</a>}
+                        <StepButtons j={j} />
                         {!j.applied && <button className="hx-b main" onClick={() => setAct(c.id)}>
                           {c.status === 'friend' ? 'הכן הודעה' : 'הכן בקשת חברות'}</button>}
                       </div>

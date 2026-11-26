@@ -17,6 +17,8 @@ export type ClientJob = {
   stage: number; ageDays: number | null; applied: boolean;
   /** ימים מאז ההגשה, רק למשרה שהוגשה. */
   appliedDays: number | null; silent: boolean;
+  /** מזהה שורת ההגשה, כדי לרשום ראיון או סגירה. */
+  appId: string | null; closed: boolean;
 };
 export type Client = {
   id: string; kind: 'contact' | 'gold';
@@ -62,7 +64,7 @@ export async function loadClients(sb: any): Promise<{ clients: Client[]; error?:
         .eq('jobs.on_target', true).is('jobs.dismissed_at', null).is('jobs.closed_at', null)
         .gte('jobs.first_seen', since).order('job_id').range(a, b), 1000, 4000),
       pageAll((a, b) => sb.from('applications')
-        .select('job_id, status, stage, sent_at, jobs(id, title, company, url, first_seen)').order('id').range(a, b)),
+        .select('id, job_id, status, stage, sent_at, jobs(id, title, company, url, first_seen)').order('id').range(a, b)),
       pageAll((a, b) => sb.from('company_aliases').select('alias_key, company_key').range(a, b)),
     ]);
 
@@ -71,24 +73,25 @@ export async function loadClients(sb: any): Promise<{ clients: Client[]; error?:
 
     // משרות לפי חברה: פתוחות ומתאימות, ועוד כל משרה שהוגש אליה.
     const jobsByCo = new Map<string, Map<string, ClientJob>>();
-    const put = (j: any, applied: boolean, status?: string | null, stage?: string | null, sentAt?: string | null) => {
+    const put = (j: any, applied: boolean, status?: string | null, stage?: string | null, sentAt?: string | null, appId?: string | null) => {
       if (!j?.id) return;
       const k = keyOf(j.company); if (!k) return;
       const m = jobsByCo.get(k) ?? new Map<string, ClientJob>();
       const prev = m.get(j.id);
-      const st = applied ? (stage === 'interview' ? 6 : 5) : 1;
+      const closed = applied && (status === 'rejected' || status === 'offer');
+      const st = closed ? 7 : applied ? (stage === 'interview' || status === 'interview' ? 6 : 5) : 1;
       if (!prev || st > prev.stage) {
         m.set(j.id, {
           id: j.id, title: j.title, company: j.company, url: j.url ?? null, applied, stage: st,
           appliedDays: applied && sentAt ? Math.max(0, Math.round((Date.now() - new Date(sentAt).getTime()) / 864e5)) : null,
-          silent: applied && status === 'silent',
+          silent: applied && status === 'silent', appId: appId ?? null, closed,
           ageDays: j.first_seen ? Math.max(0, Math.round((Date.now() - new Date(j.first_seen).getTime()) / 864e5)) : null,
         });
       }
       jobsByCo.set(k, m);
     };
     for (const m of matches) put(m.jobs, false);
-    for (const a of apps) put(a.jobs, true, a.status, a.stage, a.sent_at);
+    for (const a of apps) put(a.jobs, true, a.status, a.stage, a.sent_at, a.id);
 
     type Extra = 'note' | 'connectedOn' | 'acceptedAt' | 'contactedAt' | 'repliedAt';
     const mk = (base: Omit<Client, 'jobs' | 'stage' | 'next' | 'urgent' | 'companyKey' | 'silentCount' | Extra> & Partial<Pick<Client, Extra>> & { companyKey: string },
