@@ -31,6 +31,34 @@ function StepButtons({ j }: { j: import('@/lib/clients').ClientJob }) {
   </>);
 }
 
+/** מה שהוא כתב לך, ומה עושים איתו: מעתיקים תשובה מוכנה, או מסמנים שטופל. */
+function ReplyBox({ c }: { c: Client }) {
+  const router = useRouter();
+  const [busy, setBusy] = useState(false);
+  const [copied, setCopied] = useState(false);
+  async function done() {
+    setBusy(true);
+    const r = await fetch('/api/contacts', { method: 'PATCH', headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ id: c.id.slice(2), replyDone: true }) }).catch(() => null);
+    setBusy(false);
+    if (!r || !r.ok) { alert('לא נשמר. נסה שוב.'); return; }
+    router.refresh();
+  }
+  async function copy() {
+    try { await navigator.clipboard.writeText(c.replyDraft ?? ''); setCopied(true); setTimeout(() => setCopied(false), 1600); } catch {}
+  }
+  return (
+    <div className="hx-reply"><small>מה שכתב לך</small>{c.replyText}
+      {c.replyDraft && <div className="hx-draft"><small>תשובה מוצעת</small>{c.replyDraft}</div>}
+      <div className="hx-acts">
+        {c.replyDraft && <button className="hx-b" onClick={copy}>{copied ? 'הועתקה' : 'העתק תשובה'}</button>}
+        {c.profile && <a className="hx-b" href={c.profile} target="_blank" rel="noreferrer">פתח בלינקדאין</a>}
+        <button className="hx-b main" disabled={busy} onClick={done}>טיפלתי</button>
+      </div>
+    </div>
+  );
+}
+
 function Bar({ stage }: { stage: number }) {
   return (
     <div className="hx-bar" title={stage ? STAGES[stage - 1] : 'אין משרה'}>
@@ -249,7 +277,7 @@ export default function ClientsTable({ clients }: { clients: Client[] }) {
             )}
             {view?.id === c.id && view.tab === 'jobs' && (
               <div className="hx-detail">
-                {c.replyText && <div className="hx-reply"><small>מה שכתבה לך</small>{c.replyText}</div>}
+                {c.replyText && <ReplyBox c={c} />}
                 <div className="hx-jl">
                   {c.jobs.length === 0 && <div className="mut">אין כרגע משרה מתאימה בחברה הזאת. כשתיכנס, הלקוח יעלה כאן לבד.</div>}
                   {c.jobs.map((j) => (

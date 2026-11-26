@@ -27,7 +27,7 @@ export type Client = {
   group: 'recruiter' | 'dev' | 'other';
   status: 'none' | 'requested' | 'friend';
   jobs: ClientJob[]; stage: number;
-  next: string | null; urgent: boolean; replyText: string | null;
+  next: string | null; urgent: boolean; replyText: string | null; replyDraft?: string | null;
   /** כמה הגשות לחברה הזאת נשארו בלי מענה. */
   silentCount: number;
   note: string | null; connectedOn: string | null; acceptedAt: string | null;
@@ -54,7 +54,7 @@ export async function loadClients(sb: any): Promise<{ clients: Client[]; error?:
     const [contacts, gold, matches, apps, aliasRows] = await Promise.all([
       pageAll((a, b) => sb.from('contacts')
         .select('id, full_name, title, company, company_key, linkedin_url, email, phone, note, connected_on, contacted_at, replied_at, '
-          + 'reply_done_at, reply_text, invite_accepted_at, left_company_at, last_job_id, skipped_at')
+          + 'reply_done_at, reply_text, reply_draft, invite_accepted_at, left_company_at, last_job_id, skipped_at')
         .order('id').range(a, b)),
       pageAll((a, b) => sb.from('gold_recruiters')
         .select('id, company_id, full_name, headline, profile_url, contacted_at, skipped_at, companies(name)')
@@ -128,6 +128,7 @@ export async function loadClients(sb: any): Promise<{ clients: Client[]; error?:
         company: c.company ?? null, companyKey: k, profile: c.linkedin_url ?? null,
         email: c.email ?? null, phone: c.phone ?? null, group, status: 'friend',
         replyText: replied && !c.reply_done_at ? (c.reply_text ?? null) : null,
+        replyDraft: replied && !c.reply_done_at ? (c.reply_draft ?? null) : null,
         note: c.note ?? null, connectedOn: c.connected_on ?? null, acceptedAt: c.invite_accepted_at ?? null,
         contactedAt: c.contacted_at ?? null, repliedAt: c.replied_at ?? null,
       }, c.last_job_id ?? null, !!c.contacted_at, replied, replied && !c.reply_done_at));

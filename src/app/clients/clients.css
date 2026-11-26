@@ -121,3 +121,6 @@
 
 .hx-job .hx-acts{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:8px;width:100%}
 .hx-job .hx-acts .hx-b{width:100%;min-height:40px;text-align:center;display:flex;align-items:center;justify-content:center}
+.hx-reply .hx-draft{margin-top:8px;padding:8px 10px;background:#fff;border-radius:6px;border:1px solid var(--line);white-space:pre-wrap}
+.hx-reply .hx-draft small{display:block;margin-bottom:2px}
+.hx-reply .hx-acts{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:8px;margin-top:10px}
