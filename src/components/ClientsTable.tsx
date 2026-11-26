@@ -259,7 +259,9 @@ export default function ClientsTable({ clients }: { clients: Client[] }) {
               </div>
               <div><span className={'hx-pill ' + c.status}>{SL[c.status]}</span></div>
               <div className="hx-jobs">
-                {c.jobs.length ? <><b>{c.jobs.length}</b> <span>{c.jobs[0].title}</span></> : <span className="mut">אין משרה</span>}
+                {c.jobs.length
+                  ? <button className="hx-jlink" title="פתח את המשרות של הלקוח" onClick={() => toggle(c.id, 'jobs')}><b>{c.jobs.length}</b> <span>{c.jobs[0].title}</span></button>
+                  : <span className="mut">אין משרה</span>}
               </div>
               <div className="hx-stage">
                 <Bar stage={c.stage} />
