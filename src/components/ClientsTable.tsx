@@ -114,7 +114,7 @@ function ActionPanel({ c, onDone }: { c: Client; onDone: () => void }) {
         <button className="hx-b" onClick={copy}>{copied ? 'הועתק' : 'העתק'}</button>
         {c.profile && <a className="hx-b" href={c.profile} target="_blank" rel="noreferrer">פתח בלינקדאין</a>}
         <button className="hx-b main" disabled={busy} onClick={() => mark('sent')}>{request ? 'ביקשתי' : 'שלחתי'}</button>
-        <button className="hx-b" disabled={busy} onClick={() => mark('skip')}>דלג</button>
+        <button className="hx-b" disabled={busy} onClick={() => mark('skip')}>לא לפנות</button>
       </div>
       <small className="mut">אחרי "{request ? 'ביקשתי' : 'שלחתי'}" השלב מתקדם והשורה עוברת ל"מחכה לתשובה". הנוסח הוא טיוטה: ערוך לפני העתקה.</small>
     </div>
@@ -228,8 +228,8 @@ export default function ClientsTable({ clients }: { clients: Client[] }) {
                       <div className="hx-stage"><Bar stage={j.stage} /><small>{STAGES[j.stage - 1]}</small></div>
                       <div className="hx-acts">
                         {j.url && <a className="hx-b" href={j.url} target="_blank" rel="noreferrer">פתח משרה</a>}
-                        {!j.applied && <a className="hx-b main" href={c.status === 'friend' ? '/warm?tab=today' : '/connect'}>
-                          {c.status === 'friend' ? 'פנייה' : 'בקשת חברות'}</a>}
+                        {!j.applied && <button className="hx-b main" onClick={() => setAct(c.id)}>
+                          {c.status === 'friend' ? 'הכן הודעה' : 'הכן בקשת חברות'}</button>}
                       </div>
                     </div>
                   ))}
