@@ -54,7 +54,7 @@ export async function loadClients(sb: any): Promise<{ clients: Client[]; error?:
     const [contacts, gold, matches, apps, aliasRows, prior] = await Promise.all([
       pageAll((a, b) => sb.from('contacts')
         .select('id, full_name, title, company, company_key, linkedin_url, email, phone, note, connected_on, contacted_at, replied_at, '
-          + 'reply_done_at, reply_text, reply_draft, invite_accepted_at, left_company_at, last_job_id, skipped_at')
+          + 'reply_done_at, reply_text, reply_draft, first_pitch_at, li_seen_at, invite_accepted_at, left_company_at, last_job_id, skipped_at')
         .order('id').range(a, b)),
       pageAll((a, b) => sb.from('gold_recruiters')
         .select('id, company_id, full_name, headline, profile_url, contacted_at, skipped_at, companies(name)')
@@ -95,6 +95,8 @@ export async function loadClients(sb: any): Promise<{ clients: Client[]; error?:
     for (const a of apps) put(a.jobs, true, a.status, a.stage, a.sent_at, a.id);
 
     type Extra = 'note' | 'connectedOn' | 'acceptedAt' | 'contactedAt' | 'repliedAt';
+    // מי שכבר קיבל ממנו פנייה ראשונה (גל מאי) או שיש איתו שיחה: לא מציעים לו הודעה כללית נוספת.
+    const pitched = new Set<string>();
     const mk = (base: Omit<Client, 'jobs' | 'stage' | 'next' | 'urgent' | 'companyKey' | 'silentCount' | Extra> & Partial<Pick<Client, Extra>> & { companyKey: string },
                 contactedJobId: string | null, contacted: boolean, replied: boolean, urgent: boolean): Client => {
       const jobs = [...(jobsByCo.get(base.companyKey)?.values() ?? [])];
@@ -114,12 +116,15 @@ export async function loadClients(sb: any): Promise<{ clients: Client[]; error?:
       else if (base.status === 'requested') next = 'מחכה לאישור חברות';
       else if (open.length && base.status === 'none') next = 'לשלוח בקשת חברות';
       else if (open.length && !contacted) next = 'לשלוח הודעה';
+      // מנהל פיתוח חבר בלי משרה פתוחה: הודעת היכרות כללית, שמבקשת שיזכור אותו. לא כשכבר פנה אליו.
+      else if (!open.length && base.kind === 'contact' && base.group === 'dev' && base.status === 'friend' && !contacted && !replied && !pitched.has(base.id)) next = 'לשלוח הודעה';
       else if (open.length && contacted && !replied) next = 'מחכה לתשובה';
       return { note: null, connectedOn: null, acceptedAt: null, contactedAt: null, repliedAt: null, ...base, silentCount, jobs, stage, next, urgent };
     };
 
     const out: Client[] = [];
     for (const c of contacts as any[]) {
+      if (c.first_pitch_at || c.li_seen_at) pitched.add('c:' + c.id);
       if (c.left_company_at) continue;
       const k = keyOf(c.company) || (c.company_key ?? '');
       const t = `${c.title ?? ''}`;

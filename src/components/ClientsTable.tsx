@@ -2,7 +2,7 @@
 import { useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { STAGES, SILENT_LIMIT, type Client } from '@/lib/clients';
-import { referralMessage, connectNote, cvFileFor } from '@/lib/outreach';
+import { referralMessage, connectNote, cvFileFor, inviteMessage } from '@/lib/outreach';
 import { isAgency } from '@/lib/pickContact';
 
 type Group = 'recruiter' | 'dev' | 'other';
@@ -123,6 +123,8 @@ function ActionPanel({ c, onDone }: { c: Client; onDone: () => void }) {
   const request = c.status === 'none';
   const initial = request
     ? connectNote(null, c.company)
+    : !job
+    ? inviteMessage({ contactName: c.name, title: c.title })
     : job
     ? referralMessage({ contactName: c.name, company: c.company ?? '', jobTitle: job.title, contactTitle: c.title,
         jobUrl: job.url, applied: job.applied, agency: isAgency(c.company), attached: true })
@@ -130,7 +132,7 @@ function ActionPanel({ c, onDone }: { c: Client; onDone: () => void }) {
   const [text, setText] = useState(initial);
   const [busy, setBusy] = useState(false);
   const [copied, setCopied] = useState(false);
-  const file = job ? cvFileFor(null, job.title) : null;
+  const file = cvFileFor(null, job?.title ?? null);
 
   async function copy() {
     try { await navigator.clipboard.writeText(text); setCopied(true); setTimeout(() => setCopied(false), 1600); } catch {}
@@ -154,7 +156,7 @@ function ActionPanel({ c, onDone }: { c: Client; onDone: () => void }) {
   return (
     <div className="hx-act">
       <div className="hx-actt">
-        <b>{request ? 'בקשת חברות עם הערה' : 'הודעה עם קורות חיים'}</b>
+        <b>{request ? 'בקשת חברות עם הערה' : job ? 'הודעה עם קורות חיים' : 'הודעת היכרות, בלי משרה'}</b>
         {job && <span>על המשרה: {job.title}</span>}
       </div>
       <textarea value={text} onChange={(e) => setText(e.target.value)} rows={request ? 4 : 9} dir="ltr" />
@@ -268,7 +270,7 @@ export default function ClientsTable({ clients }: { clients: Client[] }) {
                 <small>{c.stage ? STAGES[c.stage - 1] : 'ממתין למשרה'}</small>
               </div>
               <div className={'hx-next' + (c.urgent || c.next?.startsWith('פנה ישירות') ? ' red' : '')}>
-                {c.next && /^(לשלוח|פנה ישירות)/.test(c.next) && c.jobs.length
+                {c.next && /^(לשלוח|פנה ישירות)/.test(c.next) && (c.jobs.length > 0 || c.kind === 'contact')
                   ? <button className="hx-nbtn" onClick={() => setAct(act === c.id ? null : c.id)}>{c.next}</button>
                   : c.urgent ? <button className="hx-nbtn" onClick={() => toggle(c.id, 'jobs')}>{c.next}</button>
                   : (c.next ?? '—')}
@@ -286,7 +288,14 @@ export default function ClientsTable({ clients }: { clients: Client[] }) {
               <div className="hx-detail">
                 {c.replyText && <ReplyBox c={c} />}
                 <div className="hx-jl">
-                  {c.jobs.length === 0 && <div className="mut">אין כרגע משרה מתאימה בחברה הזאת. כשתיכנס, הלקוח יעלה כאן לבד.</div>}
+                  {c.jobs.length === 0 && (
+                    <div className="hx-job">
+                      <div className="mut">אין כרגע משרה מתאימה בחברה הזאת. כשתיכנס, הלקוח יעלה כאן לבד.</div>
+                      {c.next?.startsWith('לשלוח') && (
+                        <div className="hx-acts"><button className="hx-b main" onClick={() => setAct(c.id)}>הכן הודעת היכרות</button></div>
+                      )}
+                    </div>
+                  )}
                   {c.jobs.map((j) => (
                     <div key={j.id} className="hx-job">
                       <div className="hx-jt"><b>{j.title}</b><span>{j.company}{j.applied && j.appliedDays !== null ? ` · הוגשה לפני ${j.appliedDays} ימים${j.silent ? ' · בלי מענה' : ''}` : j.ageDays !== null ? ` · פורסמה לפני ${j.ageDays} ימים` : ''}</span></div>
