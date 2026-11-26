@@ -50,7 +50,10 @@ export function mutualsHref(linkedinUrl?: string | null): string | null {
 export function peopleAtCompanyHref(company?: string | null, role?: string | null): string | null {
   const name = (company ?? '').trim();
   if (!name) return null;
-  const words = [name, (role ?? '').trim()].filter(Boolean).join(' ');
+  // שם החברה במרכאות: בלעדיהן לינקדאין מתקן שמות נדירים למילה קרובה
+  // ("BLeader" הפך ל-"blender") והחיפוש מחזיר אנשים לא קשורים.
+  const quoted = '"' + name.replace(/"/g, '') + '"';
+  const words = [quoted, (role ?? '').trim()].filter(Boolean).join(' ');
   return 'https://www.linkedin.com/search/results/people/?network=%5B%22S%22%5D&keywords='
     + encodeURIComponent(words);
 }
