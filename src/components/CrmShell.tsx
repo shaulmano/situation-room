@@ -1,6 +1,9 @@
 'use client';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
+import RefreshOnFocus from './RefreshOnFocus';
+import ClearBadge from './ClearBadge';
+import '../app/clients/clients.css';
 
 // מעטפת ה-CRM: תפריט צד כהה בסגנון הרמטיקון. 26.11.2026, שאול: "כל התפריט
 // בצד ימין, בהמשך נוסיף עוד דברים כמו דוחות, אבל העבודה תהיה מדף הלקוחות".
@@ -8,8 +11,10 @@ const GROUPS: { title: string; items: { href: string; label: string }[] }[] = [
   { title: 'עבודה', items: [
     { href: '/clients', label: 'לקוחות' },
     { href: '/today', label: 'מטלות להיום' },
-    { href: '/warm', label: 'מכרים ותשובות' },
+    { href: '/replies', label: 'תשובות' },
+    { href: '/warm', label: 'מכרים' },
     { href: '/connect', label: 'בקשות חברות' },
+    { href: '/reach', label: 'פנייה רחבה' },
   ] },
   { title: 'משרות', items: [
     { href: '/jobs', label: 'כל המשרות' },
@@ -20,15 +25,19 @@ const GROUPS: { title: string; items: { href: string; label: string }[] }[] = [
   { title: 'מערכת', items: [
     { href: '/sources', label: 'מקורות' },
     { href: '/settings', label: 'הגדרות' },
-    { href: '/', label: 'חדר המצב (הישן)' },
+    { href: '/', label: 'דף הבית' },
   ] },
 ];
 
 export default function CrmShell({ children }: { children: React.ReactNode }) {
   const path = usePathname();
+  // מסך ההתחברות וחזרת ההתחברות בלי תפריט.
+  if (path.startsWith('/login') || path.startsWith('/auth')) return <>{children}</>;
   const on = (h: string) => (h === '/' ? path === '/' : path.startsWith(h));
   return (
     <div className="hx">
+      <RefreshOnFocus />
+      <ClearBadge />
       <aside className="hx-side">
         <div className="hx-brand">חדר <span>המצב</span><small>CRM לחיפוש משרות</small></div>
         <nav>

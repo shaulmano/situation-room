@@ -3,6 +3,7 @@ import { serverClient } from '@/lib/server';
 import { DAILY_TARGET, israelDayStart } from '@/lib/wideReach';
 import { loadJobConnect } from '@/lib/jobConnect';
 import { warmTodayCount } from '@/lib/warmCount';
+import { loadClients } from '@/lib/clients';
 
 export const dynamic = 'force-dynamic';
 
@@ -24,7 +25,8 @@ type Task = { href: string; title: string; sub: string; n: number | null };
 
 export default async function Today() {
   const sb = serverClient();
-  const [rep, acc, warm, jc, wide] = await Promise.all([
+  const [cl, rep, acc, warm, jc, wide] = await Promise.all([
+    loadClients(sb),
     sb.from('contacts').select('id', { count: 'exact', head: true })
       .not('replied_at', 'is', null).is('reply_done_at', null),
     sb.from('contacts').select('id', { count: 'exact', head: true })
@@ -41,7 +43,12 @@ export default async function Today() {
   const connectLeft = Math.min(jc.left, jc.rows.length);
   const reachLeft = Math.max(0, DAILY_TARGET - (wide.count ?? 0));
 
+  // אותו חישוב בדיוק כמו האריח "מחכים לפעולה שלך" במסך הלקוחות.
+  const waitIn = (g: string) => cl.clients.filter((c) => c.group === g && !!c.next && !c.next.startsWith('מחכה')).length;
+  const clientsErr = !!cl.error;
   const tasks: Task[] = [
+    { href: '/clients?waiting=1&group=recruiter', title: 'לקוחות: מגייסות ו-HR שמחכים לך', sub: 'הצעד הבא ברשימת הלקוחות', n: clientsErr ? null : waitIn('recruiter') },
+    { href: '/clients?waiting=1&group=dev', title: 'לקוחות: מנהלי פיתוח שמחכים לך', sub: 'הצעד הבא ברשימת הלקוחות', n: clientsErr ? null : waitIn('dev') },
     { href: '/warm', title: 'ענו לך', sub: 'תשובות שממתינות. הנוסח מוכן להעתקה', n: replies },
     { href: '/warm?tab=invites', title: 'אישרו חברות', sub: 'מחכים להודעה עם קורות החיים', n: accepted },
     { href: '/warm?tab=today', title: 'הגשות של היום עם מכר', sub: 'פנייה דרך מי שאתה מכיר בחברה', n: warmApps },

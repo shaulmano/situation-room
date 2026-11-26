@@ -10,7 +10,9 @@ import { companyKey } from '@/lib/contacts';
  */
 /** מעל מספר הגשות כזה בלי מענה לאותה חברה, ממליצים לפנות ישירות ולא להגיש עוד. */
 export const SILENT_LIMIT = 3;
-export const STAGES = ['משרה פתוחה', 'נשלחה הודעה', 'ענתה', 'שיחה נקבעה', 'הוגשה', 'ראיון', 'נסגרה'] as const;
+/** הערה שנכתבת על הגשה כשהמשרה עצמה נסגרה (ולא שנדחה). */
+export const CLOSED_NOTE = 'המשרה נסגרה';
+export const STAGES = ['משרה פתוחה', 'נשלחה הודעה', 'ענתה', 'הוגשה', 'שיחה נקבעה', 'ראיון', 'נסגרה'] as const;
 
 export type ClientJob = {
   id: string; title: string; company: string; url: string | null;
@@ -19,6 +21,8 @@ export type ClientJob = {
   appliedDays: number | null; silent: boolean;
   /** מזהה שורת ההגשה, כדי לרשום ראיון או סגירה. */
   appId: string | null; closed: boolean;
+  /** למה נסגרה: נדחה, המשרה נסגרה או הצעה. */
+  closeReason: string | null;
 };
 export type Client = {
   id: string; kind: 'contact' | 'gold' | 'prior';
@@ -64,7 +68,7 @@ export async function loadClients(sb: any): Promise<{ clients: Client[]; error?:
         .eq('jobs.on_target', true).is('jobs.dismissed_at', null).is('jobs.closed_at', null)
         .gte('jobs.first_seen', since).order('job_id').range(a, b), 1000, 4000),
       pageAll((a, b) => sb.from('applications')
-        .select('id, job_id, status, stage, sent_at, jobs(id, title, company, url, first_seen)').order('id').range(a, b)),
+        .select('id, job_id, status, stage, sent_at, note, jobs(id, title, company, url, first_seen)').order('id').range(a, b)),
       pageAll((a, b) => sb.from('company_aliases').select('alias_key, company_key').range(a, b)),
       pageAll((a, b) => sb.from('prior_requests').select('slug, full_name, title, company, sent_on').order('slug').range(a, b)).catch(() => []),
     ]);
@@ -74,25 +78,26 @@ export async function loadClients(sb: any): Promise<{ clients: Client[]; error?:
 
     // משרות לפי חברה: פתוחות ומתאימות, ועוד כל משרה שהוגש אליה.
     const jobsByCo = new Map<string, Map<string, ClientJob>>();
-    const put = (j: any, applied: boolean, status?: string | null, stage?: string | null, sentAt?: string | null, appId?: string | null) => {
+    const put = (j: any, applied: boolean, status?: string | null, stage?: string | null, sentAt?: string | null, appId?: string | null, note?: string | null) => {
       if (!j?.id) return;
       const k = keyOf(j.company); if (!k) return;
       const m = jobsByCo.get(k) ?? new Map<string, ClientJob>();
       const prev = m.get(j.id);
       const closed = applied && (status === 'rejected' || status === 'offer');
-      const st = closed ? 7 : applied ? (stage === 'interview' || status === 'interview' ? 6 : 5) : 1;
+      const st = closed ? 7 : applied ? (stage === 'interview' || status === 'interview' ? 6 : stage === 'call' || status === 'conversation' ? 5 : 4) : 1;
+      const closeReason = !closed ? null : status === 'offer' ? 'הצעה' : note === CLOSED_NOTE ? 'המשרה נסגרה' : 'נדחה';
       if (!prev || st > prev.stage) {
         m.set(j.id, {
           id: j.id, title: j.title, company: j.company, url: j.url ?? null, applied, stage: st,
           appliedDays: applied && sentAt ? Math.max(0, Math.round((Date.now() - new Date(sentAt).getTime()) / 864e5)) : null,
-          silent: applied && status === 'silent', appId: appId ?? null, closed,
+          silent: applied && status === 'silent', appId: appId ?? null, closed, closeReason,
           ageDays: j.first_seen ? Math.max(0, Math.round((Date.now() - new Date(j.first_seen).getTime()) / 864e5)) : null,
         });
       }
       jobsByCo.set(k, m);
     };
     for (const m of matches) put(m.jobs, false);
-    for (const a of apps) put(a.jobs, true, a.status, a.stage, a.sent_at, a.id);
+    for (const a of apps) put(a.jobs, true, a.status, a.stage, a.sent_at, a.id, a.note);
 
     type Extra = 'note' | 'connectedOn' | 'acceptedAt' | 'contactedAt' | 'repliedAt';
     // מי שכבר קיבל ממנו פנייה ראשונה (גל מאי) או שיש איתו שיחה: לא מציעים לו הודעה כללית נוספת.

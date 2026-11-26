@@ -1,6 +1,6 @@
 import './globals.css';
 import type { Metadata, Viewport } from 'next';
-import Nav from '@/components/Nav';
+import CrmShell from '@/components/CrmShell';
 
 export const metadata: Metadata = {
   title: 'חדר המצב',
@@ -28,10 +28,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         />
       </head>
       <body>
-        <div className="shell">
-          <Nav />
-          {children}
-        </div>
+        <CrmShell>{children}</CrmShell>
       </body>
     </html>
   );

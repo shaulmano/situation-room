@@ -1,7 +1,7 @@
 'use client';
 import { useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { STAGES, SILENT_LIMIT, type Client } from '@/lib/clients';
+import { STAGES, SILENT_LIMIT, CLOSED_NOTE, type Client } from '@/lib/clients';
 import { referralMessage, connectNote, cvFileFor, inviteMessage } from '@/lib/outreach';
 import { isAgency } from '@/lib/pickContact';
 
@@ -9,25 +9,60 @@ type Group = 'recruiter' | 'dev' | 'other';
 const GL: Record<Group, string> = { recruiter: 'מגייסות ו-HR', dev: 'מנהלי פיתוח', other: 'אחרים' };
 const SL = { none: 'לא חבר', requested: 'נשלחה בקשה', friend: 'חבר' } as const;
 
-/** סימון אחד לשלב אחד. ההגשה והראיון והסגירה נרשמים דרך הנתיבים הקיימים. */
-function StepButtons({ j }: { j: import('@/lib/clients').ClientJob }) {
+/** סימון אחד לשלב אחד. ההגשה והשיחה והראיון והסגירה נרשמים דרך הנתיבים הקיימים. */
+function StepButtons({ j, friends }: { j: import('@/lib/clients').ClientJob; friends: Client[] }) {
   const router = useRouter();
   const [busy, setBusy] = useState(false);
-  async function post(url: string, body: object) {
+  const [pick, setPick] = useState(false);
+  const [closing, setClosing] = useState(false);
+  async function post(url: string, body: object): Promise<boolean> {
     setBusy(true);
     const r = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) }).catch(() => null);
     setBusy(false);
-    if (!r || !r.ok) { alert('לא נשמר. נסה שוב.'); return; }
-    router.refresh();
+    if (!r || !r.ok) { alert('לא נשמר. נסה שוב.'); return false; }
+    return true;
   }
+  /** הוגשה דרך מכר: ההגשה נרשמת כפנימית, ומי שנבחר מסומן שפנית אליו על המשרה הזאת. */
+  async function viaFriend(f: Client | null) {
+    if (!(await post('/api/jobs/applied', { id: j.id, internal: true }))) return;
+    if (f && f.kind === 'contact') {
+      setBusy(true);
+      const r = await fetch('/api/contacts', { method: 'PATCH', headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ id: f.id.slice(2), contacted: true, jobId: j.id }) }).catch(() => null);
+      setBusy(false);
+      if (!r || !r.ok) { alert('ההגשה נרשמה, אבל הסימון על איש הקשר לא נשמר.'); }
+    }
+    setPick(false); router.refresh();
+  }
+  const step = async (body: object) => { if (await post('/api/applications/step', body)) { setClosing(false); router.refresh(); } };
   if (!j.applied) return (<>
-    <button className="hx-b" disabled={busy} onClick={() => post('/api/jobs/applied', { id: j.id })}>הוגשה ישירות</button>
-    <button className="hx-b" disabled={busy} onClick={() => post('/api/jobs/applied', { id: j.id, internal: true })}>הוגשה דרך מכר או HR</button>
+    <button className="hx-b" disabled={busy} onClick={async () => { if (await post('/api/jobs/applied', { id: j.id })) router.refresh(); }}>הוגשה ישירות</button>
+    <button className={'hx-b' + (pick ? ' on' : '')} disabled={busy} onClick={() => setPick(!pick)}>הוגשה דרך מכר או HR</button>
+    {pick && (
+      <div className="hx-pick">
+        <small>דרך מי הוגשה? הבחירה מסמנת שפנית אליו על המשרה הזאת.</small>
+        {friends.map((f) => (
+          <button key={f.id} className="hx-b" disabled={busy} onClick={() => viaFriend(f)}>{f.name}{f.title ? ' · ' + f.title : ''}</button>
+        ))}
+        {friends.length === 0 && <small className="mut">אין אצלך איש קשר בחברה הזאת. אפשר לסמן בלי שם.</small>}
+        <button className="hx-b" disabled={busy} onClick={() => viaFriend(null)}>בלי לציין מי</button>
+      </div>
+    )}
   </>);
-  if (!j.appId || j.closed) return null;
+  if (!j.appId) return null;
+  if (j.closed) return <span className="hx-tag gray">{j.closeReason ?? 'נסגרה'}</span>;
   return (<>
-    {j.stage < 6 && <button className="hx-b" disabled={busy} onClick={() => post('/api/applications/step', { id: j.appId, status: 'interview', kind: 'interview' })}>נקבע ראיון</button>}
-    <button className="hx-b" disabled={busy} onClick={() => post('/api/applications/step', { id: j.appId, status: 'rejected' })}>נסגרה, נדחה</button>
+    {j.stage < 5 && <button className="hx-b" disabled={busy} onClick={() => step({ id: j.appId, status: 'conversation', kind: 'call' })}>נקבעה שיחה</button>}
+    {j.stage < 6 && <button className="hx-b" disabled={busy} onClick={() => step({ id: j.appId, status: 'interview', kind: 'interview' })}>נקבע ראיון</button>}
+    <button className={'hx-b' + (closing ? ' on' : '')} disabled={busy} onClick={() => setClosing(!closing)}>סגירת המשרה</button>
+    {closing && (
+      <div className="hx-pick">
+        <small>למה נסגרה?</small>
+        <button className="hx-b" disabled={busy} onClick={() => step({ id: j.appId, status: 'rejected', note: '' })}>נדחה</button>
+        <button className="hx-b" disabled={busy} onClick={() => step({ id: j.appId, status: 'rejected', note: CLOSED_NOTE })}>המשרה נסגרה</button>
+        <button className="hx-b" disabled={busy} onClick={() => step({ id: j.appId, status: 'offer', kind: 'offer' })}>קיבלתי הצעה</button>
+      </div>
+    )}
   </>);
 }
 
@@ -62,7 +97,7 @@ function ReplyBox({ c }: { c: Client }) {
 function Bar({ stage }: { stage: number }) {
   return (
     <div className="hx-bar" title={stage ? STAGES[stage - 1] : 'אין משרה'}>
-      {STAGES.map((s, i) => <i key={s} title={`${i + 1}. ${s}${i + 1 === stage ? ' (השלב הנוכחי)' : i < stage ? ' ✓' : ''}`} className={i < stage ? (stage === 7 ? 'off' : stage >= 5 ? 'ok' : 'on') : ''} />)}
+      {STAGES.map((s, i) => <i key={s} title={`${i + 1}. ${s}${i + 1 === stage ? ' (השלב הנוכחי)' : i < stage ? ' ✓' : ''}`} className={i < stage ? (stage === 7 ? 'off' : stage >= 4 ? 'ok' : 'on') : ''} />)}
     </div>
   );
 }
@@ -176,12 +211,12 @@ function ActionPanel({ c, onDone }: { c: Client; onDone: () => void }) {
   );
 }
 
-export default function ClientsTable({ clients }: { clients: Client[] }) {
-  const [group, setGroup] = useState<Group>('recruiter');
+export default function ClientsTable({ clients, initial }: { clients: Client[]; initial?: { waiting?: boolean; replied?: boolean; group?: Group } }) {
+  const [group, setGroup] = useState<Group>(initial?.group ?? 'recruiter');
   const [status, setStatus] = useState<'all' | keyof typeof SL>('all');
   const [withJob, setWithJob] = useState(false);
-  const [onlyReplied, setOnlyReplied] = useState(false);
-  const [onlyWaiting, setOnlyWaiting] = useState(false);
+  const [onlyReplied, setOnlyReplied] = useState(!!initial?.replied);
+  const [onlyWaiting, setOnlyWaiting] = useState(!!initial?.waiting);
   const [q, setQ] = useState('');
   const [view, setView] = useState<{ id: string; tab: 'jobs' | 'edit' } | null>(null);
   const toggle = (id: string, tab: 'jobs' | 'edit') => setView(view?.id === id && view.tab === tab ? null : { id, tab });
@@ -211,7 +246,7 @@ export default function ClientsTable({ clients }: { clients: Client[] }) {
         <div className="hx-kpi"><small>לקוחות בקבוצה</small><b>{inGroup.length}</b></div>
         <div className="hx-kpi"><small>עם משרה פתוחה</small><b>{inGroup.filter((c) => c.jobs.length).length}</b></div>
         <button className={'hx-kpi warn hx-kpib' + (onlyWaiting ? ' on' : '')} onClick={() => { setOnlyWaiting(!onlyWaiting); setShown(40); }} title="הצג רק מי שמחכה לפעולה שלך"><small>מחכים לפעולה שלך</small><b>{waiting}</b></button>
-        <div className="hx-kpi"><small>הוגשה דרכם משרה</small><b>{inGroup.filter((c) => c.stage >= 5).length}</b></div>
+        <div className="hx-kpi"><small>הוגשה דרכם משרה</small><b>{inGroup.filter((c) => c.stage >= 4 && c.stage < 7).length}</b></div>
       </div>
 
       <div className="hx-card">
@@ -307,7 +342,7 @@ export default function ClientsTable({ clients }: { clients: Client[] }) {
                       <div className="hx-stage"><Bar stage={j.stage} /><small>{STAGES[j.stage - 1]}</small></div>
                       <div className="hx-acts">
                         {j.url && <a className="hx-b" href={j.url} target="_blank" rel="noreferrer">פתח משרה</a>}
-                        <StepButtons j={j} />
+                        <StepButtons j={j} friends={clients.filter((x) => x.kind === 'contact' && x.companyKey === c.companyKey && c.companyKey)} />
                         {!j.applied && c.kind !== 'prior' && <button className="hx-b main" onClick={() => setAct(c.id)}>
                           {c.status === 'friend' ? 'הכן הודעה' : 'הכן בקשת חברות'}</button>}
                       </div>
