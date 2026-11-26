@@ -175,6 +175,7 @@ export default function ClientsTable({ clients }: { clients: Client[] }) {
   const [group, setGroup] = useState<Group>('recruiter');
   const [status, setStatus] = useState<'all' | keyof typeof SL>('all');
   const [withJob, setWithJob] = useState(false);
+  const [onlyReplied, setOnlyReplied] = useState(false);
   const [q, setQ] = useState('');
   const [view, setView] = useState<{ id: string; tab: 'jobs' | 'edit' } | null>(null);
   const toggle = (id: string, tab: 'jobs' | 'edit') => setView(view?.id === id && view.tab === tab ? null : { id, tab });
@@ -187,9 +188,11 @@ export default function ClientsTable({ clients }: { clients: Client[] }) {
     return inGroup
       .filter((c) => (status === 'all' || c.status === status)
         && (!withJob || c.jobs.length > 0)
+        && (!onlyReplied || !!c.repliedAt)
         && (!s || `${c.name} ${c.company ?? ''} ${c.title ?? ''} ${c.jobs.map((j) => j.title).join(' ')}`.toLowerCase().includes(s)))
-      .sort((a, b) => Number(b.urgent) - Number(a.urgent) || b.stage - a.stage || b.jobs.length - a.jobs.length);
-  }, [inGroup, status, withJob, q]);
+      // מי שענה נשאר גבוה גם אחרי שטופל: ראשון מי שמחכה לך, אחריו הענייה האחרונה.
+      .sort((a, b) => Number(b.urgent) - Number(a.urgent) || (b.repliedAt ?? '').localeCompare(a.repliedAt ?? '') || b.stage - a.stage || b.jobs.length - a.jobs.length);
+  }, [inGroup, status, withJob, onlyReplied, q]);
 
   const cnt = (k: 'none' | 'requested' | 'friend') => inGroup.filter((c) => c.status === k).length;
   const total = inGroup.length || 1;
@@ -234,6 +237,7 @@ export default function ClientsTable({ clients }: { clients: Client[] }) {
               {s === 'all' ? 'הכול' : SL[s]} {s === 'all' ? inGroup.length : cnt(s)}
             </button>
           ))}
+          <button className={onlyReplied ? 'on' : ''} onClick={() => { setOnlyReplied(!onlyReplied); setShown(40); }}>ענו לי {inGroup.filter((c) => c.repliedAt).length}</button>
           <button className={withJob ? 'on' : ''} onClick={() => { setWithJob(!withJob); setShown(40); }}>רק עם משרה {inGroup.filter((c) => c.jobs.length).length}</button>
         </div>
       </div>
