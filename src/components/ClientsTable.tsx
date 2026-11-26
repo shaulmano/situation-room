@@ -223,6 +223,10 @@ export default function ClientsTable({ clients, initial }: { clients: Client[]; 
   const [act, setAct] = useState<string | null>(null);
   const [shown, setShown] = useState(40);
 
+  /** מי שמכירים בחברה של הלקוח: מגייסים ו-HR קודם, כי דרכם מגישים. */
+  const friendsOf = (c: Client) => (!c.companyKey ? [] : clients.filter((x) => x.kind === 'contact' && x.companyKey === c.companyKey)
+    .sort((a, b) => ['recruiter', 'dev', 'other'].indexOf(a.group) - ['recruiter', 'dev', 'other'].indexOf(b.group) || a.name.localeCompare(b.name)));
+
   const inGroup = useMemo(() => clients.filter((c) => c.group === group), [clients, group]);
   const rows = useMemo(() => {
     const s = q.trim().toLowerCase();
@@ -342,7 +346,7 @@ export default function ClientsTable({ clients, initial }: { clients: Client[]; 
                       <div className="hx-stage"><Bar stage={j.stage} /><small>{STAGES[j.stage - 1]}</small></div>
                       <div className="hx-acts">
                         {j.url && <a className="hx-b" href={j.url} target="_blank" rel="noreferrer">פתח משרה</a>}
-                        <StepButtons j={j} friends={clients.filter((x) => x.kind === 'contact' && x.companyKey === c.companyKey && c.companyKey)} />
+                        <StepButtons j={j} friends={friendsOf(c)} />
                         {!j.applied && c.kind !== 'prior' && <button className="hx-b main" onClick={() => setAct(c.id)}>
                           {c.status === 'friend' ? 'הכן הודעה' : 'הכן בקשת חברות'}</button>}
                       </div>
