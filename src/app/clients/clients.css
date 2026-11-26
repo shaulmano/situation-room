@@ -147,3 +147,7 @@
 .hx-job .hx-acts .hx-tag{align-self:center}
 .hx-saving{flex-basis:100%;color:var(--brand);font-size:.8rem;font-weight:600}
 .hx-toast{position:fixed;top:14px;left:50%;transform:translateX(-50%);z-index:50;background:var(--ink);color:#fff;border-radius:8px;padding:10px 18px;font-size:.9rem;box-shadow:0 4px 14px rgba(0,19,41,.3)}
+.hx-jlink{display:flex;gap:8px;align-items:baseline;max-width:100%;min-width:0;text-align:start}
+.hx-jlink span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0}
+.hx-side nav{scrollbar-width:none}.hx-side nav::-webkit-scrollbar{display:none}
+.hx-jlink{margin-inline:0;max-width:calc(100% + 0px)}
