@@ -100,3 +100,13 @@
 .hx-act{background:#fff;border-top:1px solid var(--line-soft);border-inline-start:4px solid var(--brand);padding:14px 16px;display:flex;flex-direction:column;gap:10px}
 .hx-actt{display:flex;flex-direction:column;gap:2px}.hx-actt span{font-size:.82rem;color:var(--t2)}
 .hx-act textarea{font:inherit;font-size:.9rem;border:1px solid var(--line);border-radius:6px;padding:10px;background:#F7FAFC;color:var(--t1);width:100%}
+
+/* סלולר 390: הפאנל והכפתורים תופסים רוחב מלא וגודל לחיצה נוח */
+@media (max-width:600px){
+  .hx-nbtn{width:100%;min-height:44px;text-align:center}
+  .hx-go{min-width:44px;min-height:44px}
+  .hx-act{padding:12px}
+  .hx-act .hx-acts .hx-b{min-height:44px}
+  .hx-chips{flex-wrap:wrap}
+  .hx-chips button{min-height:40px}
+}
