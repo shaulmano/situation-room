@@ -23,7 +23,7 @@ const ITEMS: { href: string; label: string; icon: string; wide?: boolean }[] = [
 
 export default function Nav() {
   const path = usePathname();
-  if (path.startsWith('/login') || path.startsWith('/auth')) return null;
+  if (path.startsWith('/login') || path.startsWith('/auth') || path.startsWith('/clients')) return null;
   const on = (h: string) => (h === '/' ? path === '/' : path.startsWith(h));
   return (
     <>
