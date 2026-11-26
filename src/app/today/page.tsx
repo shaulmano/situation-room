@@ -44,12 +44,14 @@ export default async function Today() {
   const reachLeft = Math.max(0, DAILY_TARGET - (wide.count ?? 0));
 
   // אותו חישוב בדיוק כמו האריח "מחכים לפעולה שלך" במסך הלקוחות.
-  const waitIn = (g: string) => cl.clients.filter((c) => c.group === g && !!c.next && !c.next.startsWith('מחכה')).length;
+  const waitList = (g: string) => cl.clients.filter((c) => c.group === g && !!c.next && !c.next.startsWith('מחכה'));
+  const waitIn = (g: string) => waitList(g).length;
+  const repliedIn = (g: string) => waitList(g).filter((c) => c.urgent).length;
   const clientsErr = !!cl.error;
   const tasks: Task[] = [
-    { href: '/clients?waiting=1&group=recruiter', title: 'לקוחות: מגייסות ו-HR שמחכים לך', sub: 'הצעד הבא ברשימת הלקוחות', n: clientsErr ? null : waitIn('recruiter') },
-    { href: '/clients?waiting=1&group=dev', title: 'לקוחות: מנהלי פיתוח שמחכים לך', sub: 'הצעד הבא ברשימת הלקוחות', n: clientsErr ? null : waitIn('dev') },
-    { href: '/warm', title: 'ענו לך', sub: 'תשובות שממתינות. הנוסח מוכן להעתקה', n: replies },
+    { href: '/clients?waiting=1&group=recruiter', title: 'לקוחות: מגייסות ו-HR שמחכים לך', sub: 'הצעד הבא ברשימת הלקוחות' + (repliedIn('recruiter') ? ` · מהם ${repliedIn('recruiter')} ענו לך` : ''), n: clientsErr ? null : waitIn('recruiter') },
+    { href: '/clients?waiting=1&group=dev', title: 'לקוחות: מנהלי פיתוח שמחכים לך', sub: 'הצעד הבא ברשימת הלקוחות' + (repliedIn('dev') ? ` · מהם ${repliedIn('dev')} ענו לך` : ''), n: clientsErr ? null : waitIn('dev') },
+    { href: '/clients?waiting=1&group=other', title: 'לקוחות: אחרים שמחכים לך', sub: 'הצעד הבא ברשימת הלקוחות' + (repliedIn('other') ? ` · מהם ${repliedIn('other')} ענו לך` : ''), n: clientsErr ? null : waitIn('other') },
     { href: '/warm?tab=invites', title: 'אישרו חברות', sub: 'מחכים להודעה עם קורות החיים', n: accepted },
     { href: '/warm?tab=today', title: 'הגשות של היום עם מכר', sub: 'פנייה דרך מי שאתה מכיר בחברה', n: warmApps },
     { href: '/connect', title: 'בקשות חברות לפי משרה', sub: 'חברות עם משרה מתאימה ובלי איש קשר', n: connectLeft },
@@ -67,7 +69,7 @@ export default async function Today() {
       </div>
       <p className="sub">
         {today}. {total > 0 ? <>נשארו <b>{total}</b> פעולות ב-{open.length} תורות.</> : 'אין כרגע מטלות פתוחות.'}
-        {' '}המספרים זהים לאריחים בדף הבית.
+        {' '}הלקוחות נספרים בדיוק כמו בטבלת הלקוחות.
       </p>
       {tasks.map((t) => (
         <Link key={t.href} className="radar-tile" href={t.href} prefetch style={(t.n ?? 0) === 0 ? { opacity: 0.55 } : undefined}>

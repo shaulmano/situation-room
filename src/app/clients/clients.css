@@ -3,7 +3,7 @@
 .hx{--ink:#001329;--brand:#006ECA;--cyan:#00AEDC;--canvas:#EFF3F7;--surface:#fff;--line:#DCE4EC;--line-soft:#EAEFF4;
   --t1:#0B1D33;--t2:#4A5C72;--t3:#7E8FA3;--ok:#0B8F63;--ok-wash:#E4F5EE;--warn:#A8690A;--warn-wash:#FBF0DC;--crit:#C4302A;--crit-wash:#FBE9E7;
   display:grid;grid-template-columns:240px 1fr;min-height:100vh;background:var(--canvas);color:var(--t1);
-  font-family:Rubik,'Segoe UI',system-ui,sans-serif;direction:rtl;font-size:15px;line-height:1.45;margin:-1px}
+  font-family:Rubik,'Segoe UI',system-ui,sans-serif;direction:rtl;font-size:15px;line-height:1.45;margin:0;overflow-x:clip}
 .hx *{box-sizing:border-box}
 .hx a{color:inherit;text-decoration:none}
 .hx-side{background:var(--ink);color:#B9CBDD;padding:22px 14px;position:sticky;top:0;height:100vh;overflow:auto}
@@ -131,7 +131,7 @@
 .hx-kpib.on{outline:2px solid var(--warn)}
 
 /* מסכים שעוד בעיצוב הישן יושבים בתוך המעטפת */
-.hx-main>main{width:100%;max-width:1100px}
+.hx-main>main{width:100%;max-width:1100px;margin-inline:auto}
 .hx-main>.shell{max-width:none}
 .hx-pick{flex-basis:100%;display:flex;flex-wrap:wrap;gap:8px;align-items:center;background:#F7FAFC;border:1px dashed #AEC2D6;border-radius:8px;padding:8px 10px}.hx-pick small{flex-basis:100%;color:var(--t2)}
 .hx-b.on{background:#E3EEF9;border-color:var(--brand)}
