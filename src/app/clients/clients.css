@@ -124,3 +124,4 @@
 .hx-reply .hx-draft{margin-top:8px;padding:8px 10px;background:#fff;border-radius:6px;border:1px solid var(--line);white-space:pre-wrap}
 .hx-reply .hx-draft small{display:block;margin-bottom:2px}
 .hx-reply .hx-acts{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:8px;margin-top:10px}
+.hx-tag.gray{color:var(--t2);background:var(--line-soft)}

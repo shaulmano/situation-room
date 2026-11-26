@@ -21,7 +21,7 @@ export type ClientJob = {
   appId: string | null; closed: boolean;
 };
 export type Client = {
-  id: string; kind: 'contact' | 'gold';
+  id: string; kind: 'contact' | 'gold' | 'prior';
   name: string; title: string | null; company: string | null; companyKey: string;
   profile: string | null; email: string | null; phone: string | null;
   group: 'recruiter' | 'dev' | 'other';
@@ -51,7 +51,7 @@ async function pageAll(build: (from: number, to: number) => any, size = 1000, ca
 export async function loadClients(sb: any): Promise<{ clients: Client[]; error?: string }> {
   try {
     const since = new Date(Date.now() - 30 * 864e5).toISOString();
-    const [contacts, gold, matches, apps, aliasRows] = await Promise.all([
+    const [contacts, gold, matches, apps, aliasRows, prior] = await Promise.all([
       pageAll((a, b) => sb.from('contacts')
         .select('id, full_name, title, company, company_key, linkedin_url, email, phone, note, connected_on, contacted_at, replied_at, '
           + 'reply_done_at, reply_text, reply_draft, invite_accepted_at, left_company_at, last_job_id, skipped_at')
@@ -66,6 +66,7 @@ export async function loadClients(sb: any): Promise<{ clients: Client[]; error?:
       pageAll((a, b) => sb.from('applications')
         .select('id, job_id, status, stage, sent_at, jobs(id, title, company, url, first_seen)').order('id').range(a, b)),
       pageAll((a, b) => sb.from('company_aliases').select('alias_key, company_key').range(a, b)),
+      pageAll((a, b) => sb.from('prior_requests').select('slug, full_name, title, company, sent_on').order('slug').range(a, b)).catch(() => []),
     ]);
 
     const alias = new Map<string, string>(aliasRows.map((r: any) => [r.alias_key, r.company_key]));
@@ -107,7 +108,8 @@ export async function loadClients(sb: any): Promise<{ clients: Client[]; error?:
       const open = jobs.filter((j) => !j.applied);
       const silentCount = jobs.filter((j) => j.silent).length;
       let next: string | null = null;
-      if (urgent) next = 'ענתה: לענות לה';
+      if (base.kind === 'prior') next = null; // בקשה מלפני חודשים שלא אושרה: אין מה לעשות איתה מעבר לעקוב
+      else if (urgent) next = 'ענתה: לענות לה';
       else if (silentCount >= SILENT_LIMIT && !(base.contactedAt ?? null)) next = 'פנה ישירות, לא להגיש עוד';
       else if (base.status === 'requested') next = 'מחכה לאישור חברות';
       else if (open.length && base.status === 'none') next = 'לשלוח בקשת חברות';
@@ -147,6 +149,18 @@ export async function loadClients(sb: any): Promise<{ clients: Client[]; error?:
         company: name || null, companyKey: keyOf(name), profile: g.profile_url ?? null,
         email: null, phone: null, group: DEV.test(g.headline ?? '') ? 'dev' : 'recruiter',
         status: g.contacted_at ? 'requested' : 'none', replyText: null,
+      }, null, false, false, false));
+    }
+    // גל מאי: מי שקיבל בקשה או הודעה לפני חודשים ולא אישר. מי שכבר חבר או בבקשה פעילה לא נכפל.
+    const known = new Set(out.map((c) => slug(c.profile)).filter(Boolean));
+    for (const r of prior as any[]) {
+      if (known.has(r.slug)) continue;
+      out.push(mk({
+        id: 'p:' + r.slug, kind: 'prior', name: r.full_name ?? '', title: r.title ?? null,
+        company: r.company ?? null, companyKey: keyOf(r.company ?? ''),
+        profile: `https://www.linkedin.com/in/${encodeURIComponent(r.slug)}`,
+        email: null, phone: null, group: DEV.test(r.title ?? '') ? 'dev' : REC.test(r.title ?? '') ? 'recruiter' : 'other',
+        status: 'none', replyText: null, note: `בקשה או הודעה נשלחה ב-${r.sent_on ?? 'מאי'}, ולא אושרה`,
       }, null, false, false, false));
     }
     return { clients: out };

@@ -250,6 +250,7 @@ export default function ClientsTable({ clients }: { clients: Client[] }) {
               <div className="hx-who">
                 <b>{c.name || '(ללא שם)'}</b>
                 <span>{[c.company, c.title].filter(Boolean).join(' · ')}</span>
+                {c.kind === 'prior' && <em className="hx-tag gray">נשלחה במאי, לא אושרה</em>}
                 {c.silentCount >= SILENT_LIMIT && <em className="hx-tag">{c.silentCount} הגשות בלי מענה</em>}
               </div>
               <div><span className={'hx-pill ' + c.status}>{SL[c.status]}</span></div>
@@ -287,7 +288,7 @@ export default function ClientsTable({ clients }: { clients: Client[] }) {
                       <div className="hx-acts">
                         {j.url && <a className="hx-b" href={j.url} target="_blank" rel="noreferrer">פתח משרה</a>}
                         <StepButtons j={j} />
-                        {!j.applied && <button className="hx-b main" onClick={() => setAct(c.id)}>
+                        {!j.applied && c.kind !== 'prior' && <button className="hx-b main" onClick={() => setAct(c.id)}>
                           {c.status === 'friend' ? 'הכן הודעה' : 'הכן בקשת חברות'}</button>}
                       </div>
                     </div>

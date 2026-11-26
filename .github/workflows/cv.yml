@@ -26,7 +26,7 @@ on:
   workflow_dispatch:
     inputs:
       mode:
-        description: 'fetch, render, audit, dismissals, migrate, query, checkapi, poster, replies, referrals, referral_pdf, referral_mark, ats_mail, ats_mail_write, boards, boards_add, boards_probe, ats_discover, ats_read, crm_pilot, messaged, pitched, rejections, rejections_write, mail_selftest, mail_test or mail_send'
+        description: 'fetch, render, audit, dismissals, migrate, query, checkapi, poster, replies, referrals, referral_pdf, referral_mark, ats_mail, ats_mail_write, boards, boards_add, boards_probe, ats_discover, ats_read, crm_pilot, messaged, pitched, rejections, rejections_write, may_import, mail_selftest, mail_test or mail_send'
         required: true
         default: 'fetch'
       migration:
@@ -235,6 +235,15 @@ jobs:
           SUPABASE_PROJECT_REF: ${{ secrets.SUPABASE_PROJECT_REF }}
           CONTENT: ${{ inputs.content }}
         run: python sync/messaged_mark.py "$CONTENT" first_pitch_at
+
+      # 26.11.2026: גל מאי לרשימת הלקוחות. ראה 0088.
+      - name: Import May wave
+        if: inputs.mode == 'may_import'
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+          SUPABASE_PROJECT_REF: ${{ secrets.SUPABASE_PROJECT_REF }}
+          CONTENT: ${{ inputs.content }}
+        run: python sync/may_import.py "$CONTENT"
 
       - name: Company career boards
         if: startsWith(inputs.mode, 'boards')
