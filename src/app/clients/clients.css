@@ -144,3 +144,5 @@
 .hx-job .hx-acts .hx-pick small{grid-column:1/-1}
 .hx-job .hx-acts .hx-pick .hx-b{min-height:40px;height:auto;padding:6px 10px;line-height:1.25;font-size:.8rem}
 .hx-job .hx-acts .hx-tag{align-self:center}
+.hx-saving{flex-basis:100%;color:var(--brand);font-size:.8rem;font-weight:600}
+.hx-toast{position:fixed;top:14px;left:50%;transform:translateX(-50%);z-index:50;background:var(--ink);color:#fff;border-radius:8px;padding:10px 18px;font-size:.9rem;box-shadow:0 4px 14px rgba(0,19,41,.3)}

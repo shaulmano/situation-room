@@ -1,9 +1,12 @@
 'use client';
-import { useMemo, useState } from 'react';
+import { createContext, useContext, useMemo, useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import { STAGES, SILENT_LIMIT, CLOSED_NOTE, type Client } from '@/lib/clients';
 import { referralMessage, connectNote, cvFileFor, inviteMessage } from '@/lib/outreach';
 import { isAgency } from '@/lib/pickContact';
+
+/** רענון אחרי שמירה: אחד לכל המסך, עם חיווי גלובלי כל עוד השרת טוען מחדש. */
+const Refresh = createContext<() => void>(() => {});
 
 type Group = 'recruiter' | 'dev' | 'other';
 const GL: Record<Group, string> = { recruiter: 'מגייסות ו-HR', dev: 'מנהלי פיתוח', other: 'אחרים' };
@@ -11,8 +14,8 @@ const SL = { none: 'לא חבר', requested: 'נשלחה בקשה', friend: 'ח�
 
 /** סימון אחד לשלב אחד. ההגשה והשיחה והראיון והסגירה נרשמים דרך הנתיבים הקיימים. */
 function StepButtons({ j, friends }: { j: import('@/lib/clients').ClientJob; friends: Client[] }) {
-  const router = useRouter();
   const [busy, setBusy] = useState(false);
+  const refresh = useContext(Refresh);
   const [pick, setPick] = useState(false);
   const [closing, setClosing] = useState(false);
   async function post(url: string, body: object): Promise<boolean> {
@@ -32,11 +35,11 @@ function StepButtons({ j, friends }: { j: import('@/lib/clients').ClientJob; fri
       setBusy(false);
       if (!r || !r.ok) { alert('ההגשה נרשמה, אבל הסימון על איש הקשר לא נשמר.'); }
     }
-    setPick(false); router.refresh();
+    setPick(false); refresh();
   }
-  const step = async (body: object) => { if (await post('/api/applications/step', body)) { setClosing(false); router.refresh(); } };
+  const step = async (body: object) => { if (await post('/api/applications/step', body)) { setClosing(false); refresh(); } };
   if (!j.applied) return (<>
-    <button className="hx-b" disabled={busy} onClick={async () => { if (await post('/api/jobs/applied', { id: j.id })) router.refresh(); }}>הוגשה ישירות</button>
+    <button className="hx-b" disabled={busy} onClick={async () => { if (await post('/api/jobs/applied', { id: j.id })) refresh(); }}>הוגשה ישירות</button>
     <button className={'hx-b' + (pick ? ' on' : '')} disabled={busy} onClick={() => setPick(!pick)}>הוגשה דרך מכר או HR</button>
     {pick && (
       <div className="hx-pick">
@@ -68,8 +71,8 @@ function StepButtons({ j, friends }: { j: import('@/lib/clients').ClientJob; fri
 
 /** מה שהוא כתב לך, ומה עושים איתו: מעתיקים תשובה מוכנה, או מסמנים שטופל. */
 function ReplyBox({ c }: { c: Client }) {
-  const router = useRouter();
   const [busy, setBusy] = useState(false);
+  const refresh = useContext(Refresh);
   const [copied, setCopied] = useState(false);
   async function done() {
     setBusy(true);
@@ -77,7 +80,7 @@ function ReplyBox({ c }: { c: Client }) {
       body: JSON.stringify({ id: c.id.slice(2), replyDone: true }) }).catch(() => null);
     setBusy(false);
     if (!r || !r.ok) { alert('לא נשמר. נסה שוב.'); return; }
-    router.refresh();
+    refresh();
   }
   async function copy() {
     try { await navigator.clipboard.writeText(c.replyDraft ?? ''); setCopied(true); setTimeout(() => setCopied(false), 1600); } catch {}
@@ -108,7 +111,7 @@ const isWaiting = (c: Client) => !!c.next && !c.next.startsWith('מחכה');
 const fmt = (d?: string | null) => (d ? new Date(d).toLocaleDateString('he-IL', { day: 'numeric', month: 'numeric', year: '2-digit' }) : '—');
 
 function Editor({ c }: { c: Client }) {
-  const router = useRouter();
+  const refresh = useContext(Refresh);
   const editable = c.kind === 'contact';
   const [f, setF] = useState({ fullName: c.name, title: c.title ?? '', company: c.company ?? '',
     email: c.email ?? '', phone: c.phone ?? '', note: c.note ?? '' });
@@ -122,7 +125,7 @@ function Editor({ c }: { c: Client }) {
       body: JSON.stringify({ id: c.id.slice(2), ...f }) });
     setBusy(false);
     if (!r.ok) { const j = await r.json().catch(() => ({})); setMsg(j.error ?? 'השמירה נכשלה'); return; }
-    setMsg('נשמר'); router.refresh();
+    setMsg('נשמר'); refresh();
   }
   const fld = (k: keyof typeof f, label: string, ltr = false) => (
     <label className="hx-f"><small>{label}</small>
@@ -156,7 +159,7 @@ function Editor({ c }: { c: Client }) {
 
 /** הפעולה של "הצעד הבא": ההודעה מוכנה, ורק אחרי "שלחתי" השלב מתקדם. */
 function ActionPanel({ c, onDone }: { c: Client; onDone: () => void }) {
-  const router = useRouter();
+  const refresh = useContext(Refresh);
   const job = c.jobs.find((j) => !j.applied) ?? c.jobs[0];
   const request = c.status === 'none';
   const initial = request
@@ -189,7 +192,7 @@ function ActionPanel({ c, onDone }: { c: Client; onDone: () => void }) {
     }
     setBusy(false);
     if (!res || !res.ok) { alert('לא נשמר. נסה שוב.'); return; }
-    onDone(); router.refresh();
+    onDone(); refresh();
   }
   return (
     <div className="hx-act">
@@ -211,7 +214,18 @@ function ActionPanel({ c, onDone }: { c: Client; onDone: () => void }) {
   );
 }
 
-export default function ClientsTable({ clients, initial }: { clients: Client[]; initial?: { waiting?: boolean; replied?: boolean; group?: Group } }) {
+export default function ClientsTable(props: { clients: Client[]; initial?: { waiting?: boolean; replied?: boolean; group?: Group } }) {
+  const router = useRouter();
+  const [pending, start] = useTransition();
+  return (
+    <Refresh.Provider value={() => start(() => router.refresh())}>
+      {pending && <div className="hx-toast">נשמר. מרענן את הרשימה…</div>}
+      <Inner {...props} />
+    </Refresh.Provider>
+  );
+}
+
+function Inner({ clients, initial }: { clients: Client[]; initial?: { waiting?: boolean; replied?: boolean; group?: Group } }) {
   const [group, setGroup] = useState<Group>(initial?.group ?? 'recruiter');
   const [status, setStatus] = useState<'all' | keyof typeof SL>('all');
   const [withJob, setWithJob] = useState(false);
