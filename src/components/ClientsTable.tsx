@@ -17,6 +17,7 @@ function StepButtons({ j, friends }: { j: import('@/lib/clients').ClientJob; fri
   const [busy, setBusy] = useState(false);
   const refresh = useContext(Refresh);
   const [pick, setPick] = useState(false);
+  const [who, setWho] = useState('');
   const [closing, setClosing] = useState(false);
   async function post(url: string, body: object): Promise<boolean> {
     setBusy(true);
@@ -42,13 +43,16 @@ function StepButtons({ j, friends }: { j: import('@/lib/clients').ClientJob; fri
     <button className="hx-b" disabled={busy} title="סמן שהגשת מועמדות למשרה הזאת ישירות באתר" onClick={async () => { if (await post('/api/jobs/applied', { id: j.id })) refresh(); }}>הוגשה ישירות</button>
     <button className={'hx-b' + (pick ? ' on' : '')} disabled={busy} title="סמן שהגשת דרך מכר או איש HR בחברה, ובחר מי" onClick={() => setPick(!pick)}>הוגשה דרך מכר או HR</button>
     {pick && (
-      <div className="hx-pick">
+      <div className="hx-pick row1">
         <small>דרך מי הוגשה? הבחירה מסמנת שפנית אליו על המשרה הזאת.</small>
-        {friends.map((f) => (
-          <button key={f.id} className="hx-b" disabled={busy} title={`הגשה דרך ${f.name}: נרשמת הגשה פנימית ומסומן שפנית אליו`} onClick={() => viaFriend(f)}>{f.name}{f.title ? ' · ' + f.title : ''}</button>
-        ))}
+        <select className="hx-sel" value={who} onChange={(e) => setWho(e.target.value)} title="בחר את איש הקשר שדרכו הוגשה המשרה">
+          <option value="">בחר מי…</option>
+          {friends.map((f) => <option key={f.id} value={f.id}>{f.name}{f.title ? ' · ' + f.title : ''}</option>)}
+          <option value="__none">בלי לציין מי</option>
+        </select>
+        <button className="hx-b main" disabled={busy || !who} title="רושם הגשה פנימית ומסמן שפנית אליו על המשרה הזאת"
+          onClick={() => viaFriend(who === '__none' ? null : friends.find((f) => f.id === who) ?? null)}>אישור</button>
         {friends.length === 0 && <small className="mut">אין אצלך איש קשר בחברה הזאת. אפשר לסמן בלי שם.</small>}
-        <button className="hx-b" disabled={busy} title="רושם הגשה פנימית בלי לסמן איש קשר" onClick={() => viaFriend(null)}>בלי לציין מי</button>
       </div>
     )}
   </>);
@@ -59,7 +63,7 @@ function StepButtons({ j, friends }: { j: import('@/lib/clients').ClientJob; fri
     {j.stage < 6 && <button className="hx-b" disabled={busy} title="נקבע ראיון על המשרה הזאת" onClick={() => step({ id: j.appId, status: 'interview', kind: 'interview' })}>נקבע ראיון</button>}
     <button className={'hx-b' + (closing ? ' on' : '')} disabled={busy} title="סגור את המשרה: נדחית, המשרה נסגרה או קיבלת הצעה" onClick={() => setClosing(!closing)}>סגירת המשרה</button>
     {closing && (
-      <div className="hx-pick">
+      <div className="hx-pick row1">
         <small>למה נסגרה?</small>
         <button className="hx-b" disabled={busy} title="החברה דחתה אותך" onClick={() => step({ id: j.appId, status: 'rejected', note: '' })}>נדחה</button>
         <button className="hx-b" disabled={busy} title="המשרה עצמה נסגרה, בלי קשר אליך" onClick={() => step({ id: j.appId, status: 'rejected', note: CLOSED_NOTE })}>המשרה נסגרה</button>

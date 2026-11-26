@@ -176,3 +176,10 @@
 .cn-line>span[style*="display: flex"]{flex:0 0 100%!important}
 .cn-line>:is(button,a){font-size:clamp(.58rem,2.3vw,.76rem)!important}
 .hx-nbtn,.hx-go{white-space:normal;line-height:1.15}
+
+/* בחירת מכר וסגירת משרה: שורה אחת. הבחירה היא רשימה נפתחת ולא עשרה כפתורים אחד מתחת לשני */
+.hx-job .hx-acts .hx-pick.row1{display:flex!important;flex-wrap:wrap!important;gap:6px!important;align-items:stretch}
+.hx-pick.row1>small{flex:0 0 100%!important;grid-column:auto}
+.hx-pick.row1>.hx-b{flex:1 1 0!important;min-width:0!important;width:auto!important;white-space:normal!important;font-size:clamp(.6rem,2.5vw,.85rem)!important;padding:.3em .3em!important}
+.hx-pick.row1>.hx-sel{flex:3 1 0;min-width:0;min-height:40px;font:inherit;font-size:.85rem;border:1px solid #AEC2D6;border-radius:6px;background:#fff;color:var(--t1);padding:0 8px;width:auto}
+.hx-pick.row1>.hx-b.main{flex:0 0 auto!important;padding:0 14px!important}
