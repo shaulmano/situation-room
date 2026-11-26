@@ -127,3 +127,5 @@
 .hx-tag.gray{color:var(--t2);background:var(--line-soft)}
 .hx-jlink{display:flex;align-items:center;gap:6px;font:inherit;text-align:start;background:transparent;border:0;padding:4px 6px;margin:-4px -6px;border-radius:6px;cursor:pointer;color:inherit}
 .hx-jlink:hover{background:var(--line-soft)}.hx-jlink:hover span{text-decoration:underline}
+.hx-kpib{font:inherit;text-align:start;cursor:pointer;width:100%}
+.hx-kpib.on{outline:2px solid var(--warn)}

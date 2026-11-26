@@ -67,6 +67,9 @@ function Bar({ stage }: { stage: number }) {
   );
 }
 
+/** מחכה לפעולה שלו: יש צעד הבא שאינו המתנה למישהו אחר. */
+const isWaiting = (c: Client) => !!c.next && !c.next.startsWith('מחכה');
+
 const fmt = (d?: string | null) => (d ? new Date(d).toLocaleDateString('he-IL', { day: 'numeric', month: 'numeric', year: '2-digit' }) : '—');
 
 function Editor({ c }: { c: Client }) {
@@ -178,6 +181,7 @@ export default function ClientsTable({ clients }: { clients: Client[] }) {
   const [status, setStatus] = useState<'all' | keyof typeof SL>('all');
   const [withJob, setWithJob] = useState(false);
   const [onlyReplied, setOnlyReplied] = useState(false);
+  const [onlyWaiting, setOnlyWaiting] = useState(false);
   const [q, setQ] = useState('');
   const [view, setView] = useState<{ id: string; tab: 'jobs' | 'edit' } | null>(null);
   const toggle = (id: string, tab: 'jobs' | 'edit') => setView(view?.id === id && view.tab === tab ? null : { id, tab });
@@ -191,21 +195,22 @@ export default function ClientsTable({ clients }: { clients: Client[] }) {
       .filter((c) => (status === 'all' || c.status === status)
         && (!withJob || c.jobs.length > 0)
         && (!onlyReplied || !!c.repliedAt)
+        && (!onlyWaiting || isWaiting(c))
         && (!s || `${c.name} ${c.company ?? ''} ${c.title ?? ''} ${c.jobs.map((j) => j.title).join(' ')}`.toLowerCase().includes(s)))
       // מי שענה נשאר גבוה גם אחרי שטופל: ראשון מי שמחכה לך, אחריו הענייה האחרונה.
       .sort((a, b) => Number(b.urgent) - Number(a.urgent) || (b.repliedAt ?? '').localeCompare(a.repliedAt ?? '') || b.stage - a.stage || b.jobs.length - a.jobs.length);
-  }, [inGroup, status, withJob, onlyReplied, q]);
+  }, [inGroup, status, withJob, onlyReplied, onlyWaiting, q]);
 
   const cnt = (k: 'none' | 'requested' | 'friend') => inGroup.filter((c) => c.status === k).length;
   const total = inGroup.length || 1;
-  const waiting = inGroup.filter((c) => c.next && c.jobs.length && !c.next.startsWith('מחכה')).length;
+  const waiting = inGroup.filter(isWaiting).length;
 
   return (
     <>
       <div className="hx-kpis">
         <div className="hx-kpi"><small>לקוחות בקבוצה</small><b>{inGroup.length}</b></div>
         <div className="hx-kpi"><small>עם משרה פתוחה</small><b>{inGroup.filter((c) => c.jobs.length).length}</b></div>
-        <div className="hx-kpi warn"><small>מחכים לפעולה שלך</small><b>{waiting}</b></div>
+        <button className={'hx-kpi warn hx-kpib' + (onlyWaiting ? ' on' : '')} onClick={() => { setOnlyWaiting(!onlyWaiting); setShown(40); }} title="הצג רק מי שמחכה לפעולה שלך"><small>מחכים לפעולה שלך</small><b>{waiting}</b></button>
         <div className="hx-kpi"><small>הוגשה דרכם משרה</small><b>{inGroup.filter((c) => c.stage >= 5).length}</b></div>
       </div>
 
