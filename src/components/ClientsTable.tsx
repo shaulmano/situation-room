@@ -124,7 +124,7 @@ function ActionPanel({ c, onDone }: { c: Client; onDone: () => void }) {
 export default function ClientsTable({ clients }: { clients: Client[] }) {
   const [group, setGroup] = useState<Group>('recruiter');
   const [status, setStatus] = useState<'all' | keyof typeof SL>('all');
-  const [withJob, setWithJob] = useState(true);
+  const [withJob, setWithJob] = useState(false);
   const [q, setQ] = useState('');
   const [open, setOpen] = useState<string | null>(null);
   const [act, setAct] = useState<string | null>(null);
@@ -180,15 +180,16 @@ export default function ClientsTable({ clients }: { clients: Client[] }) {
         <div className="hx-chips"><span className="lab">חברות</span>
           {(['all', 'none', 'requested', 'friend'] as const).map((s) => (
             <button key={s} className={status === s ? 'on' : ''} onClick={() => { setStatus(s); setShown(40); }}>
-              {s === 'all' ? 'הכול' : SL[s]}
+              {s === 'all' ? 'הכול' : SL[s]} {s === 'all' ? inGroup.length : cnt(s)}
             </button>
           ))}
-          <button className={withJob ? 'on' : ''} onClick={() => { setWithJob(!withJob); setShown(40); }}>רק עם משרה</button>
+          <button className={withJob ? 'on' : ''} onClick={() => { setWithJob(!withJob); setShown(40); }}>רק עם משרה {inGroup.filter((c) => c.jobs.length).length}</button>
         </div>
       </div>
 
       <div className="hx-card hx-table">
-        <div className="hx-cnt">מציג <b>{Math.min(shown, rows.length)}</b> מתוך <b>{rows.length}</b></div>
+        <div className="hx-cnt">מציג <b>{Math.min(shown, rows.length)}</b> מתוך <b>{rows.length}</b>
+          {rows.length < inGroup.length && <span className="mut"> · {inGroup.length - rows.length} מוסתרים בגלל הסינון, מתוך {inGroup.length} בסוג הזה</span>}</div>
         <div className="hx-head">
           <span>לקוח וחברה</span><span>חברות</span><span>משרות</span><span>שלב</span><span>הצעד הבא</span><span />
         </div>
