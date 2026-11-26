@@ -82,12 +82,15 @@ export async function loadClients(sb: any): Promise<{ clients: Client[]; error?:
       if (!j?.id) return;
       const k = keyOf(j.company); if (!k) return;
       const m = jobsByCo.get(k) ?? new Map<string, ClientJob>();
-      const prev = m.get(j.id);
+      // אותה משרה בלינקדאין יכולה להיכנס פעמיים עם כותרת שונה ואותו מזהה בסוף הכתובת (AMAREL, 26.11.2026).
+      const li = typeof j.url === 'string' ? j.url.match(/linkedin\.com\/jobs\/view\/[^?#]*?(\d{8,})\/?(?:[?#]|$)/) : null;
+      const dk = li ? 'li:' + li[1] : j.id;
+      const prev = m.get(dk);
       const closed = applied && (status === 'rejected' || status === 'offer');
       const st = closed ? 7 : applied ? (stage === 'interview' || status === 'interview' ? 6 : stage === 'call' || status === 'conversation' ? 5 : 4) : 1;
       const closeReason = !closed ? null : status === 'offer' ? 'הצעה' : note === CLOSED_NOTE ? 'המשרה נסגרה' : 'נדחה';
       if (!prev || st > prev.stage) {
-        m.set(j.id, {
+        m.set(dk, {
           id: j.id, title: j.title, company: j.company, url: j.url ?? null, applied, stage: st,
           appliedDays: applied && sentAt ? Math.max(0, Math.round((Date.now() - new Date(sentAt).getTime()) / 864e5)) : null,
           silent: applied && status === 'silent', appId: appId ?? null, closed, closeReason,
@@ -144,6 +147,10 @@ export async function loadClients(sb: any): Promise<{ clients: Client[]; error?:
         note: c.note ?? null, connectedOn: c.connected_on ?? null, acceptedAt: c.invite_accepted_at ?? null,
         contactedAt: c.contacted_at ?? null, repliedAt: c.replied_at ?? null,
       }, c.last_job_id ?? null, !!c.contacted_at, replied, replied && !c.reply_done_at));
+      // "לא לפנות" נכתב ל-skipped_at. בלי זה הלחיצה לא שינתה כלום על המסך אחרי רענון (26.11.2026).
+      // תגובה שממתינה לתשובה נשארת: היא קודמת לסימון.
+      const last = out[out.length - 1];
+      if (c.skipped_at && !last.urgent) last.next = null;
     }
     // אותו אדם כחבר וגם כבקשה: החבר גובר. זיהוי לפי פרופיל, ובלעדיו לפי שם וחברה.
     const slug = (u?: string | null) => { try { return decodeURIComponent((u ?? '').split('/in/')[1]?.split(/[/?#]/)[0] ?? '').toLowerCase(); } catch { return ''; } };
