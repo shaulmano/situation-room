@@ -119,6 +119,10 @@ def cover():
 def main():
     if len(sys.argv) > 1 and sys.argv[1] == 'cover':
         return cover()
+    if len(sys.argv) > 1 and sys.argv[1] == 'live':
+        import crm_live
+        sys.argv = [sys.argv[0]] + sys.argv[2:]
+        return crm_live.main()
     n = int(sys.argv[1]) if len(sys.argv) > 1 else 100
     rows = sql(
         "with rc as (select company_key, mode() within group (order by company) name, count(*) people "
