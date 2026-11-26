@@ -52,7 +52,7 @@
 .hx-dgrid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px}.hx-dgrid small{display:block;color:var(--t3);font-size:.72rem}.hx-dgrid b{font-weight:500;overflow-wrap:anywhere}
 .hx-reply{background:var(--warn-wash);border:1px solid #EBD3A0;border-radius:10px;padding:10px 12px;font-size:.9rem}.hx-reply small{display:block;color:var(--warn);font-weight:600;margin-bottom:2px}
 .hx-jl{display:flex;flex-direction:column;gap:8px}
-.hx-job{background:#fff;border:1px solid var(--line);border-radius:10px;padding:10px 12px;display:grid;grid-template-columns:2fr 1.6fr auto;gap:12px;align-items:center}
+.hx-job{background:#fff;border:1px solid var(--line);border-radius:10px;padding:10px 12px;display:flex;flex-direction:column;gap:10px}
 .hx-jt{display:flex;flex-direction:column;min-width:0}.hx-jt span{font-size:.78rem;color:var(--t3)}
 .hx-acts{display:flex;gap:8px;flex-wrap:wrap}
 .hx-b{display:inline-flex;align-items:center;justify-content:center;min-height:40px;padding:0 14px;border:1px solid #AEC2D6;border-radius:6px;background:transparent;font:inherit;font-size:.85rem;font-weight:500;color:var(--t1);cursor:pointer}
@@ -72,7 +72,6 @@
   .hx-row{grid-template-columns:1fr auto;grid-template-areas:'who pill' 'jobs jobs' 'stage stage' 'next next' 'go go';gap:6px 10px}
   .hx-who{grid-area:who}.hx-row>div:nth-child(2){grid-area:pill}.hx-jobs{grid-area:jobs}.hx-row>.hx-stage{grid-area:stage}.hx-next{grid-area:next}.hx-gos{grid-area:go}
   .hx-dgrid{grid-template-columns:repeat(2,minmax(0,1fr))}
-  .hx-job{grid-template-columns:1fr}
   .hx-acts .hx-b{flex:1 1 calc(50% - 8px)}
 }
 
@@ -119,3 +118,6 @@
 @media (max-width:600px){.hx-gos{width:100%}.hx-gos .hx-go{flex:1;min-height:44px}}
 .hx-gos .hx-go{font-size:.76rem;padding:0 8px;min-width:0;flex:1}
 @media (min-width:901px){.hx-gos{max-width:200px}}
+
+.hx-job .hx-acts{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:8px;width:100%}
+.hx-job .hx-acts .hx-b{width:100%;min-height:40px;text-align:center;display:flex;align-items:center;justify-content:center}

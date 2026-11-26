@@ -1,6 +1,6 @@
 -- ניסוי של שאול ב-26.11.2026 סימן ראיון על ההגשה הזאת. מחזיר למצב שלפני: 'silent' בלי שלב.
 update applications
-   set status = 'silent', stage = null, stage_at = null, next_at = null, next_kind = null, status_by = null
+   set status = 'silent', stage = null, stage_at = null, next_at = null, next_kind = null, status_by = 'auto'
  where id = '5b9d3c67-59b5-42a6-8f0c-5281ad885fd6' and status = 'interview';
 delete from events
  where application_id = '5b9d3c67-59b5-42a6-8f0c-5281ad885fd6'
