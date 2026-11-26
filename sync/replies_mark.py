@@ -349,6 +349,15 @@ def main():
             )
             if filled:
                 print('  draft added: %s' % name[:46])
+        # 26.11.2026. שאול: "יש המון שליחות ביום ואין לי את הקונטקסט אחרי יום".
+        # מה ששאול שלח לאדם, כפי שהסוכן קרא בשרשור. פקודה נפרדת, מאותה סיבה
+        # כמו הנוסח: היא לא נוגעת בסימון, בשעה ובפוש.
+        sent = (r.get('sent') or '')[:1500] or None
+        if sent:
+            sql(("update contacts set last_sent_text = {sent}, "
+                 "last_sent_at = coalesce(last_sent_at, now()) "
+                 "where id = {cid} and coalesce(last_sent_text,'') <> {sent} "
+                 "returning id").format(sent=q(sent), cid=q(cid)))
         if changed:
             hit += 1
             print('  %s' % name[:50])

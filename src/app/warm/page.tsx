@@ -467,7 +467,7 @@ async function WarmBody({
   const { data: replyRows } = await sb
     .from('contacts')
     .select('id, full_name, title, company, linkedin_url, reply_text, reply_url, '
-            + 'reply_draft, replied_at, last_job_id')
+            + 'reply_draft, replied_at, last_job_id, last_sent_text, last_sent_at')
     .not('replied_at', 'is', null)
     .is('reply_done_at', null)
     .order('replied_at', { ascending: true })
@@ -522,6 +522,8 @@ async function WarmBody({
       jobCompany: j?.company ?? null,
       jobUrl: j?.url ?? null,
       draft: r.reply_draft ?? null,
+      sentText: r.last_sent_text ?? null,
+      sentAt: r.last_sent_at ?? null,
       days: r.replied_at
         ? Math.max(0, Math.floor((Date.now() - new Date(r.replied_at).getTime()) / 864e5))
         : 0,

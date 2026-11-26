@@ -29,6 +29,9 @@ export type ReplyRow = {
   jobUrl: string | null;
   /** נוסח תשובה מוכן, כולל מה שהם ביקשו. */
   draft: string | null;
+  /** מה ששאול שלח לו, כפי שנקרא מהשרשור. */
+  sentText: string | null;
+  sentAt: string | null;
   /** לפני כמה ימים הוא ענה. */
   days: number;
 };
@@ -150,6 +153,23 @@ export default function ReplyBanner({ rows }: { rows: ReplyRow[] }) {
             ) : (
               <div style={{ fontSize: '.76rem', color: 'var(--muted)' }}>
                 המשרה לא נרשמה בפנייה הזאת. זה נשמר רק מ-14.11 והלאה.
+              </div>
+            )}
+
+            {/* מה ששלחת לו. 26.11.2026, שאול: "אין לי את הקונטקסט אחרי יום".
+                מקופל, כדי שהכרטיס לא יתארך. */}
+            {r.sentText ? (
+              <details style={{ marginTop: 8 }}>
+                <summary style={{ fontSize: '.78rem', color: 'var(--muted)', cursor: 'pointer' }}>
+                  מה ששלחת לו{r.sentAt ? ', ' + new Date(r.sentAt).toLocaleDateString('he-IL') : ''}
+                </summary>
+                <div style={{ marginTop: 4, fontSize: '.8rem', lineHeight: 1.5, whiteSpace: 'pre-wrap' }}>
+                  {r.sentText}
+                </div>
+              </details>
+            ) : (
+              <div style={{ fontSize: '.74rem', color: 'var(--muted)', marginTop: 6 }}>
+                מה ששלחת לו עוד לא נשמר. הסוכן ישלים אותו בקריאה הבאה של השיחה.
               </div>
             )}
 
