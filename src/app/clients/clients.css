@@ -110,3 +110,5 @@
   .hx-chips{flex-wrap:wrap}
   .hx-chips button{min-height:40px}
 }
+.hx-more-d{margin-top:10px;border-top:1px solid var(--line-soft);padding-top:8px}
+.hx-more-d summary{cursor:pointer;font-weight:600;color:var(--brand);min-height:40px;display:flex;align-items:center}

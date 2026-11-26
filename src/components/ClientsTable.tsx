@@ -242,7 +242,6 @@ export default function ClientsTable({ clients }: { clients: Client[] }) {
             {act === c.id && <ActionPanel c={c} onDone={() => setAct(null)} />}
             {open === c.id && (
               <div className="hx-detail">
-                <Editor key={c.id} c={c} />
                 {c.replyText && <div className="hx-reply"><small>מה שכתבה לך</small>{c.replyText}</div>}
                 <div className="hx-jl">
                   {c.jobs.length === 0 && <div className="mut">אין כרגע משרה מתאימה בחברה הזאת. כשתיכנס, הלקוח יעלה כאן לבד.</div>}
@@ -259,6 +258,7 @@ export default function ClientsTable({ clients }: { clients: Client[] }) {
                     </div>
                   ))}
                 </div>
+                <details className="hx-more-d"><summary>פרטי הלקוח ועריכה</summary><Editor key={c.id} c={c} /></details>
               </div>
             )}
           </div>
