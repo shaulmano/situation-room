@@ -151,6 +151,14 @@ export async function loadClients(sb: any): Promise<{ clients: Client[]; orphans
       return { note: null, connectedOn: null, acceptedAt: null, contactedAt: null, repliedAt: null, ...base, silentCount, jobs, stage, next, urgent };
     };
 
+    // 26.11.2026, שאול: ויתור על כל אנשי הקשר של חברה הוא ויתור על המשרה, לא על האנשים. חברה עם שניים ומעלה, כולם מסומנים.
+    const coTotal = new Map<string, number>(); const coSkipped = new Map<string, number>();
+    for (const c of contacts as any[]) {
+      if (c.left_company_at) continue;
+      const k = keyOf(c.company) || (c.company_key ?? ''); if (!k) continue;
+      coTotal.set(k, (coTotal.get(k) ?? 0) + 1);
+      if (c.skipped_at) coSkipped.set(k, (coSkipped.get(k) ?? 0) + 1);
+    }
     const out: Client[] = [];
     for (const c of contacts as any[]) {
       if (c.first_pitch_at || c.li_seen_at) pitched.add('c:' + c.id);
@@ -171,8 +179,10 @@ export async function loadClients(sb: any): Promise<{ clients: Client[]; orphans
       // "לא לפנות" נכתב ל-skipped_at. בלי זה הלחיצה לא שינתה כלום על המסך אחרי רענון (26.11.2026).
       // תגובה שממתינה לתשובה נשארת: היא קודמת לסימון.
       const last = out[out.length - 1];
-      if (c.skipped_at) last.skipped = true;
-      if (c.skipped_at && !last.urgent) last.next = null;
+      // ויתור על כולם חל רק כשיש משרה פתוחה: אז האנשים חוזרים לצעד הבא. בלי משרה פתוחה הוויתור נשאר.
+      const waivedAll = (coTotal.get(k) ?? 0) >= 2 && coSkipped.get(k) === coTotal.get(k) && last.jobs.some((j) => !j.applied && !j.closed);
+      if (c.skipped_at && !waivedAll) last.skipped = true;
+      if (c.skipped_at && !waivedAll && !last.urgent) last.next = null;
     }
     // אותו אדם כחבר וגם כבקשה: החבר גובר. זיהוי לפי פרופיל, ובלעדיו לפי שם וחברה.
     const slug = (u?: string | null) => { try { return decodeURIComponent((u ?? '').split('/in/')[1]?.split(/[/?#]/)[0] ?? '').toLowerCase(); } catch { return ''; } };
