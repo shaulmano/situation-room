@@ -735,8 +735,5 @@ a.dup-title{text-decoration:underline;text-underline-offset:2px}
 
 /* זהב: מידע למעלה, ארבעת הכפתורים בשורה מתחת (23.11.2026, שאול: "בכל שורה למטה 4 כפתורים") */
 .gold-simple.cn-card,.gold-sec.cn-card{display:flex!important;flex-direction:column!important;align-items:stretch!important;gap:10px!important}
-.gold-simple .cn-acts,.gold-sec .cn-acts{display:grid!important;grid-template-columns:repeat(4,minmax(0,1fr))!important;gap:6px;width:100%}
-.gold-simple .cn-acts>.cn-b,.gold-sec .cn-acts>.cn-b{width:100%;white-space:normal}
-@media (max-width:760px){
-  .gold-simple .cn-acts,.gold-sec .cn-acts{grid-template-columns:1fr 1fr!important}
-}
+.gold-simple .cn-acts,.gold-sec .cn-acts{width:100%}
+/* 26.11.2026: ארבעת הכפתורים בשורה אחת גם בטלפון. הכללים נמצאים ב-clients.css, בבלוק "כל הכפתורים באותה שורה". */
