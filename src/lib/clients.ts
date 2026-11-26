@@ -101,7 +101,9 @@ export async function loadClients(sb: any): Promise<{ clients: Client[]; error?:
         if (j.stage === 1 && contacted && (!contactedJobId || contactedJobId === j.id)) j.stage = replied ? 3 : 2;
       }
       jobs.sort((a, b) => b.stage - a.stage || (a.ageDays ?? 999) - (b.ageDays ?? 999));
-      const stage = jobs.reduce((s, j) => Math.max(s, j.stage), 0);
+      // משרה שנסגרה לא מקדמת את הלקוח: הוא מתקדם לפי המשרה החיה הרחוקה ביותר.
+      const live = jobs.filter((j) => !j.closed);
+      const stage = live.length ? live.reduce((s, j) => Math.max(s, j.stage), 0) : jobs.length ? 7 : 0;
       const open = jobs.filter((j) => !j.applied);
       const silentCount = jobs.filter((j) => j.silent).length;
       let next: string | null = null;
@@ -130,8 +132,14 @@ export async function loadClients(sb: any): Promise<{ clients: Client[]; error?:
         contactedAt: c.contacted_at ?? null, repliedAt: c.replied_at ?? null,
       }, c.last_job_id ?? null, !!c.contacted_at, replied, replied && !c.reply_done_at));
     }
+    // אותו אדם כחבר וגם כבקשה: החבר גובר. זיהוי לפי פרופיל, ובלעדיו לפי שם וחברה.
+    const slug = (u?: string | null) => { try { return decodeURIComponent((u ?? '').split('/in/')[1]?.split(/[/?#]/)[0] ?? '').toLowerCase(); } catch { return ''; } };
+    const haveSlug = new Set(out.map((c) => slug(c.profile)).filter(Boolean));
+    const haveNameCo = new Set(out.map((c) => `${c.name.trim().toLowerCase()}|${c.companyKey}`));
     for (const g of gold as any[]) {
       if (g.skipped_at) continue;
+      if (haveSlug.has(slug(g.profile_url)) && slug(g.profile_url)) continue;
+      if (haveNameCo.has(`${(g.full_name ?? '').trim().toLowerCase()}|${keyOf(g.companies?.name ?? '')}`)) continue;
       const name = g.companies?.name ?? '';
       out.push(mk({
         id: 'g:' + g.id, kind: 'gold', name: g.full_name ?? '', title: g.headline ?? null,

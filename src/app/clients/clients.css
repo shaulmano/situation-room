@@ -45,7 +45,7 @@
 .hx-jobs span{font-size:.82rem;color:var(--t2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .hx-stage{display:flex;flex-direction:column;gap:4px}.hx-stage small{font-size:.72rem;color:var(--t2)}
 .hx-bar{display:flex;gap:3px;direction:rtl}.hx-bar i{flex:1;height:7px;background:var(--line);border-radius:2px;display:block}
-.hx-bar i.on{background:var(--brand)}.hx-bar i.ok{background:var(--ok)}
+.hx-bar i.on{background:var(--brand)}.hx-bar i.ok{background:var(--ok)}.hx-bar i.off{background:#B9CBDD}
 .hx-next{font-size:.85rem;font-weight:500;color:var(--t1)}.hx-next.red{color:var(--crit);font-weight:700}
 .hx-go{color:var(--t3);text-align:center}
 .hx-detail{background:#F7FAFC;border-top:1px solid var(--line-soft);padding:14px 16px;display:flex;flex-direction:column;gap:12px}

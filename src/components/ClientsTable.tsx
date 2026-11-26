@@ -34,7 +34,7 @@ function StepButtons({ j }: { j: import('@/lib/clients').ClientJob }) {
 function Bar({ stage }: { stage: number }) {
   return (
     <div className="hx-bar" title={stage ? STAGES[stage - 1] : 'אין משרה'}>
-      {STAGES.map((s, i) => <i key={s} className={i < stage ? (stage >= 5 ? 'ok' : 'on') : ''} />)}
+      {STAGES.map((s, i) => <i key={s} className={i < stage ? (stage === 7 ? 'off' : stage >= 5 ? 'ok' : 'on') : ''} />)}
     </div>
   );
 }
@@ -234,6 +234,7 @@ export default function ClientsTable({ clients }: { clients: Client[] }) {
               <div className={'hx-next' + (c.urgent || c.next?.startsWith('פנה ישירות') ? ' red' : '')}>
                 {c.next && /^לשלוח/.test(c.next) && c.jobs.length
                   ? <button className="hx-nbtn" onClick={() => setAct(act === c.id ? null : c.id)}>{c.next}</button>
+                  : c.urgent ? <a className="hx-nbtn" href="/warm">{c.next}</a>
                   : (c.next ?? '—')}
               </div>
               <button className="hx-go" aria-label="פרטי הלקוח והמשרות" onClick={() => setOpen(open === c.id ? null : c.id)}>{open === c.id ? '▴' : '▾'}</button>
