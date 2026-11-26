@@ -34,7 +34,7 @@ function StepButtons({ j }: { j: import('@/lib/clients').ClientJob }) {
 function Bar({ stage }: { stage: number }) {
   return (
     <div className="hx-bar" title={stage ? STAGES[stage - 1] : 'אין משרה'}>
-      {STAGES.map((s, i) => <i key={s} className={i < stage ? (stage === 7 ? 'off' : stage >= 5 ? 'ok' : 'on') : ''} />)}
+      {STAGES.map((s, i) => <i key={s} title={`${i + 1}. ${s}${i + 1 === stage ? ' (השלב הנוכחי)' : i < stage ? ' ✓' : ''}`} className={i < stage ? (stage === 7 ? 'off' : stage >= 5 ? 'ok' : 'on') : ''} />)}
     </div>
   );
 }
@@ -148,7 +148,8 @@ export default function ClientsTable({ clients }: { clients: Client[] }) {
   const [status, setStatus] = useState<'all' | keyof typeof SL>('all');
   const [withJob, setWithJob] = useState(false);
   const [q, setQ] = useState('');
-  const [open, setOpen] = useState<string | null>(null);
+  const [view, setView] = useState<{ id: string; tab: 'jobs' | 'edit' } | null>(null);
+  const toggle = (id: string, tab: 'jobs' | 'edit') => setView(view?.id === id && view.tab === tab ? null : { id, tab });
   const [act, setAct] = useState<string | null>(null);
   const [shown, setShown] = useState(40);
 
@@ -237,10 +238,16 @@ export default function ClientsTable({ clients }: { clients: Client[] }) {
                   : c.urgent ? <a className="hx-nbtn" href="/warm">{c.next}</a>
                   : (c.next ?? '—')}
               </div>
-              <button className="hx-go" aria-label="פרטי הלקוח והמשרות" onClick={() => setOpen(open === c.id ? null : c.id)}>{open === c.id ? 'סגור ▴' : 'פרטים ▾'}</button>
+              <div className="hx-gos">
+                <button className={'hx-go' + (view?.id === c.id && view.tab === 'jobs' ? ' on' : '')} onClick={() => toggle(c.id, 'jobs')}>פעולות</button>
+                <button className={'hx-go' + (view?.id === c.id && view.tab === 'edit' ? ' on' : '')} onClick={() => toggle(c.id, 'edit')}>עדכן פרטים</button>
+              </div>
             </div>
             {act === c.id && <ActionPanel c={c} onDone={() => setAct(null)} />}
-            {open === c.id && (
+            {view?.id === c.id && view.tab === 'edit' && (
+              <div className="hx-detail"><Editor key={c.id} c={c} /></div>
+            )}
+            {view?.id === c.id && view.tab === 'jobs' && (
               <div className="hx-detail">
                 {c.replyText && <div className="hx-reply"><small>מה שכתבה לך</small>{c.replyText}</div>}
                 <div className="hx-jl">
@@ -258,7 +265,6 @@ export default function ClientsTable({ clients }: { clients: Client[] }) {
                     </div>
                   ))}
                 </div>
-                <details className="hx-more-d"><summary>פרטי הלקוח ועריכה</summary><Editor key={c.id} c={c} /></details>
               </div>
             )}
           </div>

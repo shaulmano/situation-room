@@ -34,7 +34,7 @@
 .hx-chips button{font:inherit;font-size:.85rem;font-weight:500;border:1px solid var(--line);background:#fff;color:var(--t2);border-radius:999px;padding:6px 14px;min-height:36px;cursor:pointer}
 .hx-chips button.on{background:var(--brand);border-color:var(--brand);color:#fff}
 .hx-table{padding:0;overflow:hidden}.hx-cnt{padding:12px 16px;color:var(--t2);font-size:.85rem;border-bottom:1px solid var(--line-soft)}
-.hx-head,.hx-row{display:grid;grid-template-columns:2.3fr 1fr 2fr 1.6fr 1.5fr 44px;gap:12px;align-items:center;padding:12px 16px}
+.hx-head,.hx-row{display:grid;grid-template-columns:2.3fr 1fr 2fr 1.6fr 1.5fr 170px;gap:12px;align-items:center;padding:12px 16px}
 .hx-head{font-size:.72rem;letter-spacing:.06em;color:var(--t3);background:#F7FAFC;border-bottom:1px solid var(--line)}
 .hx-rowwrap{border-bottom:1px solid var(--line-soft)}.hx-rowwrap.urgent{background:linear-gradient(to left,var(--crit-wash),transparent 60%)}
 .hx-row:hover{background:#F7FAFC}
@@ -69,8 +69,8 @@
   .hx-main{padding:14px 14px 80px}
   .hx-kpis{grid-template-columns:repeat(2,minmax(0,1fr))}
   .hx-head{display:none}
-  .hx-row{grid-template-columns:1fr auto;grid-template-areas:'who pill' 'jobs jobs' 'stage stage' 'next go';gap:6px 10px}
-  .hx-who{grid-area:who}.hx-row>div:nth-child(2){grid-area:pill}.hx-jobs{grid-area:jobs}.hx-row>.hx-stage{grid-area:stage}.hx-next{grid-area:next}.hx-go{grid-area:go}
+  .hx-row{grid-template-columns:1fr auto;grid-template-areas:'who pill' 'jobs jobs' 'stage stage' 'next next' 'go go';gap:6px 10px}
+  .hx-who{grid-area:who}.hx-row>div:nth-child(2){grid-area:pill}.hx-jobs{grid-area:jobs}.hx-row>.hx-stage{grid-area:stage}.hx-next{grid-area:next}.hx-gos{grid-area:go}
   .hx-dgrid{grid-template-columns:repeat(2,minmax(0,1fr))}
   .hx-job{grid-template-columns:1fr}
   .hx-acts .hx-b{flex:1 1 calc(50% - 8px)}
@@ -112,3 +112,8 @@
 }
 .hx-more-d{margin-top:10px;border-top:1px solid var(--line-soft);padding-top:8px}
 .hx-more-d summary{cursor:pointer;font-weight:600;color:var(--brand);min-height:40px;display:flex;align-items:center}
+
+.hx-gos{display:flex;gap:6px;justify-content:flex-end}
+.hx-gos .hx-go{border:1px solid var(--line);background:#fff;border-radius:6px;padding:0 10px;min-height:36px;white-space:nowrap}
+.hx-gos .hx-go.on{background:var(--brand);color:#fff;border-color:var(--brand)}
+@media (max-width:600px){.hx-gos{width:100%}.hx-gos .hx-go{flex:1;min-height:44px}}
