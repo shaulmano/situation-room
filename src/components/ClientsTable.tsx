@@ -232,12 +232,12 @@ export default function ClientsTable({ clients }: { clients: Client[] }) {
                 <small>{c.stage ? STAGES[c.stage - 1] : 'ממתין למשרה'}</small>
               </div>
               <div className={'hx-next' + (c.urgent || c.next?.startsWith('פנה ישירות') ? ' red' : '')}>
-                {c.next && /^לשלוח/.test(c.next) && c.jobs.length
+                {c.next && /^(לשלוח|פנה ישירות)/.test(c.next) && c.jobs.length
                   ? <button className="hx-nbtn" onClick={() => setAct(act === c.id ? null : c.id)}>{c.next}</button>
                   : c.urgent ? <a className="hx-nbtn" href="/warm">{c.next}</a>
                   : (c.next ?? '—')}
               </div>
-              <button className="hx-go" aria-label="פרטי הלקוח והמשרות" onClick={() => setOpen(open === c.id ? null : c.id)}>{open === c.id ? '▴' : '▾'}</button>
+              <button className="hx-go" aria-label="פרטי הלקוח והמשרות" onClick={() => setOpen(open === c.id ? null : c.id)}>{open === c.id ? 'סגור ▴' : 'פרטים ▾'}</button>
             </div>
             {act === c.id && <ActionPanel c={c} onDone={() => setAct(null)} />}
             {open === c.id && (
