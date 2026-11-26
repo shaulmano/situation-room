@@ -263,7 +263,7 @@ export default function ClientsTable({ clients }: { clients: Client[] }) {
               <div className={'hx-next' + (c.urgent || c.next?.startsWith('פנה ישירות') ? ' red' : '')}>
                 {c.next && /^(לשלוח|פנה ישירות)/.test(c.next) && c.jobs.length
                   ? <button className="hx-nbtn" onClick={() => setAct(act === c.id ? null : c.id)}>{c.next}</button>
-                  : c.urgent ? <a className="hx-nbtn" href="/warm">{c.next}</a>
+                  : c.urgent ? <button className="hx-nbtn" onClick={() => toggle(c.id, 'jobs')}>{c.next}</button>
                   : (c.next ?? '—')}
               </div>
               <div className="hx-gos">
