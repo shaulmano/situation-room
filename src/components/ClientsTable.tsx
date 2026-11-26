@@ -39,31 +39,31 @@ function StepButtons({ j, friends }: { j: import('@/lib/clients').ClientJob; fri
   }
   const step = async (body: object) => { if (await post('/api/applications/step', body)) { setClosing(false); refresh(); } };
   if (!j.applied) return (<>
-    <button className="hx-b" disabled={busy} onClick={async () => { if (await post('/api/jobs/applied', { id: j.id })) refresh(); }}>הוגשה ישירות</button>
-    <button className={'hx-b' + (pick ? ' on' : '')} disabled={busy} onClick={() => setPick(!pick)}>הוגשה דרך מכר או HR</button>
+    <button className="hx-b" disabled={busy} title="סמן שהגשת מועמדות למשרה הזאת ישירות באתר" onClick={async () => { if (await post('/api/jobs/applied', { id: j.id })) refresh(); }}>הוגשה ישירות</button>
+    <button className={'hx-b' + (pick ? ' on' : '')} disabled={busy} title="סמן שהגשת דרך מכר או איש HR בחברה, ובחר מי" onClick={() => setPick(!pick)}>הוגשה דרך מכר או HR</button>
     {pick && (
       <div className="hx-pick">
         <small>דרך מי הוגשה? הבחירה מסמנת שפנית אליו על המשרה הזאת.</small>
         {friends.map((f) => (
-          <button key={f.id} className="hx-b" disabled={busy} onClick={() => viaFriend(f)}>{f.name}{f.title ? ' · ' + f.title : ''}</button>
+          <button key={f.id} className="hx-b" disabled={busy} title={`הגשה דרך ${f.name}: נרשמת הגשה פנימית ומסומן שפנית אליו`} onClick={() => viaFriend(f)}>{f.name}{f.title ? ' · ' + f.title : ''}</button>
         ))}
         {friends.length === 0 && <small className="mut">אין אצלך איש קשר בחברה הזאת. אפשר לסמן בלי שם.</small>}
-        <button className="hx-b" disabled={busy} onClick={() => viaFriend(null)}>בלי לציין מי</button>
+        <button className="hx-b" disabled={busy} title="רושם הגשה פנימית בלי לסמן איש קשר" onClick={() => viaFriend(null)}>בלי לציין מי</button>
       </div>
     )}
   </>);
   if (!j.appId) return null;
   if (j.closed) return <span className="hx-tag gray">{j.closeReason ?? 'נסגרה'}</span>;
   return (<>
-    {j.stage < 5 && <button className="hx-b" disabled={busy} onClick={() => step({ id: j.appId, status: 'conversation', kind: 'call' })}>נקבעה שיחה</button>}
-    {j.stage < 6 && <button className="hx-b" disabled={busy} onClick={() => step({ id: j.appId, status: 'interview', kind: 'interview' })}>נקבע ראיון</button>}
-    <button className={'hx-b' + (closing ? ' on' : '')} disabled={busy} onClick={() => setClosing(!closing)}>סגירת המשרה</button>
+    {j.stage < 5 && <button className="hx-b" disabled={busy} title="נקבעה שיחה עם החברה על המשרה הזאת" onClick={() => step({ id: j.appId, status: 'conversation', kind: 'call' })}>נקבעה שיחה</button>}
+    {j.stage < 6 && <button className="hx-b" disabled={busy} title="נקבע ראיון על המשרה הזאת" onClick={() => step({ id: j.appId, status: 'interview', kind: 'interview' })}>נקבע ראיון</button>}
+    <button className={'hx-b' + (closing ? ' on' : '')} disabled={busy} title="סגור את המשרה: נדחית, המשרה נסגרה או קיבלת הצעה" onClick={() => setClosing(!closing)}>סגירת המשרה</button>
     {closing && (
       <div className="hx-pick">
         <small>למה נסגרה?</small>
-        <button className="hx-b" disabled={busy} onClick={() => step({ id: j.appId, status: 'rejected', note: '' })}>נדחה</button>
-        <button className="hx-b" disabled={busy} onClick={() => step({ id: j.appId, status: 'rejected', note: CLOSED_NOTE })}>המשרה נסגרה</button>
-        <button className="hx-b" disabled={busy} onClick={() => step({ id: j.appId, status: 'offer', kind: 'offer' })}>קיבלתי הצעה</button>
+        <button className="hx-b" disabled={busy} title="החברה דחתה אותך" onClick={() => step({ id: j.appId, status: 'rejected', note: '' })}>נדחה</button>
+        <button className="hx-b" disabled={busy} title="המשרה עצמה נסגרה, בלי קשר אליך" onClick={() => step({ id: j.appId, status: 'rejected', note: CLOSED_NOTE })}>המשרה נסגרה</button>
+        <button className="hx-b" disabled={busy} title="קיבלת הצעה למשרה" onClick={() => step({ id: j.appId, status: 'offer', kind: 'offer' })}>קיבלתי הצעה</button>
       </div>
     )}
   </>);
@@ -89,9 +89,9 @@ function ReplyBox({ c }: { c: Client }) {
     <div className="hx-reply"><small>מה שכתב לך</small>{c.replyText}
       {c.replyDraft && <div className="hx-draft"><small>תשובה מוצעת</small>{c.replyDraft}</div>}
       <div className="hx-acts">
-        {c.replyDraft && <button className="hx-b" onClick={copy}>{copied ? 'הועתקה' : 'העתק תשובה'}</button>}
-        {c.profile && <a className="hx-b" href={c.profile} target="_blank" rel="noreferrer">פתח בלינקדאין</a>}
-        <button className="hx-b main" disabled={busy} onClick={done}>טיפלתי</button>
+        {c.replyDraft && <button className="hx-b" title="מעתיק את התשובה המוצעת ללוח, אפשר להדביק בלינקדאין" onClick={copy}>{copied ? 'הועתקה' : 'העתק תשובה'}</button>}
+        {c.profile && <a className="hx-b" title="פותח את הפרופיל בלינקדאין בלשונית חדשה" href={c.profile} target="_blank" rel="noreferrer">פתח בלינקדאין</a>}
+        <button className="hx-b main" disabled={busy} title="מסמן שטיפלת בתגובה. תגובה חדשה מאותו אדם תחזיר אותה לרשימה" onClick={done}>טיפלתי</button>
       </div>
     </div>
   );
@@ -109,13 +109,23 @@ function Unskip({ c }: { c: Client }) {
     if (!r || !r.ok) { alert('לא נשמר. נסה שוב.'); return; }
     refresh();
   }
-  return <><span>סומן: לא לפנות</span> <button className="hx-nbtn" disabled={busy} onClick={undo}>החזר לרשימה</button></>;
+  return <><span>סומן: לא לפנות</span> <button className="hx-nbtn" disabled={busy} title="מבטל את הסימון 'לא לפנות' וההצעה לפנות חוזרת" onClick={undo}>החזר לרשימה</button></>;
 }
 
+const STAGE_HELP = [
+  'יש משרה מתאימה ופתוחה בחברה, ועוד לא פנית',
+  'פנית לאיש הקשר על המשרה, ומחכים לתשובה',
+  'האיש ענה לך',
+  'הוגשה מועמדות למשרה',
+  'נקבעה שיחה',
+  'נקבע ראיון',
+  'המשרה נסגרה: נדחית, המשרה הוסרה או שהתקבלה הצעה',
+];
 function Bar({ stage }: { stage: number }) {
+  const all = STAGES.map((s, i) => `${i + 1}. ${s}${i + 1 === stage ? ' (כאן)' : i < stage ? ' ✓' : ''}: ${STAGE_HELP[i]}`).join('\n');
   return (
-    <div className="hx-bar" title={stage ? STAGES[stage - 1] : 'אין משרה'}>
-      {STAGES.map((s, i) => <i key={s} title={`${i + 1}. ${s}${i + 1 === stage ? ' (השלב הנוכחי)' : i < stage ? ' ✓' : ''}`} className={i < stage ? (stage === 7 ? 'off' : stage >= 4 ? 'ok' : 'on') : ''} />)}
+    <div className="hx-bar" title={(stage ? `שלב נוכחי: ${STAGES[stage - 1]}\n\n` : 'אין משרה בחברה כרגע\n\n') + all}>
+      {STAGES.map((s, i) => <i key={s} title={`${i + 1}. ${s}${i + 1 === stage ? ' (השלב הנוכחי)' : i < stage ? ' ✓' : ''}\n${STAGE_HELP[i]}`} className={i < stage ? (stage === 7 ? 'off' : stage >= 4 ? 'ok' : 'on') : ''} />)}
     </div>
   );
 }
@@ -163,8 +173,8 @@ function Editor({ c }: { c: Client }) {
         <span>ענה: <b>{fmt(c.repliedAt)}</b></span>
       </div>
       <div className="hx-acts">
-        {editable && <button className="hx-b main" disabled={!dirty || busy} onClick={save}>{busy ? 'שומר…' : 'שמור'}</button>}
-        {c.profile && <a className="hx-b" href={c.profile} target="_blank" rel="noreferrer">פרופיל בלינקדאין</a>}
+        {editable && <button className="hx-b main" disabled={!dirty || busy} title="שומר את הפרטים של הלקוח" onClick={save}>{busy ? 'שומר…' : 'שמור'}</button>}
+        {c.profile && <a className="hx-b" title="פותח את הפרופיל בלינקדאין בלשונית חדשה" href={c.profile} target="_blank" rel="noreferrer">פרופיל בלינקדאין</a>}
         {msg && <span className="hx-msg">{msg}</span>}
         {!editable && <span className="mut">נמצא בחיפוש מגייסים. עריכה אחרי שיאשר חברות.</span>}
       </div>
@@ -219,10 +229,10 @@ function ActionPanel({ c, onDone }: { c: Client; onDone: () => void }) {
       {request && <small className="mut">{text.length} תווים מתוך 200 (מגבלת לינקדאין)</small>}
       {!request && file && <small className="mut">לצרף את הקובץ: <b>{file}</b></small>}
       <div className="hx-acts">
-        <button className="hx-b" onClick={copy}>{copied ? 'הועתק' : 'העתק'}</button>
-        {c.profile && <a className="hx-b" href={c.profile} target="_blank" rel="noreferrer">פתח בלינקדאין</a>}
-        <button className="hx-b main" disabled={busy} onClick={() => mark('sent')}>{request ? 'ביקשתי' : 'שלחתי'}</button>
-        <button className="hx-b" disabled={busy} onClick={() => mark('skip')}>לא לפנות</button>
+        <button className="hx-b" title="מעתיק את הנוסח ללוח. אחרי ההדבקה בלינקדאין צרף את הקובץ" onClick={copy}>{copied ? 'הועתק' : 'העתק'}</button>
+        {c.profile && <a className="hx-b" title="פותח את הפרופיל בלינקדאין בלשונית חדשה" href={c.profile} target="_blank" rel="noreferrer">פתח בלינקדאין</a>}
+        <button className="hx-b main" disabled={busy} title={request ? 'סמן שבקשת החברות נשלחה' : 'סמן שההודעה נשלחה. השלב מתקדם והשורה עוברת להמתנה'} onClick={() => mark('sent')}>{request ? 'ביקשתי' : 'שלחתי'}</button>
+        <button className="hx-b" disabled={busy} title="החלטת לא לפנות לאיש הזה. אפשר להחזיר מהשורה" onClick={() => mark('skip')}>לא לפנות</button>
       </div>
       <small className="mut">אחרי "{request ? 'ביקשתי' : 'שלחתי'}" השלב מתקדם והשורה עוברת ל"מחכה לתשובה". הנוסח הוא טיוטה: ערוך לפני העתקה.</small>
     </div>
@@ -301,19 +311,19 @@ function Inner({ clients, initial }: { clients: Client[]; initial?: { waiting?: 
           onChange={(e) => { setQ(e.target.value); setShown(40); }} />
         <div className="hx-chips"><span className="lab">סוג</span>
           {(['recruiter', 'dev', 'other'] as Group[]).map((g) => (
-            <button key={g} className={group === g ? 'on' : ''} onClick={() => { setGroup(g); setShown(40); }}>
+            <button key={g} className={group === g ? 'on' : ''} title={`הצג לקוחות מסוג: ${GL[g]}`} onClick={() => { setGroup(g); setShown(40); }}>
               {GL[g]} {clients.filter((c) => c.group === g).length}
             </button>
           ))}
         </div>
         <div className="hx-chips"><span className="lab">חברות</span>
           {(['all', 'none', 'requested', 'friend'] as const).map((s) => (
-            <button key={s} className={status === s ? 'on' : ''} onClick={() => { setStatus(s); setShown(40); }}>
+            <button key={s} className={status === s ? 'on' : ''} title={s === 'all' ? 'כל סטטוסי החברות' : `הצג רק: ${SL[s]}`} onClick={() => { setStatus(s); setShown(40); }}>
               {s === 'all' ? 'הכול' : SL[s]} {s === 'all' ? inGroup.length : cnt(s)}
             </button>
           ))}
-          <button className={onlyReplied ? 'on' : ''} onClick={() => { setOnlyReplied(!onlyReplied); setShown(40); }}>ענו לי {inGroup.filter((c) => c.repliedAt).length}</button>
-          <button className={withJob ? 'on' : ''} onClick={() => { setWithJob(!withJob); setShown(40); }}>רק עם משרה {inGroup.filter((c) => c.jobs.length).length}</button>
+          <button className={onlyReplied ? 'on' : ''} title="הצג רק מי שענה לך" onClick={() => { setOnlyReplied(!onlyReplied); setShown(40); }}>ענו לי {inGroup.filter((c) => c.repliedAt).length}</button>
+          <button className={withJob ? 'on' : ''} title="הצג רק לקוחות שיש משרה בחברה שלהם" onClick={() => { setWithJob(!withJob); setShown(40); }}>רק עם משרה {inGroup.filter((c) => c.jobs.length).length}</button>
         </div>
       </div>
 
@@ -329,10 +339,10 @@ function Inner({ clients, initial }: { clients: Client[]; initial?: { waiting?: 
               <div className="hx-who">
                 <b>{c.name || '(ללא שם)'}</b>
                 <span>{[c.company, c.title].filter(Boolean).join(' · ')}</span>
-                {c.kind === 'prior' && <em className="hx-tag gray">נשלחה במאי, לא אושרה</em>}
-                {c.silentCount >= SILENT_LIMIT && <em className="hx-tag">{c.silentCount} הגשות בלי מענה</em>}
+                {c.kind === 'prior' && <em className="hx-tag gray" title="קיבל בקשה או הודעה בגל מאי ולא אישר. לא מציעים פנייה נוספת">נשלחה במאי, לא אושרה</em>}
+                {c.silentCount >= SILENT_LIMIT && <em className="hx-tag" title="הגשות לחברה הזאת שלא נענו. מעל 3 מומלץ לפנות ישירות">{c.silentCount} הגשות בלי מענה</em>}
               </div>
-              <div><span className={'hx-pill ' + c.status}>{SL[c.status]}</span></div>
+              <div><span className={'hx-pill ' + c.status} title={c.status === 'friend' ? 'חבר בלינקדאין' : c.status === 'requested' ? 'נשלחה בקשת חברות וממתינים לאישור' : 'עוד לא חבר ולא נשלחה בקשה'}>{SL[c.status]}</span></div>
               <div className="hx-jobs">
                 {c.jobs.length
                   ? <button className="hx-jlink" title="פתח את המשרות של הלקוח" onClick={() => toggle(c.id, 'jobs')}><b>{c.jobs.length}</b> <span>{c.jobs[0].title}</span></button>
@@ -344,14 +354,14 @@ function Inner({ clients, initial }: { clients: Client[]; initial?: { waiting?: 
               </div>
               <div className={'hx-next' + (c.urgent || c.next?.startsWith('פנה ישירות') ? ' red' : '')}>
                 {c.next && /^(לשלוח|פנה ישירות)/.test(c.next) && (c.jobs.length > 0 || c.kind === 'contact')
-                  ? <button className="hx-nbtn" onClick={() => setAct(act === c.id ? null : c.id)}>{c.next}</button>
-                  : c.urgent ? <button className="hx-nbtn" onClick={() => toggle(c.id, 'jobs')}>{c.next}</button>
+                  ? <button className="hx-nbtn" title={c.next?.startsWith('פנה ישירות') ? `הוגשו ${SILENT_LIMIT} הגשות ויותר בלי מענה. פנה ישירות למגייס במקום להגיש עוד` : 'פותח נוסח מוכן ושם הקובץ לצירוף, ושלחתי או לא לפנות'} onClick={() => setAct(act === c.id ? null : c.id)}>{c.next}</button>
+                  : c.urgent ? <button className="hx-nbtn" title="פותח את מה שהוא כתב לך ותשובה מוצעת" onClick={() => toggle(c.id, 'jobs')}>{c.next}</button>
                   : c.skipped && c.kind === 'contact' ? <Unskip c={c} />
                   : (c.next ?? '—')}
               </div>
               <div className="hx-gos">
-                <button className={'hx-go' + (view?.id === c.id && view.tab === 'jobs' ? ' on' : '')} onClick={() => toggle(c.id, 'jobs')}>פעולות</button>
-                <button className={'hx-go' + (view?.id === c.id && view.tab === 'edit' ? ' on' : '')} onClick={() => toggle(c.id, 'edit')}>עדכן פרטים</button>
+                <button className={'hx-go' + (view?.id === c.id && view.tab === 'jobs' ? ' on' : '')} title="פותח את המשרות, התגובה והפעולות של הלקוח" onClick={() => toggle(c.id, 'jobs')}>פעולות</button>
+                <button className={'hx-go' + (view?.id === c.id && view.tab === 'edit' ? ' on' : '')} title="עריכת שם, תפקיד, חברה, טלפון, מייל והערה" onClick={() => toggle(c.id, 'edit')}>עדכן פרטים</button>
               </div>
             </div>
             {act === c.id && <ActionPanel c={c} onDone={() => setAct(null)} />}
@@ -366,7 +376,7 @@ function Inner({ clients, initial }: { clients: Client[]; initial?: { waiting?: 
                     <div className="hx-job">
                       <div className="mut">אין כרגע משרה מתאימה בחברה הזאת. כשתיכנס, הלקוח יעלה כאן לבד.</div>
                       {c.next?.startsWith('לשלוח') && (
-                        <div className="hx-acts"><button className="hx-b main" onClick={() => setAct(c.id)}>הכן הודעת היכרות</button></div>
+                        <div className="hx-acts"><button className="hx-b main" title="מכין הודעת היכרות כללית, בלי משרה" onClick={() => setAct(c.id)}>הכן הודעת היכרות</button></div>
                       )}
                     </div>
                   )}
@@ -375,7 +385,7 @@ function Inner({ clients, initial }: { clients: Client[]; initial?: { waiting?: 
                       <div className="hx-jt"><b>{j.title}</b><span>{j.company}{j.applied && j.appliedDays !== null ? ` · הוגשה לפני ${j.appliedDays} ימים${j.silent ? ' · בלי מענה' : ''}` : j.ageDays !== null ? ` · פורסמה לפני ${j.ageDays} ימים` : ''}</span></div>
                       <div className="hx-stage"><Bar stage={j.stage} /><small>{STAGES[j.stage - 1]}</small></div>
                       <div className="hx-acts">
-                        {j.url && <a className="hx-b" href={j.url} target="_blank" rel="noreferrer">פתח משרה</a>}
+                        {j.url && <a className="hx-b" title="פותח את המודעה בלשונית חדשה" href={j.url} target="_blank" rel="noreferrer">פתח משרה</a>}
                         <StepButtons j={j} friends={friendsOf(c)} />
                         {!j.applied && c.kind !== 'prior' && <button className="hx-b main" onClick={() => setAct(c.id)}>
                           {c.status === 'friend' ? 'הכן הודעה' : 'הכן בקשת חברות'}</button>}
@@ -388,7 +398,7 @@ function Inner({ clients, initial }: { clients: Client[]; initial?: { waiting?: 
           </div>
         ))}
         {rows.length === 0 && <div className="hx-empty">אין לקוחות שמתאימים לסינון.</div>}
-        {rows.length > shown && <button className="hx-more" onClick={() => setShown(shown + 60)}>הצג עוד</button>}
+        {rows.length > shown && <button className="hx-more" title="טוען עוד 60 לקוחות" onClick={() => setShown(shown + 60)}>הצג עוד</button>}
       </div>
     </>
   );
