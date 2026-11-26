@@ -2,6 +2,8 @@
 import { useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { STAGES, SILENT_LIMIT, type Client } from '@/lib/clients';
+import { referralMessage, connectNote, cvFileFor } from '@/lib/outreach';
+import { isAgency } from '@/lib/pickContact';
 
 type Group = 'recruiter' | 'dev' | 'other';
 const GL: Record<Group, string> = { recruiter: 'מגייסות ו-HR', dev: 'מנהלי פיתוח', other: 'אחרים' };
@@ -64,12 +66,68 @@ function Editor({ c }: { c: Client }) {
   );
 }
 
+/** הפעולה של "הצעד הבא": ההודעה מוכנה, ורק אחרי "שלחתי" השלב מתקדם. */
+function ActionPanel({ c, onDone }: { c: Client; onDone: () => void }) {
+  const router = useRouter();
+  const job = c.jobs.find((j) => !j.applied) ?? c.jobs[0];
+  const request = c.status === 'none';
+  const initial = request
+    ? connectNote(null, c.company)
+    : job
+    ? referralMessage({ contactName: c.name, company: c.company ?? '', jobTitle: job.title, contactTitle: c.title,
+        jobUrl: job.url, applied: job.applied, agency: isAgency(c.company), attached: true })
+    : '';
+  const [text, setText] = useState(initial);
+  const [busy, setBusy] = useState(false);
+  const [copied, setCopied] = useState(false);
+  const file = job ? cvFileFor(null, job.title) : null;
+
+  async function copy() {
+    try { await navigator.clipboard.writeText(text); setCopied(true); setTimeout(() => setCopied(false), 1600); } catch {}
+  }
+  async function mark(kind: 'sent' | 'skip') {
+    setBusy(true);
+    let res: Response | null = null;
+    if (c.kind === 'gold') {
+      res = await fetch('/api/gold', { method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ recruiterId: c.id.slice(2), [kind === 'sent' ? 'asked' : 'skipped']: true }) }).catch(() => null);
+    } else {
+      res = await fetch('/api/contacts', { method: 'PATCH', headers: { 'content-type': 'application/json' },
+        body: JSON.stringify(kind === 'sent'
+          ? { id: c.id.slice(2), contacted: true, jobId: job?.id }
+          : { id: c.id.slice(2), skipped: true }) }).catch(() => null);
+    }
+    setBusy(false);
+    if (!res || !res.ok) { alert('לא נשמר. נסה שוב.'); return; }
+    onDone(); router.refresh();
+  }
+  return (
+    <div className="hx-act">
+      <div className="hx-actt">
+        <b>{request ? 'בקשת חברות עם הערה' : 'הודעה עם קורות חיים'}</b>
+        {job && <span>על המשרה: {job.title}</span>}
+      </div>
+      <textarea value={text} onChange={(e) => setText(e.target.value)} rows={request ? 4 : 9} dir="ltr" />
+      {request && <small className="mut">{text.length} תווים מתוך 200 (מגבלת לינקדאין)</small>}
+      {!request && file && <small className="mut">לצרף את הקובץ: <b>{file}</b></small>}
+      <div className="hx-acts">
+        <button className="hx-b" onClick={copy}>{copied ? 'הועתק' : 'העתק'}</button>
+        {c.profile && <a className="hx-b" href={c.profile} target="_blank" rel="noreferrer">פתח בלינקדאין</a>}
+        <button className="hx-b main" disabled={busy} onClick={() => mark('sent')}>{request ? 'ביקשתי' : 'שלחתי'}</button>
+        <button className="hx-b" disabled={busy} onClick={() => mark('skip')}>דלג</button>
+      </div>
+      <small className="mut">אחרי "{request ? 'ביקשתי' : 'שלחתי'}" השלב מתקדם והשורה עוברת ל"מחכה לתשובה". הנוסח הוא טיוטה: ערוך לפני העתקה.</small>
+    </div>
+  );
+}
+
 export default function ClientsTable({ clients }: { clients: Client[] }) {
   const [group, setGroup] = useState<Group>('recruiter');
   const [status, setStatus] = useState<'all' | keyof typeof SL>('all');
   const [withJob, setWithJob] = useState(true);
   const [q, setQ] = useState('');
   const [open, setOpen] = useState<string | null>(null);
+  const [act, setAct] = useState<string | null>(null);
   const [shown, setShown] = useState(40);
 
   const inGroup = useMemo(() => clients.filter((c) => c.group === group), [clients, group]);
@@ -136,7 +194,7 @@ export default function ClientsTable({ clients }: { clients: Client[] }) {
         </div>
         {rows.slice(0, shown).map((c) => (
           <div key={c.id} className={'hx-rowwrap' + (c.urgent ? ' urgent' : '')}>
-            <div className="hx-row" onClick={() => setOpen(open === c.id ? null : c.id)}>
+            <div className="hx-row">
               <div className="hx-who">
                 <b>{c.name || '(ללא שם)'}</b>
                 <span>{[c.company, c.title].filter(Boolean).join(' · ')}</span>
@@ -150,9 +208,14 @@ export default function ClientsTable({ clients }: { clients: Client[] }) {
                 <Bar stage={c.stage} />
                 <small>{c.stage ? STAGES[c.stage - 1] : 'ממתין למשרה'}</small>
               </div>
-              <div className={'hx-next' + (c.urgent || c.next?.startsWith('פנה ישירות') ? ' red' : '')}>{c.next ?? '—'}</div>
-              <div className="hx-go">{open === c.id ? '▴' : '▾'}</div>
+              <div className={'hx-next' + (c.urgent || c.next?.startsWith('פנה ישירות') ? ' red' : '')}>
+                {c.next && /^לשלוח/.test(c.next) && c.jobs.length
+                  ? <button className="hx-nbtn" onClick={() => setAct(act === c.id ? null : c.id)}>{c.next}</button>
+                  : (c.next ?? '—')}
+              </div>
+              <button className="hx-go" aria-label="פרטי הלקוח והמשרות" onClick={() => setOpen(open === c.id ? null : c.id)}>{open === c.id ? '▴' : '▾'}</button>
             </div>
+            {act === c.id && <ActionPanel c={c} onDone={() => setAct(null)} />}
             {open === c.id && (
               <div className="hx-detail">
                 <Editor key={c.id} c={c} />
