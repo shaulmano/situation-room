@@ -131,8 +131,11 @@ def main():
         "and (live_checked_at is null or live_checked_at < now() - interval '24 hours' "
         "     or (source = 'LinkedIn' and recruiter_name is null and live_tried_at < now() - interval '12 hours')) "
         "and (live_tried_at is null or live_tried_at < now() - interval '1 hour') "
-        "order by live_checked_at is not null, live_tried_at nulls first, first_seen desc limit 4000")
-    todo = [j for j in jobs if key(j["company"]) in ckeys][:cap]
+        "order by (exists (select 1 from applications a where a.job_id = jobs.id)), "
+        "live_checked_at is not null, live_tried_at nulls first, first_seen desc limit 4000")
+    # 27.11.2026: כל משרה פתוחה ולא מוגשת נבדקת, גם בחברה בלי איש קשר. עד היום רק
+    # חברות עם מכר נבדקו, ולכן משרות "חברה בלי איש קשר" נשארו פתוחות על המסך בלי אימות.
+    todo = jobs[:cap]
     print("candidates %d of %d" % (len(todo), len(jobs)))
     live = closed = unknown = 0
     for n, j in enumerate(todo):
