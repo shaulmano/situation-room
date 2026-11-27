@@ -7,6 +7,9 @@ import { referralMessage, connectNote, cvFileFor, inviteMessage } from '@/lib/ou
 import { isAgency } from '@/lib/pickContact';
 
 /** רענון אחרי שמירה: אחד לכל המסך, עם חיווי גלובלי כל עוד השרת טוען מחדש. */
+/** כתיבות שעדיין בדרך לשרת. ביטול מחכה להן, אחרת הוא יכול להגיע לפני הסימון ולהיות מבוטל על ידו. */
+const inflight = new Set<Promise<unknown>>();
+const track = <T,>(p: Promise<T>): Promise<T> => { inflight.add(p); p.finally(() => inflight.delete(p)).catch(() => {}); return p; };
 const Refresh = createContext<(appliedJobId?: string) => void>(() => {});
 /** מסמן הגשה מיד בשני התצוגות, לפני שהשרת ענה. false מחזיר אם השמירה נכשלה. */
 const Local = createContext<(jobId: string, on: boolean, kind?: 'applied' | 'dismissed', label?: string) => void>(() => {});
@@ -25,7 +28,7 @@ function StepButtons({ j, friends }: { j: import('@/lib/clients').ClientJob; fri
   const [closing, setClosing] = useState(false);
   async function post(url: string, body: object): Promise<boolean> {
     setBusy(true);
-    const r = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) }).catch(() => null);
+    const r = await track(fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) }).catch(() => null));
     setBusy(false);
     if (!r || !r.ok) { alert('לא נשמר. נסה שוב.'); return false; }
     return true;
@@ -339,6 +342,7 @@ export default function ClientsTable(props: { clients: Client[]; feed: FeedItem[
   };
   async function undoLast() {
     if (!last) return;
+    await Promise.allSettled([...inflight]);
     const r = await fetch(last.kind === 'applied' ? '/api/applications/undo' : '/api/jobs/dismiss', {
       method: 'POST', headers: { 'content-type': 'application/json' },
       body: JSON.stringify(last.kind === 'applied' ? { id: last.jobId } : { id: last.jobId, undo: true }),
