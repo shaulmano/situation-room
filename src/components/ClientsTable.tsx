@@ -266,7 +266,7 @@ function JobsFeed({ feed, clients, q, shown, setShown, friendsOf }: {
       <div className="hx-note">
         מסודר מהחדש לישן לפי תאריך הפרסום, ובתוך אותו יום לפי מועד הכניסה למערכת. משרות פתוחות ולא מוגשות מ-30 הימים האחרונים.
         {ds.length ? ` מהחדשה (${jobAge(ds[ds.length - 1].slice(0, 10), null)?.label}) עד הישנה (${jobAge(ds[0].slice(0, 10), null)?.label}).` : ''}
-        {' '}{noClient} מהן בחברה בלי אף לקוח. אין כאן מצב משלו: כל פעולה נרשמת על אותה משרה ועל אותו לקוח כמו במסך "לפי לקוח", והמסך ההוא מתעדכן איתה.
+        {' '}{noClient} מהן בחברה בלי אף לקוח, ו-{rows.filter((f) => f.job.priorApplied !== null).length} מסומנות "כבר הגשת לאותה משרה" (אותה חברה ואותה כותרת, מלוח אחר). אין כאן מצב משלו: כל פעולה נרשמת על אותה משרה ועל אותו לקוח כמו במסך "לפי לקוח", והמסך ההוא מתעדכן איתה.
         {s ? ` סינון פעיל: חיפוש "${q.trim()}".` : ' אין סינון פעיל.'}
       </div>
       {rows.slice(0, shown).map((f) => {
@@ -276,7 +276,9 @@ function JobsFeed({ feed, clients, q, shown, setShown, friendsOf }: {
         return (
           <div key={j.dk} className="hx-rowwrap">
             <div className="hx-job">
-              <div className="hx-jt"><b>{j.title}</b><span>{f.company}{age ? ` · ${age.label}` : ''}</span></div>
+              <div className="hx-jt"><b>{j.title}</b><span>{f.company}{age ? ` · ${age.label}` : ''}</span>
+                {j.priorApplied !== null && <em className="hx-tag" title="הגשת כבר לחברה הזאת באותה כותרת בדיוק. כנראה אותה מודעה מלוח אחר. הסימון לקריאה בלבד.">כבר הגשת לאותה משרה{j.priorApplied ? ` ב-${new Date(j.priorApplied).toLocaleDateString('he-IL', { day: 'numeric', month: 'numeric' })}` : ''}</em>}
+              </div>
               <div className="hx-acts">
                 {j.url && <a className="hx-b" title="פותח את המודעה בלשונית חדשה" href={j.url} target="_blank" rel="noreferrer">פתח משרה</a>}
                 <StepButtons j={j} friends={cs[0] ? friendsOf(cs[0]) : []} />
@@ -469,7 +471,7 @@ function Inner({ clients, feed, initial }: { clients: Client[]; feed: FeedItem[]
                   )}
                   {c.jobs.map((j) => (
                     <div key={j.id} className="hx-job">
-                      <div className="hx-jt"><b>{j.title}</b><span>{j.company}{j.applied && j.appliedDays !== null ? ` · הוגשה לפני ${j.appliedDays} ימים${j.silent ? ' · בלי מענה' : ''}` : j.ageDays !== null ? ` · פורסמה לפני ${j.ageDays} ימים` : ''}</span></div>
+                      <div className="hx-jt"><b>{j.title}</b>{j.priorApplied !== null && <em className="hx-tag" title="הגשת כבר לחברה הזאת באותה כותרת בדיוק. כנראה אותה מודעה מלוח אחר. הסימון לקריאה בלבד.">כבר הגשת לאותה משרה</em>}<span>{j.company}{j.applied && j.appliedDays !== null ? ` · הוגשה לפני ${j.appliedDays} ימים${j.silent ? ' · בלי מענה' : ''}` : j.ageDays !== null ? ` · פורסמה לפני ${j.ageDays} ימים` : ''}</span></div>
                       <div className="hx-stage"><Bar stage={j.stage} /><small>{STAGES[j.stage - 1]}</small></div>
                       <div className="hx-acts">
                         {j.url && <a className="hx-b" title="פותח את המודעה בלשונית חדשה" href={j.url} target="_blank" rel="noreferrer">פתח משרה</a>}

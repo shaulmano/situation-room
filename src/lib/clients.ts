@@ -1,4 +1,5 @@
 import { companyKey } from '@/lib/contacts';
+import { postingKey } from '@/lib/dedupe';
 
 /**
  * רשימת הלקוחות של ה-CRM: אנשי קשר ומגייסים, החברה שלהם, והמשרות בחברה.
@@ -23,6 +24,8 @@ export type ClientJob = {
   seenAt: string | null;
   /** תאריך הפרסום במקור (יום בלי שעה), כשהמקור מוסר אותו. */
   posted: string | null;
+  /** הוגשה כבר משרה באותה חברה ובאותה כותרת (עותק אחר של אותה מודעה): תאריך ההגשה. סימון לקריאה בלבד, כמו במסכים האחרים. */
+  priorApplied: string | null;
   /** ימים מאז ההגשה, רק למשרה שהוגשה. */
   appliedDays: number | null; silent: boolean;
   /** מזהה שורת ההגשה, כדי לרשום ראיון או סגירה. */
@@ -94,6 +97,13 @@ export async function loadClients(sb: any): Promise<{ clients: Client[]; orphans
     // משרות לפי חברה: פתוחות ומתאימות, ועוד כל משרה שהוגש אליה.
     const jobsByCo = new Map<string, Map<string, ClientJob>>();
     const dkById = new Map<string, string>();
+    // אותה חברה ואותה כותרת כבר הוגשה (מודעה שהגיעה מלוח אחר בכתובת אחרת). מסומנת ולא מוסתרת: ההחלטה שלו.
+    const appliedPosting = new Map<string, string>();
+    const appliedIds = new Set<string>();
+    for (const a of apps as any[]) {
+      if (a.job_id) appliedIds.add(a.job_id);
+      if (a.jobs?.company && a.jobs?.title) appliedPosting.set(postingKey(a.jobs.company, a.jobs.title), a.sent_at ?? '');
+    }
     const put = (j: any, applied: boolean, status?: string | null, stage?: string | null, sentAt?: string | null, appId?: string | null, note?: string | null) => {
       if (!j?.id) return;
       // 27.11.2026: משרה בלי שם חברה (דיאלוג, SQLink) קיבלה מפתח ריק ונעלמה מהמסך. עכשיו כל אחת היא שורה נפרדת בחברות בלי איש קשר.
@@ -109,7 +119,8 @@ export async function loadClients(sb: any): Promise<{ clients: Client[]; orphans
       const closeReason = !closed ? null : status === 'offer' ? 'הצעה' : note === CLOSED_NOTE ? 'המשרה נסגרה' : 'נדחה';
       if (!prev || st > prev.stage) {
         m.set(dk, {
-          id: j.id, dk, seenAt: j.first_seen ?? null, posted: j.posted ?? null, title: j.title, company: j.company, url: j.url ?? null, applied, stage: st,
+          id: j.id, dk, seenAt: j.first_seen ?? null, posted: j.posted ?? null,
+          priorApplied: !applied && !appliedIds.has(j.id) ? (appliedPosting.get(postingKey(j.company, j.title)) ?? null) : null, title: j.title, company: j.company, url: j.url ?? null, applied, stage: st,
           appliedDays: applied && sentAt ? Math.max(0, Math.round((Date.now() - new Date(sentAt).getTime()) / 864e5)) : null,
           silent: applied && status === 'silent', appId: appId ?? null, closed, closeReason,
           ageDays: j.first_seen ? Math.max(0, Math.round((Date.now() - new Date(j.first_seen).getTime()) / 864e5)) : null,
