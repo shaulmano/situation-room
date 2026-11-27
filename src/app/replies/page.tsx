@@ -31,6 +31,7 @@ export default async function Replies() {
   return (
     <>
       <h2>תשובות</h2>
+      <p className="screen-note">מסודר מהחדש לישן לפי מועד קבלת המייל. עד 60 אחרונות.</p>
 
       {rows.length > 0 && (
         <div className="rows">

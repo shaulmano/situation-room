@@ -349,7 +349,7 @@ export default async function Gold() {
       const all = byKey.get(x.key) ?? [];
       return { x, v, t: newest(x.js), un: Math.max(0, all.length - v.length) };
     })
-    .sort((a, b) => ((b.v.length ? 1 : 0) - (a.v.length ? 1 : 0)) || (b.t - a.t))
+    .sort((a, b) => b.t - a.t) // מהחדש לישן (27.11.2026). הצבע (תכלת או צהבהב) נשאר סימן, לא מפתח מיון.
     .map(({ x, v, un }) => toRow(x.comp, v.length ? 'blue' : 'yellow', x.js, v, x.noCompany, v.length, un));
 
   const plainRows: GoldRow[] = ranked.map(({ c, n }) =>
@@ -366,6 +366,8 @@ export default async function Gold() {
       </div>
       <p className="sub">
         משרות פתוחות שאומתו ב-48 השעות האחרונות, עם איש גיוס שנבדק בפרופיל שלו.
+        {' '}מסודר מהחדש לישן לפי מועד כניסת המשרה, בכל אחת משתי הרשימות.
+        {' '}תכלת: {jobRows.filter((r) => r.tier === 'blue').length} משרות עם איש גיוס מאומת. צהבהב: {jobRows.filter((r) => r.tier === 'yellow').length} משרות מאומתות בלי איש גיוס.
       </p>
       <GoldSimple dropped={dropped} ready={jobRows.filter((r) => r.tier === 'blue')} waiting={jobRows.filter((r) => r.tier === 'yellow')} />
       <p className="hint" style={{ marginTop: '1.2rem' }}>

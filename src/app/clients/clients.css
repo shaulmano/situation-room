@@ -200,3 +200,5 @@
 .hx-legb{background:none;border:0;padding:2px 6px;font:inherit;cursor:pointer;width:auto;display:inline-flex;align-items:center;gap:6px;color:inherit}
 .hx-legb.on{font-weight:700;text-decoration:underline}
 .hx-stack i[role=button]:hover{opacity:.8}
+
+.hx-note{padding:6px 12px;font-size:12px;color:var(--muted,#666);line-height:1.5;border-bottom:1px solid var(--line,#e5e0d6)}

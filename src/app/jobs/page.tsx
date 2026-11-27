@@ -64,32 +64,38 @@ export default async function Jobs({
   const { rows: applied, idx: priorIdx } = await loadApplied(sb);
   const appliedIds = new Set(applied.map((a: any) => a.job_id).filter(Boolean));
 
-  let query = sb
-    .from('matches')
-    .select(
-      'score, cv_id, reasons, red_flags, ' +
-      'jobs!inner(id, title, company, source, location, url, first_seen, posted, on_target, dismissed_at, manual, found_for, manual_dup, recruiter_name, recruiter_url)'
-    )
-    // Newest first. The score still picks which CV fits and produces the match
-    // reasons, but it does not order the feed: with no job descriptions every
-    // score lands in the low forties, so ordering by it is ordering by noise.
-    .order('first_seen', { ascending: false, referencedTable: 'jobs' })
-    // Raised from 1200 because the source filter is no longer a database
-    // filter. It cannot be one: a posting is a row here only after its copies
-    // from every board are grouped, so filtering before the grouping would
-    // return the LinkedIn copy of a job and hide that Comeet also has it.
-    .limit(3000);
-
-  if (!showAll) {
-    query = query
-      .eq('jobs.on_target', true)
-      .is('jobs.dismissed_at', null)
-      // סגורה לפי אימות: מוסתרת בתצוגה הרגילה, ונשארת בתצוגת הכל (showAll)
-      .is('jobs.closed_at', null)
-      .gte('jobs.first_seen', since);
+  // 27.11.2026: מסד של שורות התאמה חמש לכל משרה. הסדר היה על הטבלה המשובצת ולא על
+  // השורות עצמן, והשרת מחזיר עד 1000 שורות לבקשה, ולכן בתצוגת "הכל" נחתכו משרות
+  // לא לפי תאריך. עכשיו מסדרים לפי תאריך המשרה ומדפדפים עד 5000 שורות.
+  let embedOrder = true;
+  const buildQuery = (a: number, b: number) => {
+    let q = sb
+      .from('matches')
+      .select(
+        'score, cv_id, reasons, red_flags, ' +
+        'jobs!inner(id, title, company, source, location, url, first_seen, posted, on_target, dismissed_at, manual, found_for, manual_dup, recruiter_name, recruiter_url)'
+      )
+      .order(embedOrder ? 'jobs(first_seen)' : 'job_id', { ascending: false })
+      .order('job_id')
+      .range(a, b);
+    if (!showAll) {
+      q = q
+        .eq('jobs.on_target', true)
+        .is('jobs.dismissed_at', null)
+        // סגורה לפי אימות: מוסתרת בתצוגה הרגילה, ונשארת בתצוגת הכל (showAll)
+        .is('jobs.closed_at', null)
+        .gte('jobs.first_seen', since);
+    }
+    return q;
+  };
+  const data: any[] = [];
+  for (let a = 0; a < 5000; a += 1000) {
+    let { data: part, error: perr } = await buildQuery(a, a + 999);
+    if (perr && embedOrder) { embedOrder = false; ({ data: part, error: perr } = await buildQuery(a, a + 999)); }
+    if (perr) break;
+    data.push(...(part ?? []));
+    if (!part || part.length < 1000) break;
   }
-
-  const { data } = await query;
 
   // One row per job: keep only the CV that scored it highest.
   const best = new Map<string, any>();
@@ -304,6 +310,13 @@ export default async function Jobs({
         {showAll
           ? 'כל המשרות במאגר, כולל ישנות ולא רלוונטיות.'
           : `נמצאו ${days === 1 ? 'היום' : `ב־${days} הימים האחרונים`} ולא הגשת אליהן. משרה שסגרת ב־✕ לא חוזרת.`}
+        {' '}מסודר מהחדש לישן לפי מועד הכניסה למערכת.
+        {rows.length > 0 && (() => {
+          const t = (m: any) => new Date(m.jobs.first_seen).getTime();
+          const ago = (ms: number) => { const h = Math.max(0, Math.round((Date.now() - ms) / 36e5)); return h < 48 ? `לפני ${h} שעות` : `לפני ${Math.round(h / 24)} ימים`; };
+          return ` מוצגות ${rows.length}: הכי חדשה ${ago(t(rows[0]))}, הכי ישנה ${ago(t(rows[rows.length - 1]))}.`;
+        })()}
+        {(role || source || onlyManual) && ` סינון פעיל: ${[role && `משפחה ${role}`, source && `מקור ${source}`, onlyManual && 'חיפוש ידני'].filter(Boolean).join(' · ')}.`}
       </p>
 
       {rows.length === 0 ? (

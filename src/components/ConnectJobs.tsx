@@ -61,6 +61,11 @@ export default function ConnectJobs({ rows, left, done, quota }: { rows: JobConn
           </button>
         ))}
       </div>
+      <p className="sub" style={{ marginBottom: 8 }}>
+        מסודר מהחדש לישן לפי מועד כניסת המשרה (לפני {shown.length ? shown[0].ageDays : 0} ימים עד לפני {shown.length ? shown[shown.length - 1].ageDays : 0} ימים).
+        משרות מה-30 הימים האחרונים בלבד, פתוחות ומתאימות. {sector !== 'all' ? `סינון פעיל: ${sector === 'none' ? 'לא סווג' : SECTOR_LABEL[sector]}.` : 'אין סינון תחום.'}
+        {matching.length > shown.length ? ` ${matching.length - shown.length} נוספות ממתינות למחר, לפי מכסת היום.` : ''}
+      </p>
       <div className="cn-list">
         {shown.map((r) => (
           <div className="cn-card" key={r.key}>

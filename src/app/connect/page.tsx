@@ -60,6 +60,10 @@ export default async function Connect() {
       {jc.error && <div className="alert">שגיאה בשליפה: {jc.error}</div>}
       <ConnectJobs rows={jc.rows} left={jc.left} done={jc.done} quota={JOB_CONNECT_DAILY} />
       <h2>מגייסים שנמצאו</h2>
+      <p className="sub">
+        מסודר מהחדש לישן לפי מועד שנמצאו. מוצגים {rows.length}{(fr ?? []).length >= 300 ? ' (הראשונים מבין 300 החדשים ביותר)' : ''}.
+        {(fr ?? []).length > 0 && ` הכי חדש נמצא ${new Date((fr as any[])[0].found_at).toLocaleDateString('he-IL')}, הכי ישן ${new Date((fr as any[])[(fr as any[]).length - 1].found_at).toLocaleDateString('he-IL')}.`}
+      </p>
       <ConnectList rows={rows} />
     </main>
   );

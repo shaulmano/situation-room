@@ -345,6 +345,14 @@ function Inner({ clients, initial }: { clients: Client[]; initial?: { waiting?: 
       <div className="hx-card hx-table">
         <div className="hx-cnt">מציג <b>{Math.min(shown, rows.length)}</b> מתוך <b>{rows.length}</b>
           {rows.length < inGroup.length && <span className="mut"> · {inGroup.length - rows.length} מוסתרים בגלל הסינון, מתוך {inGroup.length} בסוג הזה</span>}</div>
+        <div className="hx-note">{(() => {
+          const ds = rows.map((c) => c.activityAt).filter(Boolean).sort();
+          const fmt = (d: string) => new Date(d).toLocaleDateString('he-IL', { day: 'numeric', month: 'numeric' });
+          const days = (d: string) => Math.max(0, Math.round((Date.now() - new Date(d).getTime()) / 864e5));
+          const range = ds.length ? `הפעילות האחרונה: מ-${fmt(ds[ds.length - 1])} (לפני ${days(ds[ds.length - 1])} ימים) עד ${fmt(ds[0])} (לפני ${days(ds[0])} ימים). ` : '';
+          const f = [onlyWaiting && 'רק מי שמחכה לפעולה שלך', onlyApplied && 'רק מי שהוגשה דרכו משרה פתוחה', withJob && 'רק עם משרה פתוחה בחברה', onlyReplied && 'רק מי שענה', status !== 'all' && `חברות: ${SL[status]}`, q.trim() && `חיפוש: ${q.trim()}`].filter(Boolean).join(' · ');
+          return `מסודר מהחדש לישן: קודם מי שמחכה לך, אחריו לפי הפעילות האחרונה (משרה חדשה, תגובה, אישור חברות או פנייה). ${range}משרות: רק מ-30 הימים האחרונים, פתוחות ולא נדחו. ${f ? 'סינון פעיל: ' + f : 'אין סינון פעיל.'}`;
+        })()}</div>
         <div className="hx-head">
           <span>לקוח וחברה</span><span>חברות</span><span>משרות</span><span>שלב</span><span>הצעד הבא</span><span />
         </div>

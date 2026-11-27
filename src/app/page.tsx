@@ -511,8 +511,8 @@ export default async function Dashboard({
       <p className="screen-note">
         {rows.length > 0
           ? source
-            ? `${rows.length} מ־${source} היום, ולא הגשת אליהן.`
-            : `${rows.length} נסרקו היום ולא הגשת אליהן.`
+            ? `${rows.length} מ־${source} היום, ולא הגשת אליהן. מהחדש לישן.`
+            : `${rows.length} נסרקו היום ולא הגשת אליהן. מהחדש לישן לפי מועד הכניסה למערכת.`
           : 'הסריקה של היום לא החזירה משרות חדשות על המטרה.'}
         {' '}הוגשו פנימית: <b>{internalN.today}</b> היום, <b>{internalN.week}</b> בשבוע, <b>{internalN.total}</b> בסך הכל.
       </p>
