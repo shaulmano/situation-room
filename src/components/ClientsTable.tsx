@@ -276,7 +276,7 @@ function JobsFeed({ feed, clients, q, shown, setShown, friendsOf }: {
         return (
           <div key={j.dk} className={"hx-rowwrap" + (j.priorApplied !== null ? " hx-prior" : "")}>
             <div className="hx-job">
-              <div className="hx-jt"><b>{j.title}</b><span>{f.company}{age ? ` · ${age.label}` : ''}</span>
+              <div className="hx-jt"><b>{j.title}</b><span>{f.company}{age ? ` · ${age.label}` : ''}{j.location ? ` · ${j.location}` : ''}</span>
                 {j.priorApplied !== null && <em className="hx-tag" title="הגשת כבר לחברה הזאת באותה כותרת בדיוק. כנראה אותה מודעה מלוח אחר. הסימון לקריאה בלבד.">כבר הגשת לאותה משרה{j.priorApplied ? ` ב-${new Date(j.priorApplied).toLocaleDateString('he-IL', { day: 'numeric', month: 'numeric' })}` : ''}</em>}
               </div>
               <div className="hx-acts">

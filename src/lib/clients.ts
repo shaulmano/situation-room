@@ -26,6 +26,7 @@ export type ClientJob = {
   posted: string | null;
   /** הוגשה כבר משרה באותה חברה ובאותה כותרת (עותק אחר של אותה מודעה): תאריך ההגשה. סימון לקריאה בלבד, כמו במסכים האחרים. */
   priorApplied: string | null;
+  location: string | null;
   /** ימים מאז ההגשה, רק למשרה שהוגשה. */
   appliedDays: number | null; silent: boolean;
   /** מזהה שורת ההגשה, כדי לרשום ראיון או סגירה. */
@@ -82,7 +83,7 @@ export async function loadClients(sb: any): Promise<{ clients: Client[]; orphans
         .select('id, company_id, full_name, headline, profile_url, contacted_at, skipped_at, companies(name)')
         .order('id').range(a, b)),
       pageAll((a, b) => sb.from('matches')
-        .select('jobs!inner(id, title, company, url, first_seen, posted, on_target, dismissed_at, closed_at)')
+        .select('jobs!inner(id, title, company, url, first_seen, posted, location, on_target, dismissed_at, closed_at)')
         .eq('jobs.on_target', true).is('jobs.dismissed_at', null).is('jobs.closed_at', null)
         .gte('jobs.first_seen', since).order('job_id').range(a, b), 1000, 4000),
       pageAll((a, b) => sb.from('applications')
@@ -119,7 +120,7 @@ export async function loadClients(sb: any): Promise<{ clients: Client[]; orphans
       const closeReason = !closed ? null : status === 'offer' ? 'הצעה' : note === CLOSED_NOTE ? 'המשרה נסגרה' : 'נדחה';
       if (!prev || st > prev.stage) {
         m.set(dk, {
-          id: j.id, dk, seenAt: j.first_seen ?? null, posted: j.posted ?? null,
+          id: j.id, dk, seenAt: j.first_seen ?? null, posted: j.posted ?? null, location: j.location ?? null,
           priorApplied: !applied && !appliedIds.has(j.id) ? (appliedPosting.get(postingKey(j.company, j.title)) ?? null) : null, title: j.title, company: j.company, url: j.url ?? null, applied, stage: st,
           appliedDays: applied && sentAt ? Math.max(0, Math.round((Date.now() - new Date(sentAt).getTime()) / 864e5)) : null,
           silent: applied && status === 'silent', appId: appId ?? null, closed, closeReason,
