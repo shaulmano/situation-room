@@ -444,8 +444,9 @@ function Inner({ clients, feed, initial }: { clients: Client[]; feed: FeedItem[]
   const isNew = (f: FeedItem) => !!f.job.seenAt && Date.now() - Date.parse(f.job.seenAt) < 864e5;
   const newCount = feed.filter(isNew).length;
   const jfeed = useMemo(() => feed.filter((f) => (!newOnly || isNew(f)) && ((jobGroup === 'all' && status === 'all') ? true : jfit(f, jobGroup, status))), [feed, jobGroup, status, clientById, newOnly]);
-  const jgCount = (g: 'all' | Group | 'none') => feed.filter((f) => g === 'all' && status === 'all' ? true : jfit(f, g, status)).length;
-  const jsCount = (st: 'all' | keyof typeof SL) => feed.filter((f) => jobGroup === 'all' && st === 'all' ? true : jfit(f, jobGroup, st)).length;
+  const base = newOnly ? feed.filter(isNew) : feed;
+  const jgCount = (g: 'all' | Group | 'none') => base.filter((f) => g === 'all' && status === 'all' ? true : jfit(f, g, status)).length;
+  const jsCount = (st: 'all' | keyof typeof SL) => base.filter((f) => jobGroup === 'all' && st === 'all' ? true : jfit(f, jobGroup, st)).length;
   const cnt = (k: 'none' | 'requested' | 'friend') => inGroup.filter((c) => c.status === k).length;
   const total = inGroup.length || 1;
   const waiting = inGroup.filter(isWaiting).length;
