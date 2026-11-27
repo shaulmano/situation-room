@@ -92,7 +92,8 @@ export async function loadClients(sb: any): Promise<{ clients: Client[]; orphans
     const dkById = new Map<string, string>();
     const put = (j: any, applied: boolean, status?: string | null, stage?: string | null, sentAt?: string | null, appId?: string | null, note?: string | null) => {
       if (!j?.id) return;
-      const k = keyOf(j.company); if (!k) return;
+      // 27.11.2026: משרה בלי שם חברה (דיאלוג, SQLink) קיבלה מפתח ריק ונעלמה מהמסך. עכשיו כל אחת היא שורה נפרדת בחברות בלי איש קשר.
+      const k = keyOf(j.company) || (applied ? '' : '__nc:' + j.id); if (!k) return;
       const m = jobsByCo.get(k) ?? new Map<string, ClientJob>();
       // אותה משרה בלינקדאין יכולה להיכנס פעמיים עם כותרת שונה ואותו מזהה בסוף הכתובת (AMAREL, 26.11.2026).
       const li = typeof j.url === 'string' ? j.url.match(/linkedin\.com\/jobs\/view\/[^?#]*?(\d{8,})\/?(?:[?#]|$)/) : null;
@@ -228,7 +229,7 @@ export async function loadClients(sb: any): Promise<{ clients: Client[]; orphans
       const open = [...m.values()].filter((j) => !j.applied && !j.closed);
       if (!open.length) continue;
       open.sort((a, b) => (a.ageDays ?? 999) - (b.ageDays ?? 999));
-      orphans.push({ company: open[0].company, jobs: open.map((j) => ({ id: j.id, title: j.title, url: j.url, ageDays: j.ageDays })) });
+      orphans.push({ company: open[0].company || `ללא שם חברה (${open[0].title})`, jobs: open.map((j) => ({ id: j.id, title: j.title, url: j.url, ageDays: j.ageDays })) });
     }
     orphans.sort((a, b) => (a.jobs[0].ageDays ?? 999) - (b.jobs[0].ageDays ?? 999));
     return { clients: out, orphans };

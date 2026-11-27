@@ -26,7 +26,7 @@ export default async function Clients({ searchParams }: { searchParams?: { waiti
           <summary>חברות בלי איש קשר ({orphans.length})</summary>
           <p className="mut">יש בהן משרה פתוחה ומתאימה, ואין שם אף מגייס, HR או מנהל פיתוח. החיפוש נפתח בלינקדאין בלשונית חדשה.</p>
           {orphans.map((o) => {
-            const href = peopleAtCompanyHref(o.company, o.jobs[0].title);
+            const href = o.company.startsWith('ללא שם חברה') ? null : peopleAtCompanyHref(o.company, o.jobs[0].title);
             return (
               <div key={o.company} className="hx-orph-row">
                 <b>{o.company}</b>
