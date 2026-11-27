@@ -453,7 +453,7 @@ function Inner({ clients, feed, initial }: { clients: Client[]; feed: FeedItem[]
   const jsCount = (st: 'all' | keyof typeof SL) => base.filter((f) => jobGroup === 'all' && st === 'all' ? true : jfit(f, jobGroup, st)).length;
   const cnt = (k: 'none' | 'requested' | 'friend') => inGroup.filter((c) => passes(c, { status: k })).length;
   const groupCount = (g: Group) => clients.filter((c) => c.group === g && passes(c)).length;
-  const total = inGroup.length || 1;
+  const total = cnt('none') + cnt('requested') + cnt('friend') || 1;
   const waiting = inGroup.filter(isWaiting).length;
 
   return (
