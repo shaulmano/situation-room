@@ -398,6 +398,7 @@ function Inner({ clients, feed, initial }: { clients: Client[]; feed: FeedItem[]
   const [act, setAct] = useState<string | null>(null);
   const [shown, setShown] = useState(40);
   const [newOnly, setNewOnly] = useState(false);
+  const [jstatus, setJstatus] = useState<'all' | keyof typeof SL | 'noclient'>('all');
   const [mode, setModeRaw] = useState<'clients' | 'jobs'>('clients');
   // הרענון אחרי שמירה טוען את המסך מחדש, והתצוגה חזרה ל"לפי לקוח" באמצע עבודה. זוכרים בלשונית.
   useEffect(() => { try { if (sessionStorage.getItem('crm-mode') === 'jobs') setModeRaw('jobs'); } catch {} }, []);
@@ -440,17 +441,20 @@ function Inner({ clients, feed, initial }: { clients: Client[]; feed: FeedItem[]
     listRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
   }, [jumpN]);
   const clientById = useMemo(() => new Map(clients.map((c) => [c.id, c])), [clients]);
-  const jfit = (f: FeedItem, g: 'all' | Group | 'none', st: 'all' | keyof typeof SL) => {
+  // כל משרה שייכת בדיוק לסוג אחד ולסטטוס אחד, כדי שהפילוח יסתכם לסך הכל:
+  // סוג לפי הקודם שיש בחברה (מגייס, אחריו מנהל פיתוח, אחריו אחר), סטטוס לפי הקרוב ביותר לחבר.
+  const jfit = (f: FeedItem, g: 'all' | Group | 'none', st: 'all' | keyof typeof SL | 'noclient') => {
     const cs = f.clientIds.map((id) => clientById.get(id)).filter(Boolean) as Client[];
-    if (g === 'none') return cs.length === 0;
-    return cs.some((c) => (g === 'all' || c.group === g) && (st === 'all' || c.status === st));
+    const grp: Group | 'none' = cs.some((c) => c.group === 'recruiter') ? 'recruiter' : cs.some((c) => c.group === 'dev') ? 'dev' : cs.some((c) => c.group === 'other') ? 'other' : 'none';
+    const stt: keyof typeof SL | 'noclient' = cs.length === 0 ? 'noclient' : cs.some((c) => c.status === 'friend') ? 'friend' : cs.some((c) => c.status === 'requested') ? 'requested' : 'none';
+    return (g === 'all' || grp === g) && (st === 'all' || stt === st);
   };
   const isNew = (f: FeedItem) => !!f.job.seenAt && Date.now() - Date.parse(f.job.seenAt) < 864e5;
   const newCount = feed.filter(isNew).length;
-  const jfeed = useMemo(() => feed.filter((f) => (!newOnly || isNew(f)) && ((jobGroup === 'all' && status === 'all') ? true : jfit(f, jobGroup, status))), [feed, jobGroup, status, clientById, newOnly]);
+  const jfeed = useMemo(() => feed.filter((f) => (!newOnly || isNew(f)) && jfit(f, jobGroup, jstatus)), [feed, jobGroup, jstatus, clientById, newOnly]);
   const base = newOnly ? feed.filter(isNew) : feed;
-  const jgCount = (g: 'all' | Group | 'none') => base.filter((f) => g === 'all' && status === 'all' ? true : jfit(f, g, status)).length;
-  const jsCount = (st: 'all' | keyof typeof SL) => base.filter((f) => jobGroup === 'all' && st === 'all' ? true : jfit(f, jobGroup, st)).length;
+  const jgCount = (g: 'all' | Group | 'none') => base.filter((f) => jfit(f, g, jstatus)).length;
+  const jsCount = (st: 'all' | keyof typeof SL | 'noclient') => base.filter((f) => jfit(f, jobGroup, st)).length;
   const cnt = (k: 'none' | 'requested' | 'friend') => inGroup.filter((c) => passes(c, { status: k })).length;
   const groupCount = (g: Group | 'all') => clients.filter((c) => (g === 'all' || c.group === g) && passes(c)).length;
   const total = cnt('none') + cnt('requested') + cnt('friend') || 1;
@@ -515,14 +519,14 @@ function Inner({ clients, feed, initial }: { clients: Client[]; feed: FeedItem[]
         {mode === 'jobs' && (<>
           <div className="hx-chips"><span className="lab">סוג</span>
             {(['all', 'recruiter', 'dev', 'other', 'none'] as const).map((g) => (
-              <button key={g} className={jobGroup === g ? 'on' : ''} title={g === 'all' ? 'כל המשרות הפתוחות' : g === 'none' ? 'משרות בחברות שאין בהן אף לקוח' : `משרות בחברות שיש בהן לקוח מסוג: ${GL[g]}`}
+              <button key={g} className={jobGroup === g ? 'on' : ''} title={g === 'all' ? 'כל המשרות הפתוחות' : g === 'none' ? 'משרות בחברות שאין בהן אף לקוח' : `משרות שהסוג הקודם של הלקוחות בחברה הוא: ${GL[g]} (מגייס קודם, אחריו מנהל פיתוח, אחריו אחר)`}
                 onClick={() => { setJobGroup(g); go(); setShown(40); }}>{g === 'all' ? 'הכול' : g === 'none' ? 'בלי לקוח' : GL[g]} {jgCount(g)}</button>
             ))}
           </div>
           <div className="hx-chips"><span className="lab">חברות</span>
-            {(['all', 'none', 'requested', 'friend'] as const).map((st) => (
-              <button key={st} className={status === st ? 'on' : ''} title={st === 'all' ? 'כל סטטוסי החברות' : `משרות שיש בחברה שלהן לקוח במצב: ${SL[st]}`}
-                onClick={() => { setStatus(st); go(); setShown(40); }}>{st === 'all' ? 'הכול' : SL[st]} {jsCount(st)}</button>
+            {(['all', 'none', 'requested', 'friend', 'noclient'] as const).map((st) => (
+              <button key={st} className={jstatus === st ? 'on' : ''} title={st === 'all' ? 'כל המשרות' : st === 'noclient' ? 'משרות בחברות שאין בהן אף לקוח' : `משרות שהלקוח הקרוב ביותר בחברה שלהן במצב: ${SL[st]}`}
+                onClick={() => { setJstatus(st); go(); setShown(40); }}>{st === 'all' ? 'הכול' : st === 'noclient' ? 'בלי לקוח' : SL[st]} {jsCount(st)}</button>
             ))}
           </div>
         </>)}
@@ -530,9 +534,9 @@ function Inner({ clients, feed, initial }: { clients: Client[]; feed: FeedItem[]
 
       <div ref={listRef} style={{ scrollMarginTop: 8 }} />
       {mode === 'jobs' && (
-        <button className="hx-b hx-back" title="חוזר לרשימת הלקוחות ומנקה את הסינונים" onClick={() => { setNewOnly(false); setJobGroup('all'); setStatus('all'); setQ(''); go(); setMode('clients'); setShown(40); window.scrollTo({ top: 0 }); }}>← חזרה לכל הלקוחות</button>
+        <button className="hx-b hx-back" title="חוזר לרשימת הלקוחות ומנקה את הסינונים" onClick={() => { setNewOnly(false); setJobGroup('all'); setJstatus('all'); setQ(''); go(); setMode('clients'); setShown(40); window.scrollTo({ top: 0 }); }}>← חזרה לכל הלקוחות</button>
       )}
-      {mode === 'jobs' ? <JobsFeed feed={jfeed} clients={clients} q={q} filterNote={(newOnly ? ' נכנסו ב-24 השעות האחרונות.' : '') + (jobGroup === 'all' ? '' : jobGroup === 'none' ? ' סוג: חברות בלי לקוח.' : ` סוג: ${GL[jobGroup]}.`) + (status === 'all' ? '' : ` חברות: ${SL[status]}.`)} shown={shown} setShown={setShown} friendsOf={friendsOf} /> : (
+      {mode === 'jobs' ? <JobsFeed feed={jfeed} clients={clients} q={q} filterNote={(newOnly ? ' נכנסו ב-24 השעות האחרונות.' : '') + (jobGroup === 'all' ? '' : jobGroup === 'none' ? ' סוג: חברות בלי לקוח.' : ` סוג: ${GL[jobGroup]}.`) + (jstatus === 'all' ? '' : jstatus === 'noclient' ? ' חברות: בלי לקוח.' : ` חברות: ${SL[jstatus]}.`)} shown={shown} setShown={setShown} friendsOf={friendsOf} /> : (
       <div className="hx-card hx-table">
         <div className="hx-cnt">מציג <b>{Math.min(shown, rows.length)}</b> מתוך <b>{rows.length}</b>
           {rows.length < inGroup.length && <span className="mut"> · {inGroup.length - rows.length} מוסתרים בגלל הסינון, מתוך {inGroup.length} בסוג הזה</span>}</div>
