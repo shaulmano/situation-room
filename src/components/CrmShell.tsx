@@ -40,7 +40,7 @@ export default function CrmShell({ children }: { children: React.ReactNode }) {
     });
     // כל הכפתורים של בלוק בשורה אחת (שאול, 26.11.2026). ה-CSS לא יודע כמה טקסט יש, ולכן
     // שורה שירדה לשתי שורות מקבלת גופן קטן יותר עד שהיא נכנסת. בלוק רחב באמצע השורה
-    // (בחירת מכר, הערה) מפריד בין קטעים, וכל קטע נמדד לבד. מינימום 8px; אם גם אז לא נכנס,
+    // (בחירת מכר, הערה) מפריד בין קטעים, וכל קטע נמדד לבד. מינימום 9px; אם גם אז לא נכנס,
     // הכפתורים מתכווצים והטקסט נחתך עם tooltip, אבל לא יורד שורה.
     const ROW = '.cn-flow,.cn-acts,.gold-acts,.reach-acts,.filters,.hx-acts,.hx-chips,.cn-line,.hx-gos,.hx-leg';
     const fit = () => document.querySelectorAll<HTMLElement>(ROW).forEach((row) => {
@@ -50,7 +50,7 @@ export default function CrmShell({ children }: { children: React.ReactNode }) {
       const flat = (el: HTMLElement): HTMLElement[] => (Array.from(el.children) as HTMLElement[])
         .flatMap((k) => (getComputedStyle(k).display === 'contents' ? flat(k) : [k]));
       for (const k of flat(row)) {
-        if (/^(BUTTON|A|SUMMARY|LABEL)$/.test(k.tagName)) segs[segs.length - 1].push(k);
+        if (/^(BUTTON|A|SUMMARY)$/.test(k.tagName)) segs[segs.length - 1].push(k);
         else if (segs[segs.length - 1].length) segs.push([]);
       }
       for (const kids of segs) {
@@ -58,7 +58,7 @@ export default function CrmShell({ children }: { children: React.ReactNode }) {
         const wrapped = () => { const t = kids.map((k) => k.offsetTop); return Math.max(...t) - Math.min(...t) > 8; };
         if (!wrapped()) continue;
         let size = parseFloat(getComputedStyle(kids[0]).fontSize) || 12;
-        while (wrapped() && size > 8) { size -= 0.5; kids.forEach((k) => k.style.setProperty('font-size', size + 'px', 'important')); }
+        while (wrapped() && size > 9) { size -= 0.5; kids.forEach((k) => k.style.setProperty('font-size', size + 'px', 'important')); }
         if (wrapped()) {
           row.style.setProperty('flex-wrap', 'nowrap', 'important');
           kids.forEach((k) => { k.style.setProperty('min-width', '0', 'important'); k.style.setProperty('overflow', 'hidden'); k.style.setProperty('text-overflow', 'ellipsis'); });
