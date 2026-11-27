@@ -1,5 +1,5 @@
 'use client';
-import { createContext, useContext, useMemo, useState, useTransition } from 'react';
+import { createContext, useContext, useEffect, useMemo, useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import { STAGES, SILENT_LIMIT, CLOSED_NOTE, type Client, type ClientJob, type FeedItem } from '@/lib/clients';
 import { jobAge } from '@/lib/age';
@@ -328,7 +328,10 @@ function Inner({ clients, feed, initial }: { clients: Client[]; feed: FeedItem[]
   const toggle = (id: string, tab: 'jobs' | 'edit') => setView(view?.id === id && view.tab === tab ? null : { id, tab });
   const [act, setAct] = useState<string | null>(null);
   const [shown, setShown] = useState(40);
-  const [mode, setMode] = useState<'clients' | 'jobs'>('clients');
+  const [mode, setModeRaw] = useState<'clients' | 'jobs'>('clients');
+  // הרענון אחרי שמירה טוען את המסך מחדש, והתצוגה חזרה ל"לפי לקוח" באמצע עבודה. זוכרים בלשונית.
+  useEffect(() => { try { if (sessionStorage.getItem('crm-mode') === 'jobs') setModeRaw('jobs'); } catch {} }, []);
+  const setMode = (m: 'clients' | 'jobs') => { setModeRaw(m); try { sessionStorage.setItem('crm-mode', m); } catch {} };
 
   /** מי שמכירים בחברה של הלקוח: מגייסים ו-HR קודם, כי דרכם מגישים. */
   const friendsOf = (c: Client) => (!c.companyKey ? [] : clients.filter((x) => x.kind === 'contact' && x.companyKey === c.companyKey)
@@ -471,7 +474,7 @@ function Inner({ clients, feed, initial }: { clients: Client[]; feed: FeedItem[]
                   )}
                   {c.jobs.map((j) => (
                     <div key={j.id} className="hx-job">
-                      <div className="hx-jt"><b>{j.title}</b>{j.priorApplied !== null && <em className="hx-tag" title="הגשת כבר לחברה הזאת באותה כותרת בדיוק. כנראה אותה מודעה מלוח אחר. הסימון לקריאה בלבד.">כבר הגשת לאותה משרה</em>}<span>{j.company}{j.applied && j.appliedDays !== null ? ` · הוגשה לפני ${j.appliedDays} ימים${j.silent ? ' · בלי מענה' : ''}` : j.ageDays !== null ? ` · פורסמה לפני ${j.ageDays} ימים` : ''}</span></div>
+                      <div className="hx-jt"><b>{j.title}</b>{j.priorApplied !== null && <em className="hx-tag" title="הגשת כבר לחברה הזאת באותה כותרת בדיוק. כנראה אותה מודעה מלוח אחר. הסימון לקריאה בלבד.">כבר הגשת לאותה משרה</em>}<span>{j.company}{j.applied && j.appliedDays !== null ? ` · הוגשה לפני ${j.appliedDays} ימים${j.silent ? ' · בלי מענה' : ''}` : (jobAge(j.posted, j.seenAt)?.label ? ` · ${jobAge(j.posted, j.seenAt)!.label}` : '')}</span></div>
                       <div className="hx-stage"><Bar stage={j.stage} /><small>{STAGES[j.stage - 1]}</small></div>
                       <div className="hx-acts">
                         {j.url && <a className="hx-b" title="פותח את המודעה בלשונית חדשה" href={j.url} target="_blank" rel="noreferrer">פתח משרה</a>}
