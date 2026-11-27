@@ -84,6 +84,7 @@ export default function AppStep({ id, status, stage, nextAt, nextKind }: Props) 
           {KIND_LABEL[nextKind ?? 'call'] ?? 'שיחה'}{' '}
           {new Date(nextAt).toLocaleString('he-IL', {
             day: 'numeric', month: 'numeric', hour: '2-digit', minute: '2-digit',
+            timeZone: 'Asia/Jerusalem',
           })}
         </span>
       )}
