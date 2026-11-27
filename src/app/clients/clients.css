@@ -168,7 +168,7 @@
   padding:.3em .3em!important;font-size:clamp(.6rem,2.5vw,.85rem)!important;margin:0!important;align-self:stretch!important}
 /* כל מה שאינו כפתור בתוך הבלוק (כותרת, הערה, תג) תופס שורה משלו, והכפתורים נשארים יחד */
 .cn-flow>details,.cn-flow>:not(button):not(a):not(details),.cn-acts>:not(button):not(a),.filters>:not(button):not(a),
-.hx-acts>:not(button):not(a):not(.hx-b),.hx-chips>:not(button){flex:0 0 100%!important}
+.hx-acts>:not(button):not(a):not(.hx-b):not(.hx-tag),.hx-chips>:not(button){flex:0 0 100%!important}
 .hx-acts>.hx-tag{flex:0 0 auto!important}
 .hx-job .hx-acts>.hx-pick{flex:0 0 100%!important}
 /* שורת איש קשר: השם ראשון והכפתורים אחריו, אותה שורה. בלוקים רחבים (טיוטה, בחירת קו"ח) יורדים שורה */

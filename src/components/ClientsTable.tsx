@@ -479,7 +479,7 @@ function Inner({ clients, feed, initial }: { clients: Client[]; feed: FeedItem[]
                       <div className="hx-acts">
                         {j.url && <a className="hx-b" title="פותח את המודעה בלשונית חדשה" href={j.url} target="_blank" rel="noreferrer">פתח משרה</a>}
                         <StepButtons j={j} friends={friendsOf(c)} />
-                        {!j.applied && c.kind !== 'prior' && <button className="hx-b main" onClick={() => setAct(c.id)}>
+                        {!j.applied && c.kind !== 'prior' && <button className="hx-b main" title={c.status === 'friend' ? 'פותח נוסח הודעה מוכן ושם קובץ קורות החיים למשרה הזאת' : 'פותח נוסח בקשת חברות מוכן למשרה הזאת'} onClick={() => setAct(c.id)}>
                           {c.status === 'friend' ? 'הכן הודעה' : 'הכן בקשת חברות'}</button>}
                       </div>
                     </div>
