@@ -260,6 +260,7 @@ function Inner({ clients, initial }: { clients: Client[]; initial?: { waiting?: 
   const [withJob, setWithJob] = useState(false);
   const [onlyReplied, setOnlyReplied] = useState(!!initial?.replied);
   const [onlyWaiting, setOnlyWaiting] = useState(!!initial?.waiting);
+  const [onlyApplied, setOnlyApplied] = useState(false);
   const [q, setQ] = useState('');
   const [view, setView] = useState<{ id: string; tab: 'jobs' | 'edit' } | null>(null);
   const toggle = (id: string, tab: 'jobs' | 'edit') => setView(view?.id === id && view.tab === tab ? null : { id, tab });
@@ -278,10 +279,11 @@ function Inner({ clients, initial }: { clients: Client[]; initial?: { waiting?: 
         && (!withJob || c.jobs.length > 0)
         && (!onlyReplied || !!c.repliedAt)
         && (!onlyWaiting || isWaiting(c))
+        && (!onlyApplied || (c.stage >= 4 && c.stage < 7))
         && (!s || `${c.name} ${c.company ?? ''} ${c.title ?? ''} ${c.jobs.map((j) => j.title).join(' ')}`.toLowerCase().includes(s)))
       // מי שענה נשאר גבוה גם אחרי שטופל: ראשון מי שמחכה לך, אחריו הענייה האחרונה.
       .sort((a, b) => Number(b.urgent) - Number(a.urgent) || (b.repliedAt ?? '').localeCompare(a.repliedAt ?? '') || b.stage - a.stage || b.jobs.length - a.jobs.length);
-  }, [inGroup, status, withJob, onlyReplied, onlyWaiting, q]);
+  }, [inGroup, status, withJob, onlyReplied, onlyWaiting, onlyApplied, q]);
 
   const cnt = (k: 'none' | 'requested' | 'friend') => inGroup.filter((c) => c.status === k).length;
   const total = inGroup.length || 1;
@@ -290,22 +292,23 @@ function Inner({ clients, initial }: { clients: Client[]; initial?: { waiting?: 
   return (
     <>
       <div className="hx-kpis">
-        <div className="hx-kpi"><small>לקוחות בקבוצה</small><b>{inGroup.length}</b></div>
-        <div className="hx-kpi"><small>עם משרה פתוחה</small><b>{inGroup.filter((c) => c.jobs.length).length}</b></div>
-        <button className={'hx-kpi warn hx-kpib' + (onlyWaiting ? ' on' : '')} onClick={() => { setOnlyWaiting(!onlyWaiting); setShown(40); }} title="הצג רק מי שמחכה לפעולה שלך"><small>מחכים לפעולה שלך</small><b>{waiting}</b></button>
-        <div className="hx-kpi"><small>הוגשה דרכם משרה</small><b>{inGroup.filter((c) => c.stage >= 4 && c.stage < 7).length}</b></div>
+        <button className={'hx-kpi hx-kpib' + (!withJob && !onlyWaiting && !onlyApplied && !onlyReplied && status === 'all' && !q ? ' on' : '')} title="מנקה את כל הסינונים ומציג את כל הלקוחות בקבוצה" onClick={() => { setWithJob(false); setOnlyWaiting(false); setOnlyApplied(false); setOnlyReplied(false); setStatus('all'); setQ(''); setShown(40); }}><small>לקוחות בקבוצה</small><b>{inGroup.length}</b></button>
+        <button className={'hx-kpi hx-kpib' + (withJob ? ' on' : '')} title="הצג רק לקוחות שיש משרה פתוחה בחברה שלהם. לחיצה נוספת מבטלת" onClick={() => { setWithJob(!withJob); setShown(40); }}><small>עם משרה פתוחה</small><b>{inGroup.filter((c) => c.jobs.length).length}</b></button>
+        <button className={'hx-kpi warn hx-kpib' + (onlyWaiting ? ' on' : '')} title="הצג רק מי שמחכה לפעולה שלך. לחיצה נוספת מבטלת" onClick={() => { setOnlyWaiting(!onlyWaiting); setShown(40); }}><small>מחכים לפעולה שלך</small><b>{waiting}</b></button>
+        <button className={'hx-kpi hx-kpib' + (onlyApplied ? ' on' : '')} title="הצג רק לקוחות שהוגשה דרכם משרה ועוד לא נסגרה. לחיצה נוספת מבטלת" onClick={() => { setOnlyApplied(!onlyApplied); setShown(40); }}><small>הוגשה דרכם משרה</small><b>{inGroup.filter((c) => c.stage >= 4 && c.stage < 7).length}</b></button>
       </div>
 
       <div className="hx-card">
         <div className="hx-stack">
-          <i style={{ flex: cnt('none') || 0.001, background: '#B9CBDD' }} />
-          <i style={{ flex: cnt('requested') || 0.001, background: '#A8690A' }} />
-          <i style={{ flex: cnt('friend') || 0.001, background: '#0B8F63' }} />
+          {(['none', 'requested', 'friend'] as const).map((k) => (
+            <i key={k} role="button" tabIndex={0} title={`הצג רק: ${SL[k]} (${cnt(k)}). לחיצה נוספת מבטלת`} style={{ flex: cnt(k) || 0.001, background: ({ none: '#B9CBDD', requested: '#A8690A', friend: '#0B8F63' })[k], cursor: 'pointer' }}
+              onClick={() => { setStatus(status === k ? 'all' : k); setShown(40); }} onKeyDown={(e) => { if (e.key === 'Enter') { setStatus(status === k ? 'all' : k); setShown(40); } }} />
+          ))}
         </div>
         <div className="hx-leg">
-          <span><u style={{ background: '#B9CBDD' }} />לא חבר {cnt('none')}</span>
-          <span><u style={{ background: '#A8690A' }} />נשלחה בקשה {cnt('requested')}</span>
-          <span><u style={{ background: '#0B8F63' }} />חבר {cnt('friend')}</span>
+          <button className={'hx-legb' + (status === 'none' ? ' on' : '')} title="הצג רק: לא חבר. לחיצה נוספת מבטלת" onClick={() => { setStatus(status === 'none' ? 'all' : 'none'); setShown(40); }}><u style={{ background: '#B9CBDD' }} />לא חבר {cnt('none')}</button>
+          <button className={'hx-legb' + (status === 'requested' ? ' on' : '')} title="הצג רק: נשלחה בקשה. לחיצה נוספת מבטלת" onClick={() => { setStatus(status === 'requested' ? 'all' : 'requested'); setShown(40); }}><u style={{ background: '#A8690A' }} />נשלחה בקשה {cnt('requested')}</button>
+          <button className={'hx-legb' + (status === 'friend' ? ' on' : '')} title="הצג רק: חבר. לחיצה נוספת מבטלת" onClick={() => { setStatus(status === 'friend' ? 'all' : 'friend'); setShown(40); }}><u style={{ background: '#0B8F63' }} />חבר {cnt('friend')}</button>
           <span className="mut">{Math.round((cnt('friend') / total) * 100)}% חברים</span>
         </div>
       </div>
