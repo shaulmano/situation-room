@@ -342,13 +342,15 @@ export default function ClientsTable(props: { clients: Client[]; feed: FeedItem[
   };
   async function undoLast() {
     if (!last) return;
+    const cur = last;
+    local(cur.jobId, false);
     await Promise.allSettled([...inflight]);
-    const r = await fetch(last.kind === 'applied' ? '/api/applications/undo' : '/api/jobs/dismiss', {
+    const r = await fetch(cur.kind === 'applied' ? '/api/applications/undo' : '/api/jobs/dismiss', {
       method: 'POST', headers: { 'content-type': 'application/json' },
-      body: JSON.stringify(last.kind === 'applied' ? { id: last.jobId } : { id: last.jobId, undo: true }),
+      body: JSON.stringify(cur.kind === 'applied' ? { id: cur.jobId } : { id: cur.jobId, undo: true }),
     }).catch(() => null);
-    if (!r || !r.ok) { alert('הביטול לא נשמר. נסה שוב.'); return; }
-    local(last.jobId, false); start(() => router.refresh());
+    if (!r || !r.ok) { alert('הביטול לא נשמר. נסה שוב.'); start(() => router.refresh()); return; }
+    start(() => router.refresh());
   }
   const refresh = () => { start(() => router.refresh()); };
   const clients = useMemo(() => props.clients.slice(), [props.clients, ver]);
