@@ -384,7 +384,7 @@ export default function ClientsTable(props: { clients: Client[]; feed: FeedItem[
 }
 
 function Inner({ clients, feed, initial }: { clients: Client[]; feed: FeedItem[]; initial?: { waiting?: boolean; replied?: boolean; group?: Group } }) {
-  const [group, setGroup] = useState<Group>(initial?.group ?? 'recruiter');
+  const [group, setGroup] = useState<Group | 'all'>(initial?.group ?? 'recruiter');
   const [status, setStatus] = useState<'all' | keyof typeof SL>('all');
   const [withJob, setWithJob] = useState(false);
   const [onlyReplied, setOnlyReplied] = useState(!!initial?.replied);
@@ -407,7 +407,7 @@ function Inner({ clients, feed, initial }: { clients: Client[]; feed: FeedItem[]
   const friendsOf = (c: Client) => (!c.companyKey ? [] : clients.filter((x) => x.kind === 'contact' && x.companyKey === c.companyKey)
     .sort((a, b) => ['recruiter', 'dev', 'other'].indexOf(a.group) - ['recruiter', 'dev', 'other'].indexOf(b.group) || a.name.localeCompare(b.name)));
 
-  const inGroup = useMemo(() => clients.filter((c) => c.group === group), [clients, group]);
+  const inGroup = useMemo(() => clients.filter((c) => group === 'all' || c.group === group), [clients, group]);
   // תנאי אחד לרשימה ולכל מספר על כל צ'יפ: המספר הוא מה שיוצג אם לוחצים עליו, עם כל שאר הסינונים הפעילים.
   const passes = (c: Client, o: { status?: 'all' | keyof typeof SL; withJob?: boolean; onlyReplied?: boolean } = {}) => {
     const st = o.status ?? status, wj = o.withJob ?? withJob, rp = o.onlyReplied ?? onlyReplied, s = q.trim().toLowerCase();
@@ -452,7 +452,7 @@ function Inner({ clients, feed, initial }: { clients: Client[]; feed: FeedItem[]
   const jgCount = (g: 'all' | Group | 'none') => base.filter((f) => g === 'all' && status === 'all' ? true : jfit(f, g, status)).length;
   const jsCount = (st: 'all' | keyof typeof SL) => base.filter((f) => jobGroup === 'all' && st === 'all' ? true : jfit(f, jobGroup, st)).length;
   const cnt = (k: 'none' | 'requested' | 'friend') => inGroup.filter((c) => passes(c, { status: k })).length;
-  const groupCount = (g: Group) => clients.filter((c) => c.group === g && passes(c)).length;
+  const groupCount = (g: Group | 'all') => clients.filter((c) => (g === 'all' || c.group === g) && passes(c)).length;
   const total = cnt('none') + cnt('requested') + cnt('friend') || 1;
   const waiting = inGroup.filter(isWaiting).length;
 
@@ -494,9 +494,9 @@ function Inner({ clients, feed, initial }: { clients: Client[]; feed: FeedItem[]
         </div>
         {mode === 'clients' && (<>
         <div className="hx-chips"><span className="lab">סוג</span>
-          {(['recruiter', 'dev', 'other'] as Group[]).map((g) => (
-            <button key={g} className={group === g ? 'on' : ''} title={`הצג לקוחות מסוג: ${GL[g]}`} onClick={() => { setGroup(g); go(); setShown(40); }}>
-              {GL[g]} {groupCount(g)}
+          {(['all', 'recruiter', 'dev', 'other'] as const).map((g) => (
+            <button key={g} className={group === g ? 'on' : ''} title={g === 'all' ? 'כל סוגי הלקוחות' : `הצג לקוחות מסוג: ${GL[g]}`} onClick={() => { setGroup(g); go(); setShown(40); }}>
+              {g === 'all' ? 'הכול' : GL[g]} {groupCount(g)}
             </button>
           ))}
         </div>
