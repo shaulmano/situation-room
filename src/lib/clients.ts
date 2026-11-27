@@ -150,7 +150,9 @@ export async function loadClients(sb: any): Promise<{ clients: Client[]; orphans
         if (j.stage === 1 && contacted && (!contactedJobId || contactedJobId === j.id)) j.stage = replied ? 3 : 2;
       }
       // מהחדש לישן (27.11.2026, שאול). הסדר לא משפיע על השלב, שמחושב בנפרד.
-      jobs.sort((a, b) => (b.seenAt ?? '').localeCompare(a.seenAt ?? ''));
+      // משרות פתוחות קודם (28.11.2026, שאול: "משרות פתוחות באותו אריח לא מוצגות ראשונות"), ובתוכן מהחדש לישן.
+      const isOpenJob = (j: ClientJob) => !j.applied && !j.closed;
+      jobs.sort((a, b) => Number(isOpenJob(b)) - Number(isOpenJob(a)) || (b.seenAt ?? '').localeCompare(a.seenAt ?? ''));
       // משרה שנסגרה לא מקדמת את הלקוח: הוא מתקדם לפי המשרה החיה הרחוקה ביותר.
       const live = jobs.filter((j) => !j.closed);
       const stage = live.length ? live.reduce((s, j) => Math.max(s, j.stage), 0) : jobs.length ? 7 : 0;

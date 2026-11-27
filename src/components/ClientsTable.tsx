@@ -257,6 +257,7 @@ function ActionPanel({ c, onDone, forJob }: { c: Client; onDone: () => void; for
       {request && <small className="mut">{text.length} תווים מתוך 200 (מגבלת לינקדאין)</small>}
       {!request && file && <small className="mut">לצרף את הקובץ: <b>{file}</b></small>}
       <div className="hx-acts">
+        <button className="hx-b" title="סוגר את הנוסח בלי לשמור שום דבר" onClick={onDone}>סגור</button>
         <button className="hx-b" title="מעתיק את הנוסח ללוח. אחרי ההדבקה בלינקדאין צרף את הקובץ" onClick={copy}>{copied ? 'הועתק' : 'העתק'}</button>
         {c.profile && <a className="hx-b" title="פותח את הפרופיל בלינקדאין בלשונית חדשה" href={c.profile} target="_blank" rel="noreferrer">פתח בלינקדאין</a>}
         <button className="hx-b main" disabled={busy} title={request ? 'סמן שבקשת החברות נשלחה' : 'סמן שההודעה נשלחה. השלב מתקדם והשורה עוברת להמתנה'} onClick={() => mark('sent')}>{request ? 'ביקשתי' : 'שלחתי'}</button>
@@ -315,6 +316,9 @@ function JobsFeed({ feed, clients, q, filterNote, shown, setShown, friendsOf }: 
                 {c.next && /^(לשלוח|פנה ישירות)/.test(c.next)
                   ? <button className="hx-nbtn" title="פותח נוסח מוכן על המשרה הזאת, ושלחתי או לא לפנות" onClick={() => setAct(act === c.id + j.dk ? null : c.id + j.dk)}>{c.next}</button>
                   : <span className="mut">{c.next ?? '—'}</span>}
+                {!j.applied && c.kind !== 'prior' && !(c.next && /^(לשלוח|פנה ישירות)/.test(c.next)) && (
+                  <button className="hx-nbtn" title={c.status === 'friend' ? 'פותח נוסח הודעה מוכן ושם קובץ קורות החיים למשרה הזאת' : 'פותח נוסח בקשת חברות למשרה הזאת'} onClick={() => setAct(act === c.id + j.dk ? null : c.id + j.dk)}>{c.status === 'friend' ? 'הכן הודעה' : 'הכן בקשת חברות'}</button>
+                )}
                 {act === c.id + j.dk && <ActionPanel c={c} forJob={j} onDone={() => setAct(null)} />}
               </div>
             ))}
@@ -588,6 +592,7 @@ function Inner({ clients, feed, initial }: { clients: Client[]; feed: FeedItem[]
             )}
             {view?.id === c.id && view.tab === 'jobs' && (
               <div className="hx-detail">
+                <button className="hx-b hx-close" title="סוגר את הבלוק" onClick={() => { setView(null); setAct(null); }}>סגור ✕</button>
                 {c.replyText && <ReplyBox c={c} />}
                 <div className="hx-jl">
                   {c.jobs.length === 0 && (
