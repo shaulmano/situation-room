@@ -1,5 +1,5 @@
 'use client';
-import { createContext, useContext, useEffect, useMemo, useState, useTransition } from 'react';
+import { createContext, useContext, useEffect, useMemo, useRef, useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import { STAGES, SILENT_LIMIT, CLOSED_NOTE, type Client, type ClientJob, type FeedItem } from '@/lib/clients';
 import { jobAge } from '@/lib/age';
@@ -355,8 +355,17 @@ function Inner({ clients, feed, initial }: { clients: Client[]; feed: FeedItem[]
   const tile = (k: 'job' | 'wait' | 'applied') => {
     const cur = k === 'job' ? withJob : k === 'wait' ? onlyWaiting : onlyApplied;
     setStatus('all'); setOnlyReplied(false); setQ('');
-    setWithJob(!cur && k === 'job'); setOnlyWaiting(!cur && k === 'wait'); setOnlyApplied(!cur && k === 'applied'); setShown(40);
+    setWithJob(!cur && k === 'job'); setOnlyWaiting(!cur && k === 'wait'); setOnlyApplied(!cur && k === 'applied'); go(); setShown(40);
   };
+  // 27.11.2026: בטלפון הרשימה יושבת מתחת למסך. לחיצה על אריח או סינון שלא מגלגלת אליה נראית כמו כפתור שלא עושה כלום.
+  const listRef = useRef<HTMLDivElement>(null);
+  const jump = useRef(false);
+  const go = () => { jump.current = true; };
+  useEffect(() => {
+    if (!jump.current) return;
+    jump.current = false;
+    listRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }, [group, status, withJob, onlyWaiting, onlyApplied, onlyReplied, mode]);
   const cnt = (k: 'none' | 'requested' | 'friend') => inGroup.filter((c) => c.status === k).length;
   const total = inGroup.length || 1;
   const waiting = inGroup.filter(isWaiting).length;
@@ -364,7 +373,7 @@ function Inner({ clients, feed, initial }: { clients: Client[]; feed: FeedItem[]
   return (
     <>
       <div className="hx-kpis">
-        <button className={'hx-kpi hx-kpib' + (!withJob && !onlyWaiting && !onlyApplied && !onlyReplied && status === 'all' && !q ? ' on' : '')} title="מנקה את כל הסינונים ומציג את כל הלקוחות בקבוצה" onClick={() => { setWithJob(false); setOnlyWaiting(false); setOnlyApplied(false); setOnlyReplied(false); setStatus('all'); setQ(''); setShown(40); }}><small>לקוחות בקבוצה</small><b>{inGroup.length}</b></button>
+        <button className={'hx-kpi hx-kpib' + (!withJob && !onlyWaiting && !onlyApplied && !onlyReplied && status === 'all' && !q ? ' on' : '')} title="מנקה את כל הסינונים ומציג את כל הלקוחות בקבוצה" onClick={() => { setWithJob(false); setOnlyWaiting(false); setOnlyApplied(false); setOnlyReplied(false); setStatus('all'); setQ(''); go(); setShown(40); }}><small>לקוחות בקבוצה</small><b>{inGroup.length}</b></button>
         <button className={'hx-kpi hx-kpib' + (withJob ? ' on' : '')} title="הצג רק לקוחות שיש משרה פתוחה בחברה שלהם. לחיצה נוספת מבטלת" onClick={() => tile('job')}><small>עם משרה פתוחה</small><b>{inGroup.filter(hasOpen).length}</b></button>
         <button className={'hx-kpi warn hx-kpib' + (onlyWaiting ? ' on' : '')} title="הצג רק מי שמחכה לפעולה שלך. לחיצה נוספת מבטלת" onClick={() => tile('wait')}><small>מחכים לפעולה שלך</small><b>{waiting}</b></button>
         <button className={'hx-kpi hx-kpib' + (onlyApplied ? ' on' : '')} title="הצג רק לקוחות שהוגשה דרכם משרה ועוד לא נסגרה. לחיצה נוספת מבטלת" onClick={() => tile('applied')}><small>הוגשה דרכם משרה</small><b>{inGroup.filter((c) => c.stage >= 4 && c.stage < 7).length}</b></button>
@@ -374,13 +383,13 @@ function Inner({ clients, feed, initial }: { clients: Client[]; feed: FeedItem[]
         <div className="hx-stack">
           {(['none', 'requested', 'friend'] as const).map((k) => (
             <i key={k} role="button" tabIndex={0} title={`הצג רק: ${SL[k]} (${cnt(k)}). לחיצה נוספת מבטלת`} style={{ flex: cnt(k) || 0.001, background: ({ none: '#B9CBDD', requested: '#A8690A', friend: '#0B8F63' })[k], cursor: 'pointer' }}
-              onClick={() => { setStatus(status === k ? 'all' : k); setShown(40); }} onKeyDown={(e) => { if (e.key === 'Enter') { setStatus(status === k ? 'all' : k); setShown(40); } }} />
+              onClick={() => { setStatus(status === k ? 'all' : k); go(); setShown(40); }} onKeyDown={(e) => { if (e.key === 'Enter') { setStatus(status === k ? 'all' : k); go(); setShown(40); } }} />
           ))}
         </div>
         <div className="hx-leg">
-          <button className={'hx-legb' + (status === 'none' ? ' on' : '')} title="הצג רק: לא חבר. לחיצה נוספת מבטלת" onClick={() => { setStatus(status === 'none' ? 'all' : 'none'); setShown(40); }}><u style={{ background: '#B9CBDD' }} />לא חבר {cnt('none')}</button>
-          <button className={'hx-legb' + (status === 'requested' ? ' on' : '')} title="הצג רק: נשלחה בקשה. לחיצה נוספת מבטלת" onClick={() => { setStatus(status === 'requested' ? 'all' : 'requested'); setShown(40); }}><u style={{ background: '#A8690A' }} />נשלחה בקשה {cnt('requested')}</button>
-          <button className={'hx-legb' + (status === 'friend' ? ' on' : '')} title="הצג רק: חבר. לחיצה נוספת מבטלת" onClick={() => { setStatus(status === 'friend' ? 'all' : 'friend'); setShown(40); }}><u style={{ background: '#0B8F63' }} />חבר {cnt('friend')}</button>
+          <button className={'hx-legb' + (status === 'none' ? ' on' : '')} title="הצג רק: לא חבר. לחיצה נוספת מבטלת" onClick={() => { setStatus(status === 'none' ? 'all' : 'none'); go(); setShown(40); }}><u style={{ background: '#B9CBDD' }} />לא חבר {cnt('none')}</button>
+          <button className={'hx-legb' + (status === 'requested' ? ' on' : '')} title="הצג רק: נשלחה בקשה. לחיצה נוספת מבטלת" onClick={() => { setStatus(status === 'requested' ? 'all' : 'requested'); go(); setShown(40); }}><u style={{ background: '#A8690A' }} />נשלחה בקשה {cnt('requested')}</button>
+          <button className={'hx-legb' + (status === 'friend' ? ' on' : '')} title="הצג רק: חבר. לחיצה נוספת מבטלת" onClick={() => { setStatus(status === 'friend' ? 'all' : 'friend'); go(); setShown(40); }}><u style={{ background: '#0B8F63' }} />חבר {cnt('friend')}</button>
           <span className="mut">{Math.round((cnt('friend') / total) * 100)}% חברים</span>
         </div>
       </div>
@@ -389,27 +398,28 @@ function Inner({ clients, feed, initial }: { clients: Client[]; feed: FeedItem[]
         <input className="hx-search" placeholder="חיפוש לפי שם, חברה, תפקיד או משרה…" value={q}
           onChange={(e) => { setQ(e.target.value); setShown(40); }} />
         <div className="hx-chips"><span className="lab">תצוגה</span>
-          <button className={mode === 'clients' ? 'on' : ''} title="רשימת הלקוחות, ומשרות כל אחד מהם" onClick={() => { setMode('clients'); setShown(40); }}>לפי לקוח {clients.length}</button>
-          <button className={mode === 'jobs' ? 'on' : ''} title="כל המשרות הפתוחות מהחדשה לישנה, ובכל אחת הלקוחות בחברה שלה" onClick={() => { setMode('jobs'); setShown(40); }}>לפי משרה {feed.length}</button>
+          <button className={mode === 'clients' ? 'on' : ''} title="רשימת הלקוחות, ומשרות כל אחד מהם" onClick={() => { go(); setMode('clients'); setShown(40); }}>לפי לקוח {clients.length}</button>
+          <button className={mode === 'jobs' ? 'on' : ''} title="כל המשרות הפתוחות מהחדשה לישנה, ובכל אחת הלקוחות בחברה שלה" onClick={() => { go(); setMode('jobs'); setShown(40); }}>לפי משרה {feed.length}</button>
         </div>
         <div className="hx-chips"><span className="lab">סוג</span>
           {(['recruiter', 'dev', 'other'] as Group[]).map((g) => (
-            <button key={g} className={group === g ? 'on' : ''} title={`הצג לקוחות מסוג: ${GL[g]}`} onClick={() => { setGroup(g); setShown(40); }}>
+            <button key={g} className={group === g ? 'on' : ''} title={`הצג לקוחות מסוג: ${GL[g]}`} onClick={() => { setGroup(g); go(); setShown(40); }}>
               {GL[g]} {clients.filter((c) => c.group === g).length}
             </button>
           ))}
         </div>
         <div className="hx-chips"><span className="lab">חברות</span>
           {(['all', 'none', 'requested', 'friend'] as const).map((s) => (
-            <button key={s} className={status === s ? 'on' : ''} title={s === 'all' ? 'כל סטטוסי החברות' : `הצג רק: ${SL[s]}`} onClick={() => { setStatus(s); setShown(40); }}>
+            <button key={s} className={status === s ? 'on' : ''} title={s === 'all' ? 'כל סטטוסי החברות' : `הצג רק: ${SL[s]}`} onClick={() => { setStatus(s); go(); setShown(40); }}>
               {s === 'all' ? 'הכול' : SL[s]} {s === 'all' ? inGroup.length : cnt(s)}
             </button>
           ))}
-          <button className={onlyReplied ? 'on' : ''} title="הצג רק מי שענה לך" onClick={() => { setOnlyReplied(!onlyReplied); setShown(40); }}>ענו לי {inGroup.filter((c) => c.repliedAt).length}</button>
-          <button className={withJob ? 'on' : ''} title="הצג רק לקוחות שיש משרה פתוחה בחברה שלהם" onClick={() => { setWithJob(!withJob); setShown(40); }}>רק עם משרה {inGroup.filter(hasOpen).length}</button>
+          <button className={onlyReplied ? 'on' : ''} title="הצג רק מי שענה לך" onClick={() => { setOnlyReplied(!onlyReplied); go(); setShown(40); }}>ענו לי {inGroup.filter((c) => c.repliedAt).length}</button>
+          <button className={withJob ? 'on' : ''} title="הצג רק לקוחות שיש משרה פתוחה בחברה שלהם" onClick={() => { setWithJob(!withJob); go(); setShown(40); }}>רק עם משרה {inGroup.filter(hasOpen).length}</button>
         </div>
       </div>
 
+      <div ref={listRef} style={{ scrollMarginTop: 8 }} />
       {mode === 'jobs' ? <JobsFeed feed={feed} clients={clients} q={q} shown={shown} setShown={setShown} friendsOf={friendsOf} /> : (
       <div className="hx-card hx-table">
         <div className="hx-cnt">מציג <b>{Math.min(shown, rows.length)}</b> מתוך <b>{rows.length}</b>
