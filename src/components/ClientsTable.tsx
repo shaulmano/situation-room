@@ -255,23 +255,26 @@ function ActionPanel({ c, onDone, forJob }: { c: Client; onDone: () => void; for
  * אין כאן מצב משלו. כל כפתור כותב לאותה משרה ולאותו לקוח כמו במסך "לפי לקוח",
  * והרענון טוען את שניהם מחדש מאותם נתונים.
  */
-function JobsFeed({ feed, clients, q, shown, setShown, friendsOf }: {
-  feed: FeedItem[]; clients: Client[]; q: string; shown: number; setShown: (n: number) => void; friendsOf: (c: Client) => Client[];
+function JobsFeed({ feed, clients, q, group, status, shown, setShown, friendsOf }: {
+  feed: FeedItem[]; clients: Client[]; q: string; group: Group; status: 'all' | keyof typeof SL; shown: number; setShown: (n: number) => void; friendsOf: (c: Client) => Client[];
 }) {
   const [act, setAct] = useState<string | null>(null);
   const byId = useMemo(() => new Map(clients.map((c) => [c.id, c])), [clients]);
   const s = q.trim().toLowerCase();
-  const rows = feed.filter((f) => !s || `${f.job.title} ${f.company} ${f.clientIds.map((id) => byId.get(id)?.name ?? '').join(' ')}`.toLowerCase().includes(s));
+  // 27.11.2026, שאול: "מנהלי פיתוח 59 ועדיין מראה 79". הבוררים של סוג וחברון הוצגו גם כאן ולא סיננו כלום.
+  // משרה נשארת אם בחברה שלה יש לפחות לקוח אחד מהסוג שנבחר (ובחברון שנבחר).
+  const fit = (f: FeedItem) => f.clientIds.some((id) => { const c = byId.get(id); return !!c && c.group === group && (status === 'all' || c.status === status); });
+  const hiddenByFilter = feed.filter((f) => !fit(f)).length;
+  const rows = feed.filter(fit).filter((f) => !s || `${f.job.title} ${f.company} ${f.clientIds.map((id) => byId.get(id)?.name ?? '').join(' ')}`.toLowerCase().includes(s));
   const ds = rows.map((f) => f.job.posted ?? f.job.seenAt ?? '').filter(Boolean).sort();
-  const noClient = rows.filter((f) => f.clientIds.length === 0).length;
   return (
     <div className="hx-card hx-table">
       <div className="hx-cnt">מציג <b>{Math.min(shown, rows.length)}</b> מתוך <b>{rows.length}</b> משרות פתוחות</div>
       <div className="hx-note">
         מסודר מהחדש לישן לפי תאריך הפרסום, ובתוך אותו יום לפי מועד הכניסה למערכת. משרות פתוחות ולא מוגשות מ-30 הימים האחרונים.
         {ds.length ? ` מהחדשה (${jobAge(ds[ds.length - 1].slice(0, 10), null)?.label}) עד הישנה (${jobAge(ds[0].slice(0, 10), null)?.label}).` : ''}
-        {' '}{noClient} מהן בחברה בלי אף לקוח, ו-{rows.filter((f) => f.job.priorApplied !== null).length} מסומנות "כבר הגשת לאותה משרה" (אותה חברה ואותה כותרת, מלוח אחר). אין כאן מצב משלו: כל פעולה נרשמת על אותה משרה ועל אותו לקוח כמו במסך "לפי לקוח", והמסך ההוא מתעדכן איתה.
-        {s ? ` סינון פעיל: חיפוש "${q.trim()}".` : ' אין סינון פעיל.'}
+        {' '}{rows.filter((f) => f.job.priorApplied !== null).length} מסומנות "כבר הגשת לאותה משרה" (אותה חברה ואותה כותרת, מלוח אחר). אין כאן מצב משלו: כל פעולה נרשמת על אותה משרה ועל אותו לקוח כמו במסך "לפי לקוח", והמסך ההוא מתעדכן איתה.
+        {` סינון פעיל: חברות שיש בהן לקוח מסוג ${GL[group]}${status === 'all' ? '' : ` (${SL[status]})`}, ${hiddenByFilter} משרות אחרות מוסתרות (חברות בלי לקוח כזה).`}{s ? ` וגם חיפוש "${q.trim()}".` : ''}
       </div>
       {rows.slice(0, shown).map((f) => {
         const j = f.job;
@@ -443,7 +446,7 @@ function Inner({ clients, feed, initial }: { clients: Client[]; feed: FeedItem[]
       </div>
 
       <div ref={listRef} style={{ scrollMarginTop: 8 }} />
-      {mode === 'jobs' ? <JobsFeed feed={feed} clients={clients} q={q} shown={shown} setShown={setShown} friendsOf={friendsOf} /> : (
+      {mode === 'jobs' ? <JobsFeed feed={feed} clients={clients} q={q} group={group} status={status} shown={shown} setShown={setShown} friendsOf={friendsOf} /> : (
       <div className="hx-card hx-table">
         <div className="hx-cnt">מציג <b>{Math.min(shown, rows.length)}</b> מתוך <b>{rows.length}</b>
           {rows.length < inGroup.length && <span className="mut"> · {inGroup.length - rows.length} מוסתרים בגלל הסינון, מתוך {inGroup.length} בסוג הזה</span>}</div>
