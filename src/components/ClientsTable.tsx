@@ -255,17 +255,13 @@ function ActionPanel({ c, onDone, forJob }: { c: Client; onDone: () => void; for
  * אין כאן מצב משלו. כל כפתור כותב לאותה משרה ולאותו לקוח כמו במסך "לפי לקוח",
  * והרענון טוען את שניהם מחדש מאותם נתונים.
  */
-function JobsFeed({ feed, clients, q, group, status, shown, setShown, friendsOf }: {
-  feed: FeedItem[]; clients: Client[]; q: string; group: Group; status: 'all' | keyof typeof SL; shown: number; setShown: (n: number) => void; friendsOf: (c: Client) => Client[];
+function JobsFeed({ feed, clients, q, shown, setShown, friendsOf }: {
+  feed: FeedItem[]; clients: Client[]; q: string; shown: number; setShown: (n: number) => void; friendsOf: (c: Client) => Client[];
 }) {
   const [act, setAct] = useState<string | null>(null);
   const byId = useMemo(() => new Map(clients.map((c) => [c.id, c])), [clients]);
   const s = q.trim().toLowerCase();
-  // 27.11.2026, שאול: "מנהלי פיתוח 59 ועדיין מראה 79". הבוררים של סוג וחברון הוצגו גם כאן ולא סיננו כלום.
-  // משרה נשארת אם בחברה שלה יש לפחות לקוח אחד מהסוג שנבחר (ובחברון שנבחר).
-  const fit = (f: FeedItem) => f.clientIds.some((id) => { const c = byId.get(id); return !!c && c.group === group && (status === 'all' || c.status === status); });
-  const hiddenByFilter = feed.filter((f) => !fit(f)).length;
-  const rows = feed.filter(fit).filter((f) => !s || `${f.job.title} ${f.company} ${f.clientIds.map((id) => byId.get(id)?.name ?? '').join(' ')}`.toLowerCase().includes(s));
+  const rows = feed.filter((f) => !s || `${f.job.title} ${f.company} ${f.clientIds.map((id) => byId.get(id)?.name ?? '').join(' ')}`.toLowerCase().includes(s));
   const ds = rows.map((f) => f.job.posted ?? f.job.seenAt ?? '').filter(Boolean).sort();
   return (
     <div className="hx-card hx-table">
@@ -274,7 +270,7 @@ function JobsFeed({ feed, clients, q, group, status, shown, setShown, friendsOf 
         מסודר מהחדש לישן לפי תאריך הפרסום, ובתוך אותו יום לפי מועד הכניסה למערכת. משרות פתוחות ולא מוגשות מ-30 הימים האחרונים.
         {ds.length ? ` מהחדשה (${jobAge(ds[ds.length - 1].slice(0, 10), null)?.label}) עד הישנה (${jobAge(ds[0].slice(0, 10), null)?.label}).` : ''}
         {' '}{rows.filter((f) => f.job.priorApplied !== null).length} מסומנות "כבר הגשת לאותה משרה" (אותה חברה ואותה כותרת, מלוח אחר). אין כאן מצב משלו: כל פעולה נרשמת על אותה משרה ועל אותו לקוח כמו במסך "לפי לקוח", והמסך ההוא מתעדכן איתה.
-        {` סינון פעיל: חברות שיש בהן לקוח מסוג ${GL[group]}${status === 'all' ? '' : ` (${SL[status]})`}, ${hiddenByFilter} משרות אחרות מוסתרות (חברות בלי לקוח כזה).`}{s ? ` וגם חיפוש "${q.trim()}".` : ''}
+        {s ? ` סינון פעיל: חיפוש "${q.trim()}".` : ' אין סינון פעיל.'}
       </div>
       {rows.slice(0, shown).map((f) => {
         const j = f.job;
@@ -398,6 +394,8 @@ function Inner({ clients, feed, initial }: { clients: Client[]; feed: FeedItem[]
 
   return (
     <>
+      {/* 27.11.2026, שאול: "המידע ממש לא מאורגן". בתצוגת "לפי משרה" אין אריחי לקוחות, סרגל חברון ובוררי סוג: רק משרות. */}
+      {mode === 'clients' && (<>
       <div className="hx-kpis">
         <button className={'hx-kpi hx-kpib' + (!withJob && !onlyWaiting && !onlyApplied && !onlyReplied && status === 'all' && !q ? ' on' : '')} title="מנקה את כל הסינונים ומציג את כל הלקוחות בקבוצה" onClick={() => { setWithJob(false); setOnlyWaiting(false); setOnlyApplied(false); setOnlyReplied(false); setStatus('all'); setQ(''); go(); setShown(40); }}><small>לקוחות בקבוצה</small><b>{inGroup.length}</b></button>
         <button className={'hx-kpi hx-kpib' + (withJob ? ' on' : '')} title="הצג רק לקוחות שיש משרה פתוחה בחברה שלהם. לחיצה נוספת מבטלת" onClick={() => tile('job')}><small>עם משרה פתוחה</small><b>{inGroup.filter(hasOpen).length}</b></button>
@@ -419,6 +417,7 @@ function Inner({ clients, feed, initial }: { clients: Client[]; feed: FeedItem[]
           <span className="mut">{Math.round((cnt('friend') / total) * 100)}% חברים</span>
         </div>
       </div>
+      </>)}
 
       <div className="hx-card hx-filters">
         <input className="hx-search" placeholder="חיפוש לפי שם, חברה, תפקיד או משרה…" value={q}
@@ -427,6 +426,7 @@ function Inner({ clients, feed, initial }: { clients: Client[]; feed: FeedItem[]
           <button className={mode === 'clients' ? 'on' : ''} title="רשימת הלקוחות, ומשרות כל אחד מהם" onClick={() => { go(); setMode('clients'); setShown(40); }}>לפי לקוח {clients.length}</button>
           <button className={mode === 'jobs' ? 'on' : ''} title="כל המשרות הפתוחות מהחדשה לישנה, ובכל אחת הלקוחות בחברה שלה" onClick={() => { go(); setMode('jobs'); setShown(40); }}>לפי משרה {feed.length}</button>
         </div>
+        {mode === 'clients' && (<>
         <div className="hx-chips"><span className="lab">סוג</span>
           {(['recruiter', 'dev', 'other'] as Group[]).map((g) => (
             <button key={g} className={group === g ? 'on' : ''} title={`הצג לקוחות מסוג: ${GL[g]}`} onClick={() => { setGroup(g); go(); setShown(40); }}>
@@ -443,10 +443,11 @@ function Inner({ clients, feed, initial }: { clients: Client[]; feed: FeedItem[]
           <button className={onlyReplied ? 'on' : ''} title="הצג רק מי שענה לך" onClick={() => { setOnlyReplied(!onlyReplied); go(); setShown(40); }}>ענו לי {inGroup.filter((c) => c.repliedAt).length}</button>
           <button className={withJob ? 'on' : ''} title="הצג רק לקוחות שיש משרה פתוחה בחברה שלהם" onClick={() => { setWithJob(!withJob); go(); setShown(40); }}>רק עם משרה {inGroup.filter(hasOpen).length}</button>
         </div>
+        </>)}
       </div>
 
       <div ref={listRef} style={{ scrollMarginTop: 8 }} />
-      {mode === 'jobs' ? <JobsFeed feed={feed} clients={clients} q={q} group={group} status={status} shown={shown} setShown={setShown} friendsOf={friendsOf} /> : (
+      {mode === 'jobs' ? <JobsFeed feed={feed} clients={clients} q={q} shown={shown} setShown={setShown} friendsOf={friendsOf} /> : (
       <div className="hx-card hx-table">
         <div className="hx-cnt">מציג <b>{Math.min(shown, rows.length)}</b> מתוך <b>{rows.length}</b>
           {rows.length < inGroup.length && <span className="mut"> · {inGroup.length - rows.length} מוסתרים בגלל הסינון, מתוך {inGroup.length} בסוג הזה</span>}</div>
