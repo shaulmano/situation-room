@@ -38,11 +38,37 @@ export default function CrmShell({ children }: { children: React.ReactNode }) {
       const t = (el.textContent || '').replace(/\s+/g, ' ').trim();
       if (t) el.title = t.slice(0, 120);
     });
-    fill();
+    // כל הכפתורים של בלוק בשורה אחת (שאול, 26.11.2026). ה-CSS לא יודע כמה טקסט יש, ולכן
+    // שורה שירדה לשתי שורות מקבלת גופן קטן יותר עד שהיא נכנסת. בלוק רחב באמצע השורה
+    // (בחירת מכר, הערה) מפריד בין קטעים, וכל קטע נמדד לבד. מינימום 8px; אם גם אז לא נכנס,
+    // הכפתורים מתכווצים והטקסט נחתך עם tooltip, אבל לא יורד שורה.
+    const ROW = '.cn-flow,.cn-acts,.gold-acts,.reach-acts,.filters,.hx-acts,.hx-chips,.cn-line,.hx-gos,.hx-leg';
+    const fit = () => document.querySelectorAll<HTMLElement>(ROW).forEach((row) => {
+      if (!row.offsetWidth) return;
+      const segs: HTMLElement[][] = [[]];
+      for (const k of Array.from(row.children) as HTMLElement[]) {
+        if (/^(BUTTON|A|SUMMARY)$/.test(k.tagName)) segs[segs.length - 1].push(k);
+        else if (segs[segs.length - 1].length) segs.push([]);
+      }
+      for (const kids of segs) {
+        if (kids.length < 2) continue;
+        const wrapped = () => { const t = kids.map((k) => k.offsetTop); return Math.max(...t) - Math.min(...t) > 8; };
+        if (!wrapped()) continue;
+        let size = parseFloat(getComputedStyle(kids[0]).fontSize) || 12;
+        while (wrapped() && size > 8) { size -= 0.5; kids.forEach((k) => k.style.setProperty('font-size', size + 'px', 'important')); }
+        if (wrapped()) {
+          row.style.setProperty('flex-wrap', 'nowrap', 'important');
+          kids.forEach((k) => { k.style.setProperty('min-width', '0', 'important'); k.style.setProperty('overflow', 'hidden'); k.style.setProperty('text-overflow', 'ellipsis'); });
+        }
+      }
+    });
+    const run = () => { fill(); fit(); };
+    run();
     let timer: ReturnType<typeof setTimeout> | null = null;
-    const mo = new MutationObserver(() => { if (timer) clearTimeout(timer); timer = setTimeout(fill, 150); });
+    const mo = new MutationObserver(() => { if (timer) clearTimeout(timer); timer = setTimeout(run, 150); });
     mo.observe(document.body, { childList: true, subtree: true });
-    return () => { mo.disconnect(); if (timer) clearTimeout(timer); };
+    window.addEventListener('resize', run);
+    return () => { mo.disconnect(); window.removeEventListener('resize', run); if (timer) clearTimeout(timer); };
   }, [path]);
   // מסך ההתחברות וחזרת ההתחברות בלי תפריט.
   if (path.startsWith('/login') || path.startsWith('/auth')) return <>{children}</>;
