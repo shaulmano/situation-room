@@ -482,8 +482,9 @@ function Inner({ clients, feed, initial }: { clients: Client[]; feed: FeedItem[]
         <input className="hx-search" placeholder="חיפוש לפי שם, חברה, תפקיד או משרה…" value={q}
           onChange={(e) => { setQ(e.target.value); setShown(40); }} />
         <div className="hx-chips"><span className="lab">תצוגה</span>
-          <button className={mode === 'clients' ? 'on' : ''} title="רשימת הלקוחות, ומשרות כל אחד מהם" onClick={() => { go(); setMode('clients'); setShown(40); }}>לפי לקוח {clients.length}</button>
-          <button className={mode === 'jobs' ? 'on' : ''} title="כל המשרות הפתוחות מהחדשה לישנה, ובכל אחת הלקוחות בחברה שלה" onClick={() => { go(); setMode('jobs'); setShown(40); }}>לפי משרה {feed.length}</button>
+          <button className={mode === 'clients' ? 'on' : ''} title="רשימת הלקוחות, ומשרות כל אחד מהם" onClick={() => { go(); setNewOnly(false); setMode('clients'); setShown(40); }}>לפי לקוח {clients.length}</button>
+          <button className={mode === 'jobs' && !newOnly ? 'on' : ''} title="כל המשרות הפתוחות מהחדשה לישנה, ובכל אחת הלקוחות בחברה שלה" onClick={() => { go(); setNewOnly(false); setMode('jobs'); setShown(40); }}>לפי משרה {feed.length}</button>
+          <button className={mode === 'jobs' && newOnly ? 'on' : ''} title="רק משרות שנכנסו לחדר המצב ב-24 השעות האחרונות, מהחדשה לישנה" onClick={() => { go(); setNewOnly(true); setMode('jobs'); setShown(40); }}>חדשות {newCount}</button>
         </div>
         {mode === 'clients' && (<>
         <div className="hx-chips"><span className="lab">סוג</span>
@@ -504,10 +505,6 @@ function Inner({ clients, feed, initial }: { clients: Client[]; feed: FeedItem[]
         </div>
         </>)}
         {mode === 'jobs' && (<>
-        <div className="hx-chips"><span className="lab">נכנסו</span>
-          <button className={!newOnly ? 'on' : ''} title="כל המשרות הפתוחות" onClick={() => { setNewOnly(false); setShown(40); }}>הכול {feed.length}</button>
-          <button className={newOnly ? 'on' : ''} title="רק משרות שנכנסו לחדר המצב ב-24 השעות האחרונות" onClick={() => { setNewOnly(true); setShown(40); }}>חדשות (24 שעות) {newCount}</button>
-        </div>
           <div className="hx-chips"><span className="lab">סוג</span>
             {(['all', 'recruiter', 'dev', 'other', 'none'] as const).map((g) => (
               <button key={g} className={jobGroup === g ? 'on' : ''} title={g === 'all' ? 'כל המשרות הפתוחות' : g === 'none' ? 'משרות בחברות שאין בהן אף לקוח' : `משרות בחברות שיש בהן לקוח מסוג: ${GL[g]}`}
@@ -524,6 +521,9 @@ function Inner({ clients, feed, initial }: { clients: Client[]; feed: FeedItem[]
       </div>
 
       <div ref={listRef} style={{ scrollMarginTop: 8 }} />
+      {mode === 'jobs' && (
+        <button className="hx-b hx-back" title="חוזר לרשימת הלקוחות ומנקה את הסינונים" onClick={() => { setNewOnly(false); setJobGroup('all'); setStatus('all'); setQ(''); go(); setMode('clients'); setShown(40); window.scrollTo({ top: 0 }); }}>← חזרה לכל הלקוחות</button>
+      )}
       {mode === 'jobs' ? <JobsFeed feed={jfeed} clients={clients} q={q} filterNote={(newOnly ? ' נכנסו ב-24 השעות האחרונות.' : '') + (jobGroup === 'all' ? '' : jobGroup === 'none' ? ' סוג: חברות בלי לקוח.' : ` סוג: ${GL[jobGroup]}.`) + (status === 'all' ? '' : ` חברות: ${SL[status]}.`)} shown={shown} setShown={setShown} friendsOf={friendsOf} /> : (
       <div className="hx-card hx-table">
         <div className="hx-cnt">מציג <b>{Math.min(shown, rows.length)}</b> מתוך <b>{rows.length}</b>

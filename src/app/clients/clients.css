@@ -211,3 +211,5 @@
 .hx-prior .hx-tag{color:#2F6B2B;background:#cfe6cb}
 .hx-undo{display:flex;align-items:center;gap:10px;max-width:92vw;white-space:normal}
 .hx-undo .hx-b{background:#fff;color:var(--ink);border-color:#fff;width:auto;flex:none}
+
+.hx-back{display:flex!important;width:100%!important;justify-content:center;margin:0 0 8px!important;min-height:40px;white-space:nowrap}
