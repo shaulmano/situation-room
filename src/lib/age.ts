@@ -29,11 +29,14 @@ export function jobAge(posted: string | null, firstSeen: string | null): Age | n
   const t = new Date(exact ? `${posted}T00:00:00` : (from as string)).getTime();
   if (Number.isNaN(t)) return null;
 
-  const days = Math.max(0, Math.floor((Date.now() - t) / DAY));
+  // יום קלנדרי בשעון ישראל, לא 24 שעות: אחרת "נמצא היום" ישב ליד תאריך של אתמול.
+  const il = (ms: number) => new Date(ms).toLocaleDateString('en-CA', { timeZone: 'Asia/Jerusalem' }); // YYYY-MM-DD
+  const calDays = (ymd: string) => Math.round((Date.parse(il(Date.now())) - Date.parse(ymd)) / DAY);
+  const ymd = exact ? (posted as string).slice(0, 10) : il(t);
+  const days = Math.max(0, calDays(ymd));
   const verb = exact ? 'פורסם' : 'נמצא';
 
-  const d = new Date(t);
-  const when = ` · ${d.getDate()}.${d.getMonth() + 1}`;
+  const when = ` · ${Number(ymd.slice(8, 10))}.${Number(ymd.slice(5, 7))}`;
   const label =
     (days === 0 ? (exact ? 'פורסם היום' : 'נמצא היום')
     : days === 1 ? `${verb} אתמול`
