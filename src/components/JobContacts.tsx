@@ -171,7 +171,7 @@ export default function JobContacts(
       {hidden > 0 && (
         <button
           type="button"
-          style={{ ...button, marginTop: 8 }}
+          style={{ ...button, marginTop: 8, minHeight: 44, padding: '0 14px' }}
           onClick={() => setShowAll(true)}
         >
           הצג עוד {hidden}
@@ -180,7 +180,7 @@ export default function JobContacts(
       {showAll && ranked.length > cap && (
         <button
           type="button"
-          style={{ ...button, marginTop: 8 }}
+          style={{ ...button, marginTop: 8, minHeight: 44, padding: '0 14px' }}
           onClick={() => setShowAll(false)}
         >
           הצג רק את {cap === 1 ? 'הראשון' : `${cap} הראשונים`}

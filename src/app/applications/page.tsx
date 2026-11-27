@@ -24,7 +24,7 @@ const MONTHS = ['ינו', 'פבר', 'מרץ', 'אפר', 'מאי', 'יונ', 'י�
 export default async function Applications({
   searchParams,
 }: {
-  searchParams: { status?: string; range?: string; month?: string; q?: string };
+  searchParams: { status?: string; range?: string; month?: string; q?: string; limit?: string };
 }) {
   const status = searchParams.status ?? '';
   const range = searchParams.range ?? '';
@@ -32,6 +32,8 @@ export default async function Applications({
   // והחתך שהיא פותחת ייגזרו מאותו ערך ולא משני חישובים שיכולים להיפרד.
   const month = searchParams.month ?? '';
   const q = searchParams.q ?? '';
+  // 27.11.2026: "הצג עוד" מגדיל את הרשימה ב-300 בכל לחיצה, ורק לפי בקשה, כי כל שורה מושכת אנשי קשר.
+  const extra = Math.min(Math.max(parseInt(searchParams.limit ?? '', 10) || 0, 0), 3000);
 
   const { data } = await serverClient()
     .from('applications')
@@ -75,7 +77,7 @@ export default async function Applications({
     : '';
   // רק מה שמוצג על המסך. שליפת אנשי קשר לכל 535 ההגשות בכל רינדור היא
   // בדיוק מה שרוקן את תקציב ה-IO ב-12.11.
-  const visible = rows.slice(0, filtered ? 300 : 25);
+  const visible = rows.slice(0, extra || (filtered ? 300 : 25));
   const warmKeys = [...new Set(visible.map((a) => companyKey(a.company)).filter(Boolean))];
   const warmRows = warmKeys.length
     ? await contactsByCompanyKeys(
@@ -335,9 +337,12 @@ export default async function Applications({
           );
         })}
       </div>
-      {rows.length > (filtered ? 300 : 25) && (
+      {rows.length > visible.length && (
         <p className="screen-note">
-          מוצגות {filtered ? 300 : 25} מתוך {rows.length}. הקש על חודש בגרף, או חפש חברה.
+          מוצגות {visible.length} מתוך {rows.length}, מהחדש לישן. הקש על חודש בגרף, חפש חברה, או הצג עוד.
+          {' '}<Link className="cn-b" title={`מציג עוד ${Math.min(300, rows.length - visible.length)} הגשות ישנות יותר`}
+            href={`/applications?${new URLSearchParams({ ...(searchParams as Record<string, string>), limit: String(visible.length + 300) }).toString()}`}>
+            הצג עוד {Math.min(300, rows.length - visible.length)}</Link>
         </p>
       )}
     </>
