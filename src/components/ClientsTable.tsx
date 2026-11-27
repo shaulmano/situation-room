@@ -408,15 +408,19 @@ function Inner({ clients, feed, initial }: { clients: Client[]; feed: FeedItem[]
     .sort((a, b) => ['recruiter', 'dev', 'other'].indexOf(a.group) - ['recruiter', 'dev', 'other'].indexOf(b.group) || a.name.localeCompare(b.name)));
 
   const inGroup = useMemo(() => clients.filter((c) => c.group === group), [clients, group]);
+  // תנאי אחד לרשימה ולכל מספר על כל צ'יפ: המספר הוא מה שיוצג אם לוחצים עליו, עם כל שאר הסינונים הפעילים.
+  const passes = (c: Client, o: { status?: 'all' | keyof typeof SL; withJob?: boolean; onlyReplied?: boolean } = {}) => {
+    const st = o.status ?? status, wj = o.withJob ?? withJob, rp = o.onlyReplied ?? onlyReplied, s = q.trim().toLowerCase();
+    return (st === 'all' || c.status === st)
+      && (!wj || hasOpen(c))
+      && (!rp || !!c.repliedAt)
+      && (!onlyWaiting || isWaiting(c))
+      && (!onlyApplied || (c.stage >= 4 && c.stage < 7))
+      && (!s || `${c.name} ${c.company ?? ''} ${c.title ?? ''} ${c.jobs.map((j) => j.title).join(' ')}`.toLowerCase().includes(s));
+  };
   const rows = useMemo(() => {
-    const s = q.trim().toLowerCase();
     return inGroup
-      .filter((c) => (status === 'all' || c.status === status)
-        && (!withJob || hasOpen(c))
-        && (!onlyReplied || !!c.repliedAt)
-        && (!onlyWaiting || isWaiting(c))
-        && (!onlyApplied || (c.stage >= 4 && c.stage < 7))
-        && (!s || `${c.name} ${c.company ?? ''} ${c.title ?? ''} ${c.jobs.map((j) => j.title).join(' ')}`.toLowerCase().includes(s)))
+      .filter((c) => passes(c))
       // מי שענה נשאר גבוה גם אחרי שטופל: ראשון מי שמחכה לך, אחריו הענייה האחרונה.
       .sort((a, b) => Number(b.urgent) - Number(a.urgent) || b.activityAt.localeCompare(a.activityAt) || a.name.localeCompare(b.name));
   }, [inGroup, status, withJob, onlyReplied, onlyWaiting, onlyApplied, q]);
@@ -447,7 +451,8 @@ function Inner({ clients, feed, initial }: { clients: Client[]; feed: FeedItem[]
   const base = newOnly ? feed.filter(isNew) : feed;
   const jgCount = (g: 'all' | Group | 'none') => base.filter((f) => g === 'all' && status === 'all' ? true : jfit(f, g, status)).length;
   const jsCount = (st: 'all' | keyof typeof SL) => base.filter((f) => jobGroup === 'all' && st === 'all' ? true : jfit(f, jobGroup, st)).length;
-  const cnt = (k: 'none' | 'requested' | 'friend') => inGroup.filter((c) => c.status === k).length;
+  const cnt = (k: 'none' | 'requested' | 'friend') => inGroup.filter((c) => passes(c, { status: k })).length;
+  const groupCount = (g: Group) => clients.filter((c) => c.group === g && passes(c)).length;
   const total = inGroup.length || 1;
   const waiting = inGroup.filter(isWaiting).length;
 
@@ -483,7 +488,7 @@ function Inner({ clients, feed, initial }: { clients: Client[]; feed: FeedItem[]
         <input className="hx-search" placeholder="חיפוש לפי שם, חברה, תפקיד או משרה…" value={q}
           onChange={(e) => { setQ(e.target.value); setShown(40); }} />
         <div className="hx-chips"><span className="lab">תצוגה</span>
-          <button className={mode === 'clients' ? 'on' : ''} title="רשימת הלקוחות, ומשרות כל אחד מהם" onClick={() => { go(); setNewOnly(false); setMode('clients'); setShown(40); }}>לפי לקוח {clients.length}</button>
+          <button className={mode === 'clients' ? 'on' : ''} title="רשימת הלקוחות, ומשרות כל אחד מהם" onClick={() => { go(); setNewOnly(false); setMode('clients'); setShown(40); }}>לפי לקוח</button>
           <button className={mode === 'jobs' && !newOnly ? 'on' : ''} title="כל המשרות הפתוחות מהחדשה לישנה, ובכל אחת הלקוחות בחברה שלה" onClick={() => { go(); setNewOnly(false); setMode('jobs'); setShown(40); }}>לפי משרה {feed.length}</button>
           <button className={mode === 'jobs' && newOnly ? 'on' : ''} title="רק משרות שנכנסו לחדר המצב ב-24 השעות האחרונות, מהחדשה לישנה" onClick={() => { go(); setNewOnly(true); setMode('jobs'); setShown(40); }}>חדשות {newCount}</button>
         </div>
@@ -491,18 +496,20 @@ function Inner({ clients, feed, initial }: { clients: Client[]; feed: FeedItem[]
         <div className="hx-chips"><span className="lab">סוג</span>
           {(['recruiter', 'dev', 'other'] as Group[]).map((g) => (
             <button key={g} className={group === g ? 'on' : ''} title={`הצג לקוחות מסוג: ${GL[g]}`} onClick={() => { setGroup(g); go(); setShown(40); }}>
-              {GL[g]} {clients.filter((c) => c.group === g).length}
+              {GL[g]} {groupCount(g)}
             </button>
           ))}
         </div>
         <div className="hx-chips"><span className="lab">חברות</span>
           {(['all', 'none', 'requested', 'friend'] as const).map((s) => (
             <button key={s} className={status === s ? 'on' : ''} title={s === 'all' ? 'כל סטטוסי החברות' : `הצג רק: ${SL[s]}`} onClick={() => { setStatus(s); go(); setShown(40); }}>
-              {s === 'all' ? 'הכול' : SL[s]} {s === 'all' ? inGroup.length : cnt(s)}
+              {s === 'all' ? 'הכול' : SL[s]} {s === 'all' ? inGroup.filter((c) => passes(c, { status: 'all' })).length : cnt(s)}
             </button>
           ))}
-          <button className={onlyReplied ? 'on' : ''} title="הצג רק מי שענה לך" onClick={() => { setOnlyReplied(!onlyReplied); go(); setShown(40); }}>ענו לי {inGroup.filter((c) => c.repliedAt).length}</button>
-          <button className={withJob ? 'on' : ''} title="הצג רק לקוחות שיש משרה פתוחה בחברה שלהם" onClick={() => { setWithJob(!withJob); go(); setShown(40); }}>רק עם משרה {inGroup.filter(hasOpen).length}</button>
+        </div>
+        <div className="hx-chips"><span className="lab">סינון נוסף</span>
+          <button className={onlyReplied ? 'on' : ''} title="הצג רק מי שענה לך" onClick={() => { setOnlyReplied(!onlyReplied); go(); setShown(40); }}>ענו לי {inGroup.filter((c) => passes(c, { onlyReplied: true })).length}</button>
+          <button className={withJob ? 'on' : ''} title="הצג רק לקוחות שיש משרה פתוחה בחברה שלהם" onClick={() => { setWithJob(!withJob); go(); setShown(40); }}>רק עם משרה {inGroup.filter((c) => passes(c, { withJob: true })).length}</button>
         </div>
         </>)}
         {mode === 'jobs' && (<>
