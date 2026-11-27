@@ -209,3 +209,5 @@
 /* משרה שכבר הוגשה אליה (אותה חברה ואותה כותרת בלוח אחר): ירוק בהיר, לקריאה בלבד */
 .hx-prior{background:#E6F2E4!important;border-inline-start:4px solid #5E9A5A}
 .hx-prior .hx-tag{color:#2F6B2B;background:#cfe6cb}
+.hx-undo{display:flex;align-items:center;gap:10px;max-width:92vw;white-space:normal}
+.hx-undo .hx-b{background:#fff;color:var(--ink);border-color:#fff;width:auto;flex:none}

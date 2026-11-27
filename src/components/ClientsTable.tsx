@@ -9,7 +9,7 @@ import { isAgency } from '@/lib/pickContact';
 /** רענון אחרי שמירה: אחד לכל המסך, עם חיווי גלובלי כל עוד השרת טוען מחדש. */
 const Refresh = createContext<(appliedJobId?: string) => void>(() => {});
 /** מסמן הגשה מיד בשני התצוגות, לפני שהשרת ענה. false מחזיר אם השמירה נכשלה. */
-const Local = createContext<(jobId: string, on: boolean) => void>(() => {});
+const Local = createContext<(jobId: string, on: boolean, kind?: 'applied' | 'dismissed', label?: string) => void>(() => {});
 
 type Group = 'recruiter' | 'dev' | 'other';
 const GL: Record<Group, string> = { recruiter: 'מגייסות ו-HR', dev: 'מנהלי פיתוח', other: 'אחרים' };
@@ -32,7 +32,7 @@ function StepButtons({ j, friends }: { j: import('@/lib/clients').ClientJob; fri
   }
   /** הוגשה דרך מכר: ההגשה נרשמת כפנימית, ומי שנבחר מסומן שפנית אליו על המשרה הזאת. */
   async function viaFriend(f: Client | null) {
-    local(j.id, true);
+    local(j.id, true, 'applied', j.title);
     if (!(await post('/api/jobs/applied', { id: j.id, internal: true }))) { local(j.id, false); return; }
     if (f && f.kind === 'contact') {
       setBusy(true);
@@ -45,8 +45,10 @@ function StepButtons({ j, friends }: { j: import('@/lib/clients').ClientJob; fri
   }
   const step = async (body: object) => { if (await post('/api/applications/step', body)) { setClosing(false); refresh(); } };
   if (!j.applied) return (<>
-    <button className="hx-b" disabled={busy} title="סמן שהגשת מועמדות למשרה הזאת ישירות באתר" onClick={async () => { local(j.id, true); if (await post('/api/jobs/applied', { id: j.id })) refresh(); else local(j.id, false); }}>הוגשה ישירות</button>
+    <button className="hx-b" disabled={busy} title="סמן שהגשת מועמדות למשרה הזאת ישירות באתר" onClick={async () => { local(j.id, true, 'applied', j.title); if (await post('/api/jobs/applied', { id: j.id })) refresh(); else local(j.id, false); }}>הוגשה ישירות</button>
     <button className={'hx-b' + (pick ? ' on' : '')} disabled={busy} title="סמן שהגשת דרך מכר או איש HR בחברה, ובחר מי" onClick={() => setPick(!pick)}>הוגשה דרך מכר או HR</button>
+    <button className="hx-b" disabled={busy} title="לא רלוונטית או שאתה לא רוצה להגיש. המשרה יורדת מכל הרשימות, ואפשר לבטל מיד בכפתור שמופיע למטה"
+      onClick={async () => { local(j.id, true, 'dismissed', j.title); if (await post('/api/jobs/dismiss', { id: j.id })) refresh(); else local(j.id, false); }}>לא מגיש</button>
     {pick && (
       <div className="hx-pick row1">
         <small>דרך מי הוגשה? הבחירה מסמנת שפנית אליו על המשרה הזאת.</small>
@@ -255,8 +257,8 @@ function ActionPanel({ c, onDone, forJob }: { c: Client; onDone: () => void; for
  * אין כאן מצב משלו. כל כפתור כותב לאותה משרה ולאותו לקוח כמו במסך "לפי לקוח",
  * והרענון טוען את שניהם מחדש מאותם נתונים.
  */
-function JobsFeed({ feed, clients, q, shown, setShown, friendsOf }: {
-  feed: FeedItem[]; clients: Client[]; q: string; shown: number; setShown: (n: number) => void; friendsOf: (c: Client) => Client[];
+function JobsFeed({ feed, clients, q, filterNote, shown, setShown, friendsOf }: {
+  feed: FeedItem[]; clients: Client[]; q: string; filterNote: string; shown: number; setShown: (n: number) => void; friendsOf: (c: Client) => Client[];
 }) {
   const [act, setAct] = useState<string | null>(null);
   const byId = useMemo(() => new Map(clients.map((c) => [c.id, c])), [clients]);
@@ -270,7 +272,7 @@ function JobsFeed({ feed, clients, q, shown, setShown, friendsOf }: {
         מסודר מהחדש לישן לפי תאריך הפרסום, ובתוך אותו יום לפי מועד הכניסה למערכת. משרות פתוחות ולא מוגשות מ-30 הימים האחרונים.
         {ds.length ? ` מהחדשה (${jobAge(ds[ds.length - 1].slice(0, 10), null)?.label}) עד הישנה (${jobAge(ds[0].slice(0, 10), null)?.label}).` : ''}
         {' '}{rows.filter((f) => f.job.priorApplied !== null).length} מסומנות "כבר הגשת לאותה משרה" (אותה חברה ואותה כותרת, מלוח אחר). אין כאן מצב משלו: כל פעולה נרשמת על אותה משרה ועל אותו לקוח כמו במסך "לפי לקוח", והמסך ההוא מתעדכן איתה.
-        {s ? ` סינון פעיל: חיפוש "${q.trim()}".` : ' אין סינון פעיל.'}
+        {filterNote || s ? ` סינון פעיל:${filterNote}${s ? ` חיפוש "${q.trim()}".` : ''}` : ' אין סינון פעיל.'}
       </div>
       {rows.slice(0, shown).map((f) => {
         const j = f.job;
@@ -315,25 +317,47 @@ export default function ClientsTable(props: { clients: Client[]; feed: FeedItem[
   // ובינתיים הטאב השני הראה את המצב הישן. הסימון נכתב מיד על אותם אובייקטים ששני התצוגות חולקות.
   const [ver, setVer] = useState(0);
   const undo = useRef(new Map<string, () => void>());
-  const local = (jobId: string, on: boolean) => {
+  const [last, setLast] = useState<{ jobId: string; kind: 'applied' | 'dismissed'; label: string } | null>(null);
+  const lastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const local = (jobId: string, on: boolean, kind: 'applied' | 'dismissed' = 'applied', label = '') => {
     if (on) {
       const back: (() => void)[] = [];
-      for (const c of props.clients) for (const j of c.jobs) if (j.id === jobId) {
-        const pa = j.applied, pj = j.stage, pc = c.stage;
-        j.applied = true; if (j.stage < 4) j.stage = 4; if (c.stage < 4) c.stage = 4;
-        back.push(() => { j.applied = pa; j.stage = pj; c.stage = pc; });
-      }
-      for (const f of props.feed) if (f.job.id === jobId) { const pa = f.job.applied; f.job.applied = true; back.push(() => { f.job.applied = pa; }); }
+      const mark = (j: import('@/lib/clients').ClientJob, c?: Client) => {
+        const pa = j.applied, pj = j.stage, pc = c?.stage, pcl = j.closed, pr = j.closeReason;
+        if (kind === 'applied') { j.applied = true; if (j.stage < 4) j.stage = 4; if (c && c.stage < 4) c.stage = 4; }
+        else { j.closed = true; j.closeReason = 'לא מגיש'; }
+        back.push(() => { j.applied = pa; j.stage = pj; j.closed = pcl; j.closeReason = pr; if (c && pc !== undefined) c.stage = pc; });
+      };
+      for (const c of props.clients) for (const j of c.jobs) if (j.id === jobId) mark(j, c);
+      for (const f of props.feed) if (f.job.id === jobId) mark(f.job);
       undo.current.set(jobId, () => back.forEach((b) => b()));
-    } else { undo.current.get(jobId)?.(); undo.current.delete(jobId); }
+      setLast({ jobId, kind, label });
+      if (lastTimer.current) clearTimeout(lastTimer.current);
+      lastTimer.current = setTimeout(() => setLast(null), 15000);
+    } else { undo.current.get(jobId)?.(); undo.current.delete(jobId); setLast(null); }
     setVer((v) => v + 1);
   };
+  async function undoLast() {
+    if (!last) return;
+    const r = await fetch(last.kind === 'applied' ? '/api/applications/undo' : '/api/jobs/dismiss', {
+      method: 'POST', headers: { 'content-type': 'application/json' },
+      body: JSON.stringify(last.kind === 'applied' ? { id: last.jobId } : { id: last.jobId, undo: true }),
+    }).catch(() => null);
+    if (!r || !r.ok) { alert('הביטול לא נשמר. נסה שוב.'); return; }
+    local(last.jobId, false); start(() => router.refresh());
+  }
   const refresh = () => { start(() => router.refresh()); };
   const clients = useMemo(() => props.clients.slice(), [props.clients, ver]);
-  const feed = useMemo(() => props.feed.filter((f) => !f.job.applied), [props.feed, ver]);
+  const feed = useMemo(() => props.feed.filter((f) => !f.job.applied && !f.job.closed), [props.feed, ver]);
   return (
     <Refresh.Provider value={refresh}><Local.Provider value={local}>
       {pending && <div className="hx-toast">נשמר. מרענן את הרשימה…</div>}
+      {last && !pending && (
+        <div className="hx-toast hx-undo">
+          {last.kind === 'applied' ? 'סומנה כהוגשה' : 'סומנה כלא רלוונטית'}{last.label ? `: ${last.label}` : ''}.{' '}
+          <button className="hx-b" title="מחזיר את המשרה בדיוק כמו שהייתה" onClick={undoLast}>בטל</button>
+        </div>
+      )}
       <Inner {...props} clients={clients} feed={feed} />
     </Local.Provider></Refresh.Provider>
   );
@@ -347,6 +371,8 @@ function Inner({ clients, feed, initial }: { clients: Client[]; feed: FeedItem[]
   const [onlyWaiting, setOnlyWaiting] = useState(!!initial?.waiting);
   const [onlyApplied, setOnlyApplied] = useState(false);
   const [q, setQ] = useState('');
+  // 27.11.2026, שאול: "פילטר ופילטר משני, הכל צריך להתעדכן". בתצוגת משרות הבוררים מסננים את המשרות לפי הלקוחות בחברה שלהן.
+  const [jobGroup, setJobGroup] = useState<'all' | Group | 'none'>('all');
   const [view, setView] = useState<{ id: string; tab: 'jobs' | 'edit' } | null>(null);
   const toggle = (id: string, tab: 'jobs' | 'edit') => setView(view?.id === id && view.tab === tab ? null : { id, tab });
   const [act, setAct] = useState<string | null>(null);
@@ -388,6 +414,15 @@ function Inner({ clients, feed, initial }: { clients: Client[]; feed: FeedItem[]
     if (jumpN === 0) return;
     listRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
   }, [jumpN]);
+  const clientById = useMemo(() => new Map(clients.map((c) => [c.id, c])), [clients]);
+  const jfit = (f: FeedItem, g: 'all' | Group | 'none', st: 'all' | keyof typeof SL) => {
+    const cs = f.clientIds.map((id) => clientById.get(id)).filter(Boolean) as Client[];
+    if (g === 'none') return cs.length === 0;
+    return cs.some((c) => (g === 'all' || c.group === g) && (st === 'all' || c.status === st));
+  };
+  const jfeed = useMemo(() => feed.filter((f) => (jobGroup === 'all' && status === 'all') ? true : jfit(f, jobGroup, status)), [feed, jobGroup, status, clientById]);
+  const jgCount = (g: 'all' | Group | 'none') => feed.filter((f) => g === 'all' && status === 'all' ? true : jfit(f, g, status)).length;
+  const jsCount = (st: 'all' | keyof typeof SL) => feed.filter((f) => jobGroup === 'all' && st === 'all' ? true : jfit(f, jobGroup, st)).length;
   const cnt = (k: 'none' | 'requested' | 'friend') => inGroup.filter((c) => c.status === k).length;
   const total = inGroup.length || 1;
   const waiting = inGroup.filter(isWaiting).length;
@@ -444,10 +479,24 @@ function Inner({ clients, feed, initial }: { clients: Client[]; feed: FeedItem[]
           <button className={withJob ? 'on' : ''} title="הצג רק לקוחות שיש משרה פתוחה בחברה שלהם" onClick={() => { setWithJob(!withJob); go(); setShown(40); }}>רק עם משרה {inGroup.filter(hasOpen).length}</button>
         </div>
         </>)}
+        {mode === 'jobs' && (<>
+          <div className="hx-chips"><span className="lab">סוג</span>
+            {(['all', 'recruiter', 'dev', 'other', 'none'] as const).map((g) => (
+              <button key={g} className={jobGroup === g ? 'on' : ''} title={g === 'all' ? 'כל המשרות הפתוחות' : g === 'none' ? 'משרות בחברות שאין בהן אף לקוח' : `משרות בחברות שיש בהן לקוח מסוג: ${GL[g]}`}
+                onClick={() => { setJobGroup(g); go(); setShown(40); }}>{g === 'all' ? 'הכול' : g === 'none' ? 'בלי לקוח' : GL[g]} {jgCount(g)}</button>
+            ))}
+          </div>
+          <div className="hx-chips"><span className="lab">חברות</span>
+            {(['all', 'none', 'requested', 'friend'] as const).map((st) => (
+              <button key={st} className={status === st ? 'on' : ''} title={st === 'all' ? 'כל סטטוסי החברות' : `משרות שיש בחברה שלהן לקוח במצב: ${SL[st]}`}
+                onClick={() => { setStatus(st); go(); setShown(40); }}>{st === 'all' ? 'הכול' : SL[st]} {jsCount(st)}</button>
+            ))}
+          </div>
+        </>)}
       </div>
 
       <div ref={listRef} style={{ scrollMarginTop: 8 }} />
-      {mode === 'jobs' ? <JobsFeed feed={feed} clients={clients} q={q} shown={shown} setShown={setShown} friendsOf={friendsOf} /> : (
+      {mode === 'jobs' ? <JobsFeed feed={jfeed} clients={clients} q={q} filterNote={(jobGroup === 'all' ? '' : jobGroup === 'none' ? ' סוג: חברות בלי לקוח.' : ` סוג: ${GL[jobGroup]}.`) + (status === 'all' ? '' : ` חברות: ${SL[status]}.`)} shown={shown} setShown={setShown} friendsOf={friendsOf} /> : (
       <div className="hx-card hx-table">
         <div className="hx-cnt">מציג <b>{Math.min(shown, rows.length)}</b> מתוך <b>{rows.length}</b>
           {rows.length < inGroup.length && <span className="mut"> · {inGroup.length - rows.length} מוסתרים בגלל הסינון, מתוך {inGroup.length} בסוג הזה</span>}</div>
