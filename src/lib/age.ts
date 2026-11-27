@@ -32,10 +32,12 @@ export function jobAge(posted: string | null, firstSeen: string | null): Age | n
   const days = Math.max(0, Math.floor((Date.now() - t) / DAY));
   const verb = exact ? 'פורסם' : 'נמצא';
 
+  const d = new Date(t);
+  const when = ` · ${d.getDate()}.${d.getMonth() + 1}`;
   const label =
-    days === 0 ? (exact ? 'פורסם היום' : 'נמצא היום')
+    (days === 0 ? (exact ? 'פורסם היום' : 'נמצא היום')
     : days === 1 ? `${verb} אתמול`
-    : `${verb} לפני ${days} ימים`;
+    : `${verb} לפני ${days} ימים`) + when;
 
   // The bands are the ones the scoring already uses, so a row and its score
   // cannot tell different stories about the same posting.
@@ -43,4 +45,15 @@ export function jobAge(posted: string | null, firstSeen: string | null): Age | n
     days <= 2 ? 'fresh' : days <= 7 ? 'ok' : days <= 21 ? 'warn' : 'crit';
 
   return { label, tone };
+}
+
+/**
+ * מפתח מיון "מהחדש לישן" לפי תאריך הפרסום (27.11.2026, שאול). תאריך הפרסום הוא יום
+ * בלי שעה, ולכן בתוך אותו יום מסדרים לפי מועד הכניסה למערכת. משרה בלי תאריך פרסום
+ * נמדדת לפי מועד הכניסה.
+ */
+export function byPublished(a: { posted?: string | null; first_seen?: string | null }, b: { posted?: string | null; first_seen?: string | null }): number {
+  const day = (j: { posted?: string | null; first_seen?: string | null }) =>
+    new Date(j.posted ? `${j.posted}T00:00:00` : (j.first_seen ?? 0)).setHours(0, 0, 0, 0);
+  return day(b) - day(a) || new Date(b.first_seen ?? 0).getTime() - new Date(a.first_seen ?? 0).getTime();
 }

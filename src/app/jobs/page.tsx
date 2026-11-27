@@ -2,7 +2,7 @@ import Link from 'next/link';
 import { serverClient } from '@/lib/server';
 import { goldKeySet, goldGenericMessage } from '@/lib/gold';
 import { applyTarget, directLinks } from '@/lib/apply';
-import { jobAge } from '@/lib/age';
+import { jobAge, byPublished } from '@/lib/age';
 import { companyKey, type WarmContact, contactsByCompanyKeys } from '@/lib/contacts';
 import { duplicateCandidates, postingKey } from '@/lib/dedupe';
 import { loadApplied, priorApplication } from '@/lib/priorApplication';
@@ -135,9 +135,7 @@ export default async function Jobs({
       });
       return { ...order[0], copies: order };
     })
-    .sort(
-      (a, b) => new Date(b.jobs.first_seen).getTime() - new Date(a.jobs.first_seen).getTime()
-    );
+    .sort((a, b) => byPublished(a.jobs, b.jobs));
   // cv_id already classifies the posting: the CV that scored it highest is the
   // job family it belongs to, so no second taxonomy is needed.
   // המאגר שהצ'יפים סופרים: אחרי שהוסרו מה שהוגש ומה שנסגר ואחרי הקיבוץ,
@@ -310,9 +308,9 @@ export default async function Jobs({
         {showAll
           ? 'המשרות האחרונות במאגר (עד 5000 שורות התאמה, כלומר כאלף משרות), כולל ישנות ולא רלוונטיות. משרה ישנה יותר מהטווח שמוצג כאן לא נמצאת במסך הזה.'
           : `נמצאו ${days === 1 ? 'היום' : `ב־${days} הימים האחרונים`} ולא הגשת אליהן. משרה שסגרת ב־✕ לא חוזרת.`}
-        {' '}מסודר מהחדש לישן לפי מועד הכניסה למערכת.
+        {' '}מסודר מהחדש לישן לפי תאריך הפרסום (ובתוך אותו יום לפי מועד הכניסה למערכת). משרה בלי תאריך פרסום נמדדת לפי מועד הכניסה.
         {rows.length > 0 && (() => {
-          const t = (m: any) => new Date(m.jobs.first_seen).getTime();
+          const t = (m: any) => new Date(m.jobs.posted ? `${m.jobs.posted}T00:00:00` : m.jobs.first_seen).getTime();
           const ago = (ms: number) => { const h = Math.max(0, Math.round((Date.now() - ms) / 36e5)); return h < 48 ? `לפני ${h} שעות` : `לפני ${Math.round(h / 24)} ימים`; };
           return ` מוצגות ${rows.length}: הכי חדשה ${ago(t(rows[0]))}, הכי ישנה ${ago(t(rows[rows.length - 1]))}.`;
         })()}

@@ -2,7 +2,7 @@ import Link from 'next/link';
 import { serverClient } from '@/lib/server';
 import { goldKeySet, goldGenericMessage } from '@/lib/gold';
 import { applyTarget, directLinks } from '@/lib/apply';
-import { jobAge } from '@/lib/age';
+import { jobAge, byPublished } from '@/lib/age';
 import { companyKey, type WarmContact, contactsByCompanyKeys } from '@/lib/contacts';
 import { duplicateCandidates, postingKey } from '@/lib/dedupe';
 import Dismiss from '@/components/Dismiss';
@@ -201,9 +201,7 @@ export default async function Dashboard({
         });
         return { ...order[0], copies: order };
       })
-      .sort(
-        (a, b) => new Date(b.jobs.first_seen).getTime() - new Date(a.jobs.first_seen).getTime()
-      );
+      .sort((a, b) => byPublished(a.jobs, b.jobs));
   }
 
   // Today only, with no fallback to the week. A quiet day should read as a
@@ -512,7 +510,7 @@ export default async function Dashboard({
         {rows.length > 0
           ? source
             ? `${rows.length} מ־${source} היום, ולא הגשת אליהן. מהחדש לישן.`
-            : `${rows.length} נסרקו היום ולא הגשת אליהן. מהחדש לישן לפי מועד הכניסה למערכת.`
+            : `${rows.length} נסרקו היום ולא הגשת אליהן. מהחדש לישן לפי תאריך הפרסום, ובתוך אותו יום לפי מועד הכניסה.`
           : 'הסריקה של היום לא החזירה משרות חדשות על המטרה.'}
         {' '}הוגשו פנימית: <b>{internalN.today}</b> היום, <b>{internalN.week}</b> בשבוע, <b>{internalN.total}</b> בסך הכל.
       </p>
