@@ -8,6 +8,8 @@ import { isAgency } from '@/lib/pickContact';
 
 /** רענון אחרי שמירה: אחד לכל המסך, עם חיווי גלובלי כל עוד השרת טוען מחדש. */
 const Refresh = createContext<(appliedJobId?: string) => void>(() => {});
+/** מסמן הגשה מיד בשני התצוגות, לפני שהשרת ענה. false מחזיר אם השמירה נכשלה. */
+const Local = createContext<(jobId: string, on: boolean) => void>(() => {});
 
 type Group = 'recruiter' | 'dev' | 'other';
 const GL: Record<Group, string> = { recruiter: 'מגייסות ו-HR', dev: 'מנהלי פיתוח', other: 'אחרים' };
@@ -17,6 +19,7 @@ const SL = { none: 'לא חבר', requested: 'נשלחה בקשה', friend: 'ח�
 function StepButtons({ j, friends }: { j: import('@/lib/clients').ClientJob; friends: Client[] }) {
   const [busy, setBusy] = useState(false);
   const refresh = useContext(Refresh);
+  const local = useContext(Local);
   const [pick, setPick] = useState(false);
   const [who, setWho] = useState('');
   const [closing, setClosing] = useState(false);
@@ -29,7 +32,8 @@ function StepButtons({ j, friends }: { j: import('@/lib/clients').ClientJob; fri
   }
   /** הוגשה דרך מכר: ההגשה נרשמת כפנימית, ומי שנבחר מסומן שפנית אליו על המשרה הזאת. */
   async function viaFriend(f: Client | null) {
-    if (!(await post('/api/jobs/applied', { id: j.id, internal: true }))) return;
+    local(j.id, true);
+    if (!(await post('/api/jobs/applied', { id: j.id, internal: true }))) { local(j.id, false); return; }
     if (f && f.kind === 'contact') {
       setBusy(true);
       const r = await fetch('/api/contacts', { method: 'PATCH', headers: { 'content-type': 'application/json' },
@@ -37,11 +41,11 @@ function StepButtons({ j, friends }: { j: import('@/lib/clients').ClientJob; fri
       setBusy(false);
       if (!r || !r.ok) { alert('ההגשה נרשמה, אבל הסימון על איש הקשר לא נשמר.'); }
     }
-    setPick(false); refresh(j.id);
+    setPick(false); refresh();
   }
   const step = async (body: object) => { if (await post('/api/applications/step', body)) { setClosing(false); refresh(); } };
   if (!j.applied) return (<>
-    <button className="hx-b" disabled={busy} title="סמן שהגשת מועמדות למשרה הזאת ישירות באתר" onClick={async () => { if (await post('/api/jobs/applied', { id: j.id })) refresh(j.id); }}>הוגשה ישירות</button>
+    <button className="hx-b" disabled={busy} title="סמן שהגשת מועמדות למשרה הזאת ישירות באתר" onClick={async () => { local(j.id, true); if (await post('/api/jobs/applied', { id: j.id })) refresh(); else local(j.id, false); }}>הוגשה ישירות</button>
     <button className={'hx-b' + (pick ? ' on' : '')} disabled={busy} title="סמן שהגשת דרך מכר או איש HR בחברה, ובחר מי" onClick={() => setPick(!pick)}>הוגשה דרך מכר או HR</button>
     {pick && (
       <div className="hx-pick row1">
@@ -311,23 +315,28 @@ export default function ClientsTable(props: { clients: Client[]; feed: FeedItem[
   // 27.11.2026, שאול: "מעבר בין טאב לטאב בסימון משאיר את אותם פרטים". הרענון מהשרת לוקח כחמש שניות,
   // ובינתיים הטאב השני הראה את המצב הישן. הסימון נכתב מיד על אותם אובייקטים ששני התצוגות חולקות.
   const [ver, setVer] = useState(0);
-  const refresh = (appliedJobId?: string) => {
-    if (appliedJobId) {
-      for (const c of props.clients) for (const j of c.jobs) if (j.id === appliedJobId) {
+  const undo = useRef(new Map<string, () => void>());
+  const local = (jobId: string, on: boolean) => {
+    if (on) {
+      const back: (() => void)[] = [];
+      for (const c of props.clients) for (const j of c.jobs) if (j.id === jobId) {
+        const pa = j.applied, pj = j.stage, pc = c.stage;
         j.applied = true; if (j.stage < 4) j.stage = 4; if (c.stage < 4) c.stage = 4;
+        back.push(() => { j.applied = pa; j.stage = pj; c.stage = pc; });
       }
-      for (const f of props.feed) if (f.job.id === appliedJobId) f.job.applied = true;
-      setVer((v) => v + 1);
-    }
-    start(() => router.refresh());
+      for (const f of props.feed) if (f.job.id === jobId) { const pa = f.job.applied; f.job.applied = true; back.push(() => { f.job.applied = pa; }); }
+      undo.current.set(jobId, () => back.forEach((b) => b()));
+    } else { undo.current.get(jobId)?.(); undo.current.delete(jobId); }
+    setVer((v) => v + 1);
   };
+  const refresh = () => { start(() => router.refresh()); };
   const clients = useMemo(() => props.clients.slice(), [props.clients, ver]);
   const feed = useMemo(() => props.feed.filter((f) => !f.job.applied), [props.feed, ver]);
   return (
-    <Refresh.Provider value={refresh}>
+    <Refresh.Provider value={refresh}><Local.Provider value={local}>
       {pending && <div className="hx-toast">נשמר. מרענן את הרשימה…</div>}
       <Inner {...props} clients={clients} feed={feed} />
-    </Refresh.Provider>
+    </Local.Provider></Refresh.Provider>
   );
 }
 
