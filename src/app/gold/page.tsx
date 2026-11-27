@@ -20,6 +20,34 @@ const CORE_ROLES = [
 ];
 
 /**
+ * שליפת עמודים של 1000 בגלים: שישה עמודים בו־זמנית במקום אחד אחד (28.11.2026,
+ * המסך לקח 15 שניות). התוצאה זהה לשליפה עוקבת: אותו סדר, אותו עצירה בעמוד
+ * קצר, ובשגיאה חוזרים העמודים שלפניה ואת השגיאה.
+ */
+async function pagedWaves(
+  make: (from: number, to: number) => PromiseLike<{ data: any[] | null; error: { message: string } | null }>,
+  maxRows: number,
+  wave = 6,
+): Promise<{ data: any[]; error: { message: string } | null }> {
+  const out: any[] = [];
+  for (let base = 0; base < maxRows; base += 1000 * wave) {
+    const rs = await Promise.all(
+      Array.from({ length: wave }, (_, i) => {
+        const from = base + i * 1000;
+        return from < maxRows ? make(from, from + 999) : null;
+      }),
+    );
+    for (const r of rs) {
+      if (!r) return { data: out, error: null };
+      if (r.error) return { data: out, error: r.error };
+      out.push(...(r.data ?? []));
+      if (!r.data || r.data.length < 1000) return { data: out, error: null };
+    }
+  }
+  return { data: out, error: null };
+}
+
+/**
  * חברות זהב: המסך העיקרי.
  *
  * 20.11.2026, שאול: "הפוקוס עובר לקובץ כל יום". הגשה רק דרך מי שעובד שם.
@@ -36,21 +64,60 @@ export default async function Gold() {
   // PostgREST מחזיר לכל היותר 1000 שורות, ו-`.limit(5000)` לא עוקף את זה.
   // 22.11.2026: Hila Perels (mPrest) ו-Danielle Steinberg (Dream) היו במסד
   // והכרטיס אמר "אין איש קשר", כי הן ישבו מעבר ל-1000 הראשונות. לכן דפים.
-  const cs: any[] = [];
-  let error: { message: string } | null = null;
-  for (let from = 0; from < 8000; from += 1000) {
-    const r = await sb.from('contacts')
+  // 28.11.2026: כל השליפות שאינן תלויות זו בזו רצות יחד, והעמודים בגלים.
+  const dayStart = israelDayStart();
+  const day = dayStart.slice(0, 10);
+  const since = new Date(Date.now() - 60 * 86400000).toISOString();
+  const poolFor = async (cls: 'S' | 'M' | 'E') => {
+    const [d1, d2] = await Promise.all([
+      sb.from('companies').select('id', { count: 'exact', head: true })
+        .eq('size_class', cls).gte('gold_done_at', dayStart),
+      sb.from('companies').select('id', { count: 'exact', head: true })
+        .eq('size_class', cls).gte('gold_skipped_at', dayStart),
+    ]);
+    const decidedN = (d1.count ?? 0) + (d2.count ?? 0);
+    const slots = Math.max(0, GOLD_QUOTA[cls] - decidedN);
+    if (!slots) return { cls, decidedN, slots, rows: [] as any[], error: null as { message: string } | null };
+    const r = await pagedWaves((from, to) => sb.from('companies')
+      .select('id, company_key, region')
+      .eq('size_class', cls)
+      .eq('region', 'gush_dan')
+      .is('gold_done_at', null)
+      .is('gold_skipped_at', null)
+      .order('id')
+      .range(from, to), 1_000_000);
+    return { cls, decidedN, slots, rows: r.data, error: r.error };
+  };
+  const [csRes, aliases, appliedRes, jobsRes, internalN, closedRes, pools] = await Promise.all([
+    pagedWaves((from, to) => sb.from('contacts')
       .select('id, full_name, title, company, company_key, linkedin_url, email, phone, contacted_at, gold_skipped_at, verified_ok, verified_key, verified_at')
       .is('gold_skipped_at', null)
       .is('left_company_at', null)
       .not('company_key', 'is', null)
       .not('linkedin_url', 'is', null)
       .order('id', { ascending: true })
-      .range(from, from + 999);
-    if (r.error) { error = r.error; break; }
-    cs.push(...(r.data ?? []));
-    if (!r.data || r.data.length < 1000) break;
-  }
+      .range(from, to), 8000),
+    loadAliases(sb),
+    loadApplied(sb),
+    pagedWaves((from, to) => sb.from('jobs')
+      .select('id, title, company, url, source, found_for, first_seen, live_checked_at, location, recruiter_name, recruiter_url')
+      .eq('on_target', true)
+      // ✕ במסכים הרגילים לא מוריד משרה מכאן (שאול, 20.11.2026: "שלא תוריד").
+      // הוא לא מגיש מהמשרה אלא דרך מכר, ולכן סגירה שם אינה סגירה כאן.
+      // מה שמוריד אותה: אימות שנסגרה, או "מוותר" על החברה.
+      .is('closed_at', null)
+      .is('gold_skipped_at', null)
+      .gte('first_seen', since)
+      .order('first_seen', { ascending: false })
+      .order('id', { ascending: true })
+      .range(from, to), 6000),
+    internalApplied(sb),
+    sb.from('jobs').select('id', { count: 'exact', head: true })
+      .gte('closed_at', new Date(Date.now() - 24 * 3600 * 1000).toISOString()),
+    Promise.all((['S', 'M', 'E'] as const).map(poolFor)),
+  ]);
+  const cs: any[] = csRes.data;
+  const error = csRes.error;
   if (error) {
     return (
       <main>
@@ -61,7 +128,6 @@ export default async function Gold() {
   }
 
   // כינויים: משלימים התאמה שהשם המדויק מפספס (Scytale מול Scytale AI).
-  const aliases = await loadAliases(sb);
   const resolve = (k: string) => aliases.get(k) ?? k;
   const byKey = new Map<string, WarmContact[]>();
   for (const c of (cs ?? []) as any[]) {
@@ -74,28 +140,10 @@ export default async function Gold() {
 
   // משרות פתוחות, בלי מה שכבר הוגש. נשלפות לפני הבחירה, כי חברה שיש בה
   // משרה פתוחה ומכר שלך נכנסת לתור של היום מעל המכסה, ראשונה.
-  const { rows: applied } = await loadApplied(sb);
+  const applied = appliedRes.rows;
   const appliedIds = new Set(applied.map((a: any) => a.job_id).filter(Boolean));
-  const since = new Date(Date.now() - 60 * 86400000).toISOString();
-  // דפים של 1000: התקרה של PostgREST חלה גם כאן.
-  const jobsRaw: any[] = [];
-  for (let from = 0; from < 6000; from += 1000) {
-    const r = await sb.from('jobs')
-    .select('id, title, company, url, source, found_for, first_seen, live_checked_at, location, recruiter_name, recruiter_url')
-    .eq('on_target', true)
-    // ✕ במסכים הרגילים לא מוריד משרה מכאן (שאול, 20.11.2026: "שלא תוריד").
-    // הוא לא מגיש מהמשרה אלא דרך מכר, ולכן סגירה שם אינה סגירה כאן.
-    // מה שמוריד אותה: אימות שנסגרה, או "מוותר" על החברה.
-    .is('closed_at', null)
-    .is('gold_skipped_at', null)
-    .gte('first_seen', since)
-    .order('first_seen', { ascending: false })
-    .order('id', { ascending: true })
-    .range(from, from + 999);
-    if (r.error || !r.data) break;
-    jobsRaw.push(...r.data);
-    if (r.data.length < 1000) break;
-  }
+  // שגיאה בעמוד משרות משאירה את מה שנשלף לפניה, כמו קודם.
+  const jobsRaw: any[] = jobsRes.data;
   const fresh = Date.now() - 48 * 3600 * 1000;
   const isVerified = (j: any) => !!j.live_checked_at && new Date(j.live_checked_at).getTime() >= fresh;
   // **כפילויות (21.11.2026):** אותה חברה, אותה כותרת ואותה עיר היא משרה אחת גם
@@ -172,10 +220,12 @@ export default async function Gold() {
   // פרטי החברה (גודל, עיר) נשלפים אם היא ברשימה, ואם לא הכרטיס בנוי מהמשרה.
   const jobKeys = [...jobsByKey.keys()];
   const compByKey = new Map<string, any>();
-  for (let i = 0; i < jobKeys.length; i += 100) {
-    const { data: hc } = await sb.from('companies')
+  const compChunks = await Promise.all(
+    Array.from({ length: Math.ceil(jobKeys.length / 100) }, (_, n) => sb.from('companies')
       .select('id, name, company_key, size_class, size_range, region, city, website, careers_url, is_hiring, gold_done_at, gold_skipped_at')
-      .in('company_key', jobKeys.slice(i, i + 100));
+      .in('company_key', jobKeys.slice(n * 100, n * 100 + 100))),
+  );
+  for (const { data: hc } of compChunks) {
     for (const r of (hc ?? []) as any[]) compByKey.set(r.company_key, r);
   }
   // אנשי קשר מאומתים: הסקריפט במחשב פתח את הפרופיל ב-14 הימים האחרונים וראה
@@ -194,55 +244,35 @@ export default async function Gold() {
 
   // המאגר כולו, בלי מה שכבר הוחלט עליו. נשלף בעמודים, כי PostgREST מגביל
   // שורות לשליפה. רק מה שנדרש לדירוג, ואת הפרטים שולפים רק ל-50 שנבחרו.
-  const day = israelDayStart().slice(0, 10);
-  const dayStart = israelDayStart();
+  // (השליפה עצמה רצה למעלה במקביל; כאן רק הסינון והדירוג, בלי שינוי.)
   const pickedIds: string[] = [];
   const decidedBy: Record<string, number> = { S: 0, M: 0, E: 0 };
-  for (const cls of ['S', 'M', 'E'] as const) {
-    const [d1, d2] = await Promise.all([
-      sb.from('companies').select('id', { count: 'exact', head: true })
-        .eq('size_class', cls).gte('gold_done_at', dayStart),
-      sb.from('companies').select('id', { count: 'exact', head: true })
-        .eq('size_class', cls).gte('gold_skipped_at', dayStart),
-    ]);
-    decidedBy[cls] = (d1.count ?? 0) + (d2.count ?? 0);
-    const slots = Math.max(0, GOLD_QUOTA[cls] - decidedBy[cls]);
-    if (!slots) continue;
+  for (const p of pools) {
+    if (p.error) {
+      // השגיאה קודמת לספירה, כמו קודם: ההחלטות של הקבוצה לא נרשמות.
+      return (
+        <main>
+          <div className="head"><h1>חברות זהב</h1><Link className="more" href="/">← חדר המצב</Link></div>
+          <div className="alert">שגיאה בשליפת החברות: {p.error.message}</div>
+        </main>
+      );
+    }
+    decidedBy[p.cls] = p.decidedN;
+    if (!p.slots) continue;
     const pool: { id: string; n: number; gush: boolean }[] = [];
-    for (let from = 0; ; from += 1000) {
-      const { data, error: pe } = await sb.from('companies')
-        .select('id, company_key, region')
-        .eq('size_class', cls)
-        .eq('region', 'gush_dan')
-        .is('gold_done_at', null)
-        .is('gold_skipped_at', null)
-        .order('id')
-        .range(from, from + 999);
-      if (pe) {
-        return (
-          <main>
-            <div className="head"><h1>חברות זהב</h1><Link className="more" href="/">← חדר המצב</Link></div>
-            <div className="alert">שגיאה בשליפת החברות: {pe.message}</div>
-          </main>
-        );
-      }
-      for (const r of (data ?? []) as any[]) {
-        // חברה שיש בה משרה מאומתת מוצגת למעלה כרטיס משרה, לא כאן.
-        if (r.company_key && jobsByKey.has(r.company_key)) continue;
-        pool.push({ id: r.id, n: r.company_key ? (byKey.get(r.company_key)?.length ?? 0) : 0, gush: r.region === 'gush_dan' });
-      }
-      if (!data || data.length < 1000) break;
+    for (const r of p.rows) {
+      // חברה שיש בה משרה מאומתת מוצגת למעלה כרטיס משרה, לא כאן.
+      if (r.company_key && jobsByKey.has(r.company_key)) continue;
+      pool.push({ id: r.id, n: r.company_key ? (byKey.get(r.company_key)?.length ?? 0) : 0, gush: r.region === 'gush_dan' });
     }
     pool.sort((x, y) => goldRank(x, y, day));
-    pickedIds.push(...pool.slice(0, slots).map((x) => x.id));
+    pickedIds.push(...pool.slice(0, p.slots).map((x) => x.id));
   }
 
   const decided = decidedBy.S + decidedBy.M + decidedBy.E;
   const left = Math.max(0, GOLD_DAILY - decided);
 
-  const internalN = await internalApplied(sb);
-  const { count: closedDay } = await sb.from('jobs').select('id', { count: 'exact', head: true })
-    .gte('closed_at', new Date(Date.now() - 24 * 3600 * 1000).toISOString());
+  const closedDay = closedRes.count;
 
   const { data: picked } = pickedIds.length
     ? await sb.from('companies')
