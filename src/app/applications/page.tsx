@@ -54,6 +54,8 @@ export default async function Applications({
     // אותו חתך בדיוק שהאריח בחדר המצב סופר: מה שהגיע לשיחה, גם אם נדחה
     // אחר כך. ראיון שלא עברת הוא עדיין ראיון שהתקיים.
     if (status === 'conversation') return Boolean(a.stage) || CONVERSATION.includes(a.status);
+    // 27.11.2026: האריחים "לינקדאין דיווח שנפתחו" ו"שיעור הדיווח" פותחים את אותן שורות שהם סופרים.
+    if (status === 'engaged') return ['acknowledged', 'replied', 'conversation', 'interview'].includes(a.status);
     if (status && a.status !== status) return false;
     if (range === 'week') return new Date(a.sent_at).getTime() >= weekAgo;
     return true;
@@ -180,12 +182,12 @@ export default async function Applications({
       )}
 
       <div className="kpis">
-        <div className="kpi"><div className="kpi-l">סה״כ</div><div className="kpi-v">{rows.length}</div></div>
-        <div className="kpi"><div className="kpi-l">לינקדאין דיווח שנפתחו</div><div className="kpi-v">{seenTotal}</div></div>
-        <div className="kpi">
+        <Link className="kpi" href="/applications?range=all" title="מנקה את הסינון ומציג את כל ההגשות"><div className="kpi-l">סה״כ</div><div className="kpi-v">{rows.length}</div></Link>
+        <Link className="kpi" href="/applications?status=engaged&range=all" title="מציג את ההגשות שלינקדאין דיווחה שנפתחו או נענו"><div className="kpi-l">לינקדאין דיווח שנפתחו</div><div className="kpi-v">{seenTotal}</div></Link>
+        <Link className="kpi" href="/applications?status=engaged&range=all" title="השיעור הוא מתוך ההגשות שמוצגות. לחיצה מציגה את אלה שנפתחו או נענו">
           <div className="kpi-l">שיעור הדיווח</div>
           <div className="kpi-v">{Math.round((seenTotal / rows.length) * 100)}%</div>
-        </div>
+        </Link>
       </div>
 
       <h2>לפי חודש</h2>
