@@ -46,8 +46,11 @@ export default function CrmShell({ children }: { children: React.ReactNode }) {
     const fit = () => document.querySelectorAll<HTMLElement>(ROW).forEach((row) => {
       if (!row.offsetWidth) return;
       const segs: HTMLElement[][] = [[]];
-      for (const k of Array.from(row.children) as HTMLElement[]) {
-        if (/^(BUTTON|A|SUMMARY)$/.test(k.tagName)) segs[segs.length - 1].push(k);
+      // עטיפות display:contents (span סביב כפתור) הן שקופות: מסתכלים על מה שבתוכן.
+      const flat = (el: HTMLElement): HTMLElement[] => (Array.from(el.children) as HTMLElement[])
+        .flatMap((k) => (getComputedStyle(k).display === 'contents' ? flat(k) : [k]));
+      for (const k of flat(row)) {
+        if (/^(BUTTON|A|SUMMARY|LABEL)$/.test(k.tagName)) segs[segs.length - 1].push(k);
         else if (segs[segs.length - 1].length) segs.push([]);
       }
       for (const kids of segs) {
@@ -68,7 +71,9 @@ export default function CrmShell({ children }: { children: React.ReactNode }) {
     const mo = new MutationObserver(() => { if (timer) clearTimeout(timer); timer = setTimeout(run, 150); });
     mo.observe(document.body, { childList: true, subtree: true });
     window.addEventListener('resize', run);
-    return () => { mo.disconnect(); window.removeEventListener('resize', run); if (timer) clearTimeout(timer); };
+    // פרט מקופל שנפתח לא משנה את ה-DOM, ושורה שבתוכו נמדדת רק כשהיא נראית.
+    document.addEventListener('toggle', run, true);
+    return () => { mo.disconnect(); window.removeEventListener('resize', run); document.removeEventListener('toggle', run, true); if (timer) clearTimeout(timer); };
   }, [path]);
   // מסך ההתחברות וחזרת ההתחברות בלי תפריט.
   if (path.startsWith('/login') || path.startsWith('/auth')) return <>{children}</>;
