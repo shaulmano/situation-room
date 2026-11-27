@@ -162,10 +162,10 @@
 .cn-flow>:is(button,a,summary),.cn-flow>span>:is(button,a),.cn-acts>:is(button,a),.gold-acts>:is(button,a),.reach-acts>:is(button,a),
 .filters>:is(button,a),.hx-acts>:is(button,a,.hx-b),.hx-chips>button,.hx-gos>button,
 .hx-job .hx-acts>:is(button,a),.hx-reply .hx-acts>:is(button,a),.hx-act .hx-acts>:is(button,a),.cn-line>:is(button,a){
-  flex:1 1 auto!important;min-width:0!important;width:auto!important;max-width:none!important;
+  flex:1 1 0!important;min-width:max-content!important;width:auto!important;max-width:none!important;
   display:inline-flex!important;align-items:center;justify-content:center;text-align:center;
   white-space:nowrap!important;line-height:1.15;min-height:36px;
-  padding:.3em .45em!important;font-size:clamp(.54rem,2.3vw,.85rem)!important;margin:0!important;align-self:stretch!important}
+  padding:.3em .3em!important;font-size:clamp(.54rem,2.3vw,.85rem)!important;margin:0!important;align-self:stretch!important}
 /* כל מה שאינו כפתור בתוך הבלוק (כותרת, הערה, תג) תופס שורה משלו, והכפתורים נשארים יחד */
 .cn-flow>details,.cn-flow>:not(button):not(a):not(details),.cn-acts>:not(button):not(a),.filters>:not(button):not(a),
 .hx-acts>:not(button):not(a):not(.hx-b):not(.hx-tag),.hx-chips>:not(button){flex:0 0 100%!important}
