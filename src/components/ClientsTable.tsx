@@ -357,7 +357,7 @@ function Inner({ clients, initial }: { clients: Client[]; initial?: { waiting?: 
           <span>לקוח וחברה</span><span>חברות</span><span>משרות</span><span>שלב</span><span>הצעד הבא</span><span />
         </div>
         {rows.slice(0, shown).map((c) => (
-          <div key={c.id} className={'hx-rowwrap' + (c.urgent ? ' urgent' : '')}>
+          <div key={c.id} data-act={c.activityAt} data-urgent={c.urgent ? 1 : 0} className={'hx-rowwrap' + (c.urgent ? ' urgent' : '')}>
             <div className="hx-row">
               <div className="hx-who">
                 <b>{c.name || '(ללא שם)'}</b>
