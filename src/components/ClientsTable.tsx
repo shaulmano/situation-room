@@ -449,7 +449,7 @@ function Inner({ clients, feed, initial }: { clients: Client[]; feed: FeedItem[]
     const stt: keyof typeof SL | 'noclient' = cs.length === 0 ? 'noclient' : cs.some((c) => c.status === 'friend') ? 'friend' : cs.some((c) => c.status === 'requested') ? 'requested' : 'none';
     return (g === 'all' || grp === g) && (st === 'all' || stt === st);
   };
-  const isNew = (f: FeedItem) => !!f.job.seenAt && Date.now() - Date.parse(f.job.seenAt) < 864e5;
+  const isNew = (f: FeedItem) => !!f.job.seenAt && Date.now() - Date.parse(f.job.seenAt) < 3 * 864e5;
   const newCount = feed.filter(isNew).length;
   const jfeed = useMemo(() => feed.filter((f) => (!newOnly || isNew(f)) && jfit(f, jobGroup, jstatus)), [feed, jobGroup, jstatus, clientById, newOnly]);
   const base = newOnly ? feed.filter(isNew) : feed;
@@ -465,7 +465,7 @@ function Inner({ clients, feed, initial }: { clients: Client[]; feed: FeedItem[]
       {/* 27.11.2026, שאול: "המידע ממש לא מאורגן". בתצוגת "לפי משרה" אין אריחי לקוחות, סרגל חברון ובוררי סוג: רק משרות. */}
       {mode === 'clients' && (<>
       <div className="hx-kpis">
-        <button className={'hx-kpi hx-kpib'} style={{ gridColumn: '1 / -1' }} title="משרות שנכנסו לחדר המצב ב-24 השעות האחרונות, מהחדשה לישנה. פותח את תצוגת לפי משרה" onClick={() => { go(); setNewOnly(true); setMode('jobs'); setShown(40); }}><small>משרות חדשות מהסריקה (24 שעות)</small><b>{newCount}</b></button>
+        <button className={'hx-kpi hx-kpib'} style={{ gridColumn: '1 / -1' }} title="משרות שנכנסו לחדר המצב ב-3 הימים האחרונים (72 שעות), מהחדשה לישנה. פותח את תצוגת לפי משרה" onClick={() => { go(); setNewOnly(true); setMode('jobs'); setShown(40); }}><small>משרות חדשות מהסריקה (3 ימים)</small><b>{newCount}</b></button>
         <button className={'hx-kpi hx-kpib' + (!withJob && !onlyWaiting && !onlyApplied && !onlyReplied && status === 'all' && !q && group === 'all' ? ' on' : '')} title="מנקה את כל הסינונים ומציג את כל הלקוחות" onClick={() => { setGroup('all'); setWithJob(false); setOnlyWaiting(false); setOnlyApplied(false); setOnlyReplied(false); setStatus('all'); setQ(''); go(); setShown(40); }}><small>כל הלקוחות</small><b>{clients.length}</b></button>
         <button className={'hx-kpi hx-kpib' + (withJob ? ' on' : '')} title="הצג רק לקוחות שיש משרה פתוחה בחברה שלהם. לחיצה נוספת מבטלת" onClick={() => tile('job')}><small>עם משרה פתוחה</small><b>{clients.filter(hasOpen).length}</b></button>
         <button className={'hx-kpi warn hx-kpib' + (onlyWaiting ? ' on' : '')} title="הצג רק מי שמחכה לפעולה שלך. לחיצה נוספת מבטלת" onClick={() => tile('wait')}><small>מחכים לפעולה שלך</small><b>{waiting}</b></button>
@@ -494,7 +494,7 @@ function Inner({ clients, feed, initial }: { clients: Client[]; feed: FeedItem[]
         <div className="hx-chips"><span className="lab">תצוגה</span>
           <button className={mode === 'clients' ? 'on' : ''} title="רשימת הלקוחות, ומשרות כל אחד מהם" onClick={() => { go(); setNewOnly(false); setMode('clients'); setShown(40); }}>לפי לקוח {clients.length}</button>
           <button className={mode === 'jobs' && !newOnly ? 'on' : ''} title="כל המשרות הפתוחות מהחדשה לישנה, ובכל אחת הלקוחות בחברה שלה" onClick={() => { go(); setNewOnly(false); setMode('jobs'); setShown(40); }}>לפי משרה {feed.length}</button>
-          <button className={mode === 'jobs' && newOnly ? 'on' : ''} title="רק משרות שנכנסו לחדר המצב ב-24 השעות האחרונות, מהחדשה לישנה" onClick={() => { go(); setNewOnly(true); setMode('jobs'); setShown(40); }}>חדשות {newCount}</button>
+          <button className={mode === 'jobs' && newOnly ? 'on' : ''} title="רק משרות שנכנסו לחדר המצב ב-3 הימים האחרונים (72 שעות), מהחדשה לישנה" onClick={() => { go(); setNewOnly(true); setMode('jobs'); setShown(40); }}>חדשות {newCount}</button>
         </div>
         {mode === 'clients' && (<>
         <div className="hx-chips"><span className="lab">סוג</span>
@@ -536,7 +536,7 @@ function Inner({ clients, feed, initial }: { clients: Client[]; feed: FeedItem[]
       {mode === 'jobs' && (
         <button className="hx-b hx-back" title="חוזר לרשימת הלקוחות ומנקה את הסינונים" onClick={() => { setNewOnly(false); setJobGroup('all'); setJstatus('all'); setQ(''); go(); setMode('clients'); setShown(40); window.scrollTo({ top: 0 }); }}>← חזרה לכל הלקוחות</button>
       )}
-      {mode === 'jobs' ? <JobsFeed feed={jfeed} clients={clients} q={q} filterNote={(newOnly ? ' נכנסו ב-24 השעות האחרונות.' : '') + (jobGroup === 'all' ? '' : jobGroup === 'none' ? ' סוג: חברות בלי לקוח.' : ` סוג: ${GL[jobGroup]}.`) + (jstatus === 'all' ? '' : jstatus === 'noclient' ? ' חברות: בלי לקוח.' : ` חברות: ${SL[jstatus]}.`)} shown={shown} setShown={setShown} friendsOf={friendsOf} /> : (
+      {mode === 'jobs' ? <JobsFeed feed={jfeed} clients={clients} q={q} filterNote={(newOnly ? ' נכנסו ב-3 הימים האחרונים (72 שעות).' : '') + (jobGroup === 'all' ? '' : jobGroup === 'none' ? ' סוג: חברות בלי לקוח.' : ` סוג: ${GL[jobGroup]}.`) + (jstatus === 'all' ? '' : jstatus === 'noclient' ? ' חברות: בלי לקוח.' : ` חברות: ${SL[jstatus]}.`)} shown={shown} setShown={setShown} friendsOf={friendsOf} /> : (
       <div className="hx-card hx-table">
         <div className="hx-cnt">מציג <b>{Math.min(shown, rows.length)}</b> מתוך <b>{rows.length}</b>
           {rows.length < inGroup.length && <span className="mut"> · {inGroup.length - rows.length} מוסתרים בגלל הסינון, מתוך {inGroup.length} בסוג הזה</span>}</div>
