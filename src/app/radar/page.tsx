@@ -59,6 +59,7 @@ export default async function Radar({
     .select('id, title, company, source, location, url, first_seen, posted, found_for, description')
     .eq('seo', true)
     .is('dismissed_at', null)
+    .is('closed_at', null)
     .order('first_seen', { ascending: false })
     .limit(500);
 

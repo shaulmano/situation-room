@@ -100,10 +100,12 @@ async function WarmBody({
       .select(
         'score, cv_id, reasons, '
         + 'jobs!inner(id, title, company, source, location, url, first_seen, found_for, '
-        + 'posted, on_target, dismissed_at)'
+        + 'posted, on_target, dismissed_at, closed_at)'
       )
       .eq('jobs.on_target', true)
       .is('jobs.dismissed_at', null)
+      // 27.11.2026: משרה שבדיקת החיות סגרה (`closed_at`) הוצגה כפתוחה בטאב "משרות פתוחות".
+      .is('jobs.closed_at', null)
       // 14.11.2026: היה 3,000 שורות התאמה בלי גבול תאריך, שזה כל ההיסטוריה
       // עם join ומיון על טבלה מקושרת. היא נכשלה לסירוגין, והמסך הציג אפס
       // בכל הטאבים בלי שום שגיאה: בלינקדאין 130 הפך ל-0 ואז ל-3 בין שתי
