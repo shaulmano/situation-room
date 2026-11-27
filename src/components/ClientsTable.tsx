@@ -359,13 +359,12 @@ function Inner({ clients, feed, initial }: { clients: Client[]; feed: FeedItem[]
   };
   // 27.11.2026: בטלפון הרשימה יושבת מתחת למסך. לחיצה על אריח או סינון שלא מגלגלת אליה נראית כמו כפתור שלא עושה כלום.
   const listRef = useRef<HTMLDivElement>(null);
-  const jump = useRef(false);
-  const go = () => { jump.current = true; };
+  const [jumpN, setJumpN] = useState(0);
+  const go = () => setJumpN((n) => n + 1);
   useEffect(() => {
-    if (!jump.current) return;
-    jump.current = false;
+    if (jumpN === 0) return;
     listRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-  }, [group, status, withJob, onlyWaiting, onlyApplied, onlyReplied, mode]);
+  }, [jumpN]);
   const cnt = (k: 'none' | 'requested' | 'friend') => inGroup.filter((c) => c.status === k).length;
   const total = inGroup.length || 1;
   const waiting = inGroup.filter(isWaiting).length;
