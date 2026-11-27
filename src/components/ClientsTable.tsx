@@ -285,6 +285,12 @@ function Inner({ clients, initial }: { clients: Client[]; initial?: { waiting?: 
       .sort((a, b) => Number(b.urgent) - Number(a.urgent) || (b.repliedAt ?? '').localeCompare(a.repliedAt ?? '') || b.stage - a.stage || b.jobs.length - a.jobs.length);
   }, [inGroup, status, withJob, onlyReplied, onlyWaiting, onlyApplied, q]);
 
+  // אריח מציג בדיוק את המספר שעליו: לחיצה מנקה כל סינון אחר ומדליקה רק אותו. לחיצה נוספת מבטלת.
+  const tile = (k: 'job' | 'wait' | 'applied') => {
+    const cur = k === 'job' ? withJob : k === 'wait' ? onlyWaiting : onlyApplied;
+    setStatus('all'); setOnlyReplied(false); setQ('');
+    setWithJob(!cur && k === 'job'); setOnlyWaiting(!cur && k === 'wait'); setOnlyApplied(!cur && k === 'applied'); setShown(40);
+  };
   const cnt = (k: 'none' | 'requested' | 'friend') => inGroup.filter((c) => c.status === k).length;
   const total = inGroup.length || 1;
   const waiting = inGroup.filter(isWaiting).length;
@@ -293,9 +299,9 @@ function Inner({ clients, initial }: { clients: Client[]; initial?: { waiting?: 
     <>
       <div className="hx-kpis">
         <button className={'hx-kpi hx-kpib' + (!withJob && !onlyWaiting && !onlyApplied && !onlyReplied && status === 'all' && !q ? ' on' : '')} title="מנקה את כל הסינונים ומציג את כל הלקוחות בקבוצה" onClick={() => { setWithJob(false); setOnlyWaiting(false); setOnlyApplied(false); setOnlyReplied(false); setStatus('all'); setQ(''); setShown(40); }}><small>לקוחות בקבוצה</small><b>{inGroup.length}</b></button>
-        <button className={'hx-kpi hx-kpib' + (withJob ? ' on' : '')} title="הצג רק לקוחות שיש משרה פתוחה בחברה שלהם. לחיצה נוספת מבטלת" onClick={() => { setWithJob(!withJob); setShown(40); }}><small>עם משרה פתוחה</small><b>{inGroup.filter((c) => c.jobs.length).length}</b></button>
-        <button className={'hx-kpi warn hx-kpib' + (onlyWaiting ? ' on' : '')} title="הצג רק מי שמחכה לפעולה שלך. לחיצה נוספת מבטלת" onClick={() => { setOnlyWaiting(!onlyWaiting); setShown(40); }}><small>מחכים לפעולה שלך</small><b>{waiting}</b></button>
-        <button className={'hx-kpi hx-kpib' + (onlyApplied ? ' on' : '')} title="הצג רק לקוחות שהוגשה דרכם משרה ועוד לא נסגרה. לחיצה נוספת מבטלת" onClick={() => { setOnlyApplied(!onlyApplied); setShown(40); }}><small>הוגשה דרכם משרה</small><b>{inGroup.filter((c) => c.stage >= 4 && c.stage < 7).length}</b></button>
+        <button className={'hx-kpi hx-kpib' + (withJob ? ' on' : '')} title="הצג רק לקוחות שיש משרה פתוחה בחברה שלהם. לחיצה נוספת מבטלת" onClick={() => tile('job')}><small>עם משרה פתוחה</small><b>{inGroup.filter((c) => c.jobs.length).length}</b></button>
+        <button className={'hx-kpi warn hx-kpib' + (onlyWaiting ? ' on' : '')} title="הצג רק מי שמחכה לפעולה שלך. לחיצה נוספת מבטלת" onClick={() => tile('wait')}><small>מחכים לפעולה שלך</small><b>{waiting}</b></button>
+        <button className={'hx-kpi hx-kpib' + (onlyApplied ? ' on' : '')} title="הצג רק לקוחות שהוגשה דרכם משרה ועוד לא נסגרה. לחיצה נוספת מבטלת" onClick={() => tile('applied')}><small>הוגשה דרכם משרה</small><b>{inGroup.filter((c) => c.stage >= 4 && c.stage < 7).length}</b></button>
       </div>
 
       <div className="hx-card">
