@@ -21,6 +21,8 @@ export type ClientJob = {
   dk: string;
   /** מתי המשרה נראתה לראשונה, לסדר מהחדש לישן. */
   seenAt: string | null;
+  /** תאריך הפרסום במקור (יום בלי שעה), כשהמקור מוסר אותו. */
+  posted: string | null;
   /** ימים מאז ההגשה, רק למשרה שהוגשה. */
   appliedDays: number | null; silent: boolean;
   /** מזהה שורת ההגשה, כדי לרשום ראיון או סגירה. */
@@ -61,9 +63,11 @@ async function pageAll(build: (from: number, to: number) => any, size = 1000, ca
 }
 
 /** חברה עם משרה פתוחה ומתאימה, ובלי אף איש קשר, מגייס או בקשה במערכת. */
+/** שורה במסך "לפי משרה": משרה פתוחה אחת, והלקוחות בחברה שלה. אין כאן עותק של מצב: המצב נשאר על הלקוח ועל המשרה. */
+export type FeedItem = { job: ClientJob; key: string; company: string; clientIds: string[] };
 export type Orphan = { company: string; jobs: { id: string; title: string; url: string | null; ageDays: number | null }[] };
 
-export async function loadClients(sb: any): Promise<{ clients: Client[]; orphans: Orphan[]; error?: string }> {
+export async function loadClients(sb: any): Promise<{ clients: Client[]; orphans: Orphan[]; feed: FeedItem[]; error?: string }> {
   try {
     const since = new Date(Date.now() - 30 * 864e5).toISOString();
     const [contacts, gold, matches, apps, aliasRows, prior] = await Promise.all([
@@ -75,11 +79,11 @@ export async function loadClients(sb: any): Promise<{ clients: Client[]; orphans
         .select('id, company_id, full_name, headline, profile_url, contacted_at, skipped_at, companies(name)')
         .order('id').range(a, b)),
       pageAll((a, b) => sb.from('matches')
-        .select('jobs!inner(id, title, company, url, first_seen, on_target, dismissed_at, closed_at)')
+        .select('jobs!inner(id, title, company, url, first_seen, posted, on_target, dismissed_at, closed_at)')
         .eq('jobs.on_target', true).is('jobs.dismissed_at', null).is('jobs.closed_at', null)
         .gte('jobs.first_seen', since).order('job_id').range(a, b), 1000, 4000),
       pageAll((a, b) => sb.from('applications')
-        .select('id, job_id, status, stage, sent_at, note, jobs(id, title, company, url, first_seen)').order('id').range(a, b)),
+        .select('id, job_id, status, stage, sent_at, note, jobs(id, title, company, url, first_seen, posted)').order('id').range(a, b)),
       pageAll((a, b) => sb.from('company_aliases').select('alias_key, company_key').range(a, b)),
       pageAll((a, b) => sb.from('prior_requests').select('slug, full_name, title, company, sent_on').order('slug').range(a, b)).catch(() => []),
     ]);
@@ -105,7 +109,7 @@ export async function loadClients(sb: any): Promise<{ clients: Client[]; orphans
       const closeReason = !closed ? null : status === 'offer' ? 'הצעה' : note === CLOSED_NOTE ? 'המשרה נסגרה' : 'נדחה';
       if (!prev || st > prev.stage) {
         m.set(dk, {
-          id: j.id, dk, seenAt: j.first_seen ?? null, title: j.title, company: j.company, url: j.url ?? null, applied, stage: st,
+          id: j.id, dk, seenAt: j.first_seen ?? null, posted: j.posted ?? null, title: j.title, company: j.company, url: j.url ?? null, applied, stage: st,
           appliedDays: applied && sentAt ? Math.max(0, Math.round((Date.now() - new Date(sentAt).getTime()) / 864e5)) : null,
           silent: applied && status === 'silent', appId: appId ?? null, closed, closeReason,
           ageDays: j.first_seen ? Math.max(0, Math.round((Date.now() - new Date(j.first_seen).getTime()) / 864e5)) : null,
@@ -232,8 +236,19 @@ export async function loadClients(sb: any): Promise<{ clients: Client[]; orphans
       orphans.push({ company: open[0].company || `ללא שם חברה (${open[0].title})`, jobs: open.map((j) => ({ id: j.id, title: j.title, url: j.url, ageDays: j.ageDays })) });
     }
     orphans.sort((a, b) => (a.jobs[0].ageDays ?? 999) - (b.jobs[0].ageDays ?? 999));
-    return { clients: out, orphans };
+    // 27.11.2026, שאול: "אמת אחת". כל המשרות הפתוחות מהחדשה לישנה לפי תאריך הפרסום, וכל אחת
+    // מצביעה על אותם לקוחות ואותה משרה שבמסך הלקוחות. לא נשמר ולא מחושב מצב נוסף.
+    const byCo = new Map<string, string[]>();
+    for (const c of out) if (c.companyKey) byCo.set(c.companyKey, [...(byCo.get(c.companyKey) ?? []), c.id]);
+    const feed: FeedItem[] = [];
+    for (const [k, m] of jobsByCo) for (const j of m.values()) {
+      if (j.applied || j.closed) continue;
+      feed.push({ job: j, key: k, company: j.company || 'ללא שם חברה', clientIds: byCo.get(k) ?? [] });
+    }
+    const day = (j: ClientJob) => new Date(j.posted ? `${j.posted}T00:00:00` : (j.seenAt ?? 0)).setHours(0, 0, 0, 0);
+    feed.sort((a, b) => day(b.job) - day(a.job) || (b.job.seenAt ?? '').localeCompare(a.job.seenAt ?? ''));
+    return { clients: out, orphans, feed };
   } catch (e: any) {
-    return { clients: [], orphans: [], error: String(e?.message ?? e) };
+    return { clients: [], orphans: [], feed: [], error: String(e?.message ?? e) };
   }
 }

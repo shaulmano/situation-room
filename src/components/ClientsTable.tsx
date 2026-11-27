@@ -1,7 +1,8 @@
 'use client';
 import { createContext, useContext, useMemo, useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
-import { STAGES, SILENT_LIMIT, CLOSED_NOTE, type Client } from '@/lib/clients';
+import { STAGES, SILENT_LIMIT, CLOSED_NOTE, type Client, type ClientJob, type FeedItem } from '@/lib/clients';
+import { jobAge } from '@/lib/age';
 import { referralMessage, connectNote, cvFileFor, inviteMessage } from '@/lib/outreach';
 import { isAgency } from '@/lib/pickContact';
 
@@ -189,9 +190,9 @@ function Editor({ c }: { c: Client }) {
 }
 
 /** הפעולה של "הצעד הבא": ההודעה מוכנה, ורק אחרי "שלחתי" השלב מתקדם. */
-function ActionPanel({ c, onDone }: { c: Client; onDone: () => void }) {
+function ActionPanel({ c, onDone, forJob }: { c: Client; onDone: () => void; forJob?: ClientJob }) {
   const refresh = useContext(Refresh);
-  const job = c.jobs.find((j) => !j.applied) ?? c.jobs[0];
+  const job = forJob ?? c.jobs.find((j) => !j.applied) ?? c.jobs[0];
   const request = c.status === 'none';
   const initial = request
     ? connectNote(null, c.company)
@@ -245,7 +246,64 @@ function ActionPanel({ c, onDone }: { c: Client; onDone: () => void }) {
   );
 }
 
-export default function ClientsTable(props: { clients: Client[]; initial?: { waiting?: boolean; replied?: boolean; group?: Group } }) {
+/**
+ * "לפי משרה": כל המשרות הפתוחות מהחדשה לישנה (תאריך פרסום), ומתחת לכל אחת הלקוחות בחברה.
+ * אין כאן מצב משלו. כל כפתור כותב לאותה משרה ולאותו לקוח כמו במסך "לפי לקוח",
+ * והרענון טוען את שניהם מחדש מאותם נתונים.
+ */
+function JobsFeed({ feed, clients, q, shown, setShown, friendsOf }: {
+  feed: FeedItem[]; clients: Client[]; q: string; shown: number; setShown: (n: number) => void; friendsOf: (c: Client) => Client[];
+}) {
+  const [act, setAct] = useState<string | null>(null);
+  const byId = useMemo(() => new Map(clients.map((c) => [c.id, c])), [clients]);
+  const s = q.trim().toLowerCase();
+  const rows = feed.filter((f) => !s || `${f.job.title} ${f.company} ${f.clientIds.map((id) => byId.get(id)?.name ?? '').join(' ')}`.toLowerCase().includes(s));
+  const ds = rows.map((f) => f.job.posted ?? f.job.seenAt ?? '').filter(Boolean).sort();
+  const noClient = rows.filter((f) => f.clientIds.length === 0).length;
+  return (
+    <div className="hx-card hx-table">
+      <div className="hx-cnt">מציג <b>{Math.min(shown, rows.length)}</b> מתוך <b>{rows.length}</b> משרות פתוחות</div>
+      <div className="hx-note">
+        מסודר מהחדש לישן לפי תאריך הפרסום, ובתוך אותו יום לפי מועד הכניסה למערכת. משרות פתוחות ולא מוגשות מ-30 הימים האחרונים.
+        {ds.length ? ` מהחדשה (${jobAge(ds[ds.length - 1].slice(0, 10), null)?.label}) עד הישנה (${jobAge(ds[0].slice(0, 10), null)?.label}).` : ''}
+        {' '}{noClient} מהן בחברה בלי אף לקוח. אין כאן מצב משלו: כל פעולה נרשמת על אותה משרה ועל אותו לקוח כמו במסך "לפי לקוח", והמסך ההוא מתעדכן איתה.
+        {s ? ` סינון פעיל: חיפוש "${q.trim()}".` : ' אין סינון פעיל.'}
+      </div>
+      {rows.slice(0, shown).map((f) => {
+        const j = f.job;
+        const age = jobAge(j.posted, j.seenAt);
+        const cs = f.clientIds.map((id) => byId.get(id)).filter(Boolean) as Client[];
+        return (
+          <div key={j.dk} className="hx-rowwrap">
+            <div className="hx-job">
+              <div className="hx-jt"><b>{j.title}</b><span>{f.company}{age ? ` · ${age.label}` : ''}</span></div>
+              <div className="hx-acts">
+                {j.url && <a className="hx-b" title="פותח את המודעה בלשונית חדשה" href={j.url} target="_blank" rel="noreferrer">פתח משרה</a>}
+                <StepButtons j={j} friends={cs[0] ? friendsOf(cs[0]) : []} />
+              </div>
+            </div>
+            {cs.length === 0 && <div className="hx-jc mut">אין בחברה הזאת אף לקוח (מגייס, HR או מנהל פיתוח). המשרה מופיעה גם ב"חברות בלי איש קשר".</div>}
+            {cs.map((c) => (
+              <div key={c.id} className="hx-jc">
+                <b>{c.name || '(ללא שם)'}</b>
+                <span className="mut">{c.title ?? ''}</span>
+                <span className={'hx-pill ' + c.status}>{SL[c.status]}</span>
+                {c.next && /^(לשלוח|פנה ישירות)/.test(c.next)
+                  ? <button className="hx-nbtn" title="פותח נוסח מוכן על המשרה הזאת, ושלחתי או לא לפנות" onClick={() => setAct(act === c.id + j.dk ? null : c.id + j.dk)}>{c.next}</button>
+                  : <span className="mut">{c.next ?? '—'}</span>}
+                {act === c.id + j.dk && <ActionPanel c={c} forJob={j} onDone={() => setAct(null)} />}
+              </div>
+            ))}
+          </div>
+        );
+      })}
+      {rows.length === 0 && <div className="hx-empty">אין משרות שמתאימות לחיפוש.</div>}
+      {rows.length > shown && <button className="hx-more" title="טוען עוד 60 משרות" onClick={() => setShown(shown + 60)}>הצג עוד</button>}
+    </div>
+  );
+}
+
+export default function ClientsTable(props: { clients: Client[]; feed: FeedItem[]; initial?: { waiting?: boolean; replied?: boolean; group?: Group } }) {
   const router = useRouter();
   const [pending, start] = useTransition();
   return (
@@ -256,7 +314,7 @@ export default function ClientsTable(props: { clients: Client[]; initial?: { wai
   );
 }
 
-function Inner({ clients, initial }: { clients: Client[]; initial?: { waiting?: boolean; replied?: boolean; group?: Group } }) {
+function Inner({ clients, feed, initial }: { clients: Client[]; feed: FeedItem[]; initial?: { waiting?: boolean; replied?: boolean; group?: Group } }) {
   const [group, setGroup] = useState<Group>(initial?.group ?? 'recruiter');
   const [status, setStatus] = useState<'all' | keyof typeof SL>('all');
   const [withJob, setWithJob] = useState(false);
@@ -268,6 +326,7 @@ function Inner({ clients, initial }: { clients: Client[]; initial?: { waiting?: 
   const toggle = (id: string, tab: 'jobs' | 'edit') => setView(view?.id === id && view.tab === tab ? null : { id, tab });
   const [act, setAct] = useState<string | null>(null);
   const [shown, setShown] = useState(40);
+  const [mode, setMode] = useState<'clients' | 'jobs'>('clients');
 
   /** מי שמכירים בחברה של הלקוח: מגייסים ו-HR קודם, כי דרכם מגישים. */
   const friendsOf = (c: Client) => (!c.companyKey ? [] : clients.filter((x) => x.kind === 'contact' && x.companyKey === c.companyKey)
@@ -324,6 +383,10 @@ function Inner({ clients, initial }: { clients: Client[]; initial?: { waiting?: 
       <div className="hx-card hx-filters">
         <input className="hx-search" placeholder="חיפוש לפי שם, חברה, תפקיד או משרה…" value={q}
           onChange={(e) => { setQ(e.target.value); setShown(40); }} />
+        <div className="hx-chips"><span className="lab">תצוגה</span>
+          <button className={mode === 'clients' ? 'on' : ''} title="רשימת הלקוחות, ומשרות כל אחד מהם" onClick={() => { setMode('clients'); setShown(40); }}>לפי לקוח {clients.length}</button>
+          <button className={mode === 'jobs' ? 'on' : ''} title="כל המשרות הפתוחות מהחדשה לישנה, ובכל אחת הלקוחות בחברה שלה" onClick={() => { setMode('jobs'); setShown(40); }}>לפי משרה {feed.length}</button>
+        </div>
         <div className="hx-chips"><span className="lab">סוג</span>
           {(['recruiter', 'dev', 'other'] as Group[]).map((g) => (
             <button key={g} className={group === g ? 'on' : ''} title={`הצג לקוחות מסוג: ${GL[g]}`} onClick={() => { setGroup(g); setShown(40); }}>
@@ -342,6 +405,7 @@ function Inner({ clients, initial }: { clients: Client[]; initial?: { waiting?: 
         </div>
       </div>
 
+      {mode === 'jobs' ? <JobsFeed feed={feed} clients={clients} q={q} shown={shown} setShown={setShown} friendsOf={friendsOf} /> : (
       <div className="hx-card hx-table">
         <div className="hx-cnt">מציג <b>{Math.min(shown, rows.length)}</b> מתוך <b>{rows.length}</b>
           {rows.length < inGroup.length && <span className="mut"> · {inGroup.length - rows.length} מוסתרים בגלל הסינון, מתוך {inGroup.length} בסוג הזה</span>}</div>
@@ -423,6 +487,7 @@ function Inner({ clients, initial }: { clients: Client[]; initial?: { waiting?: 
         {rows.length === 0 && <div className="hx-empty">אין לקוחות שמתאימים לסינון.</div>}
         {rows.length > shown && <button className="hx-more" title="טוען עוד 60 לקוחות" onClick={() => setShown(shown + 60)}>הצג עוד</button>}
       </div>
+      )}
     </>
   );
 }
