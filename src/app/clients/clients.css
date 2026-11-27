@@ -205,3 +205,7 @@
 
 .hx-jc{display:flex;flex-wrap:wrap;align-items:center;gap:8px;padding:6px 12px;border-top:1px dashed var(--line,#e5e0d6);font-size:13px}
 .hx-jc .hx-act{flex:1 1 100%}
+
+/* משרה שכבר הוגשה אליה (אותה חברה ואותה כותרת בלוח אחר): ירוק בהיר, לקריאה בלבד */
+.hx-prior{background:#E6F2E4!important;border-inline-start:4px solid #5E9A5A}
+.hx-prior .hx-tag{color:#2F6B2B;background:#cfe6cb}

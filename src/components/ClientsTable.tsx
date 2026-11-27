@@ -274,7 +274,7 @@ function JobsFeed({ feed, clients, q, shown, setShown, friendsOf }: {
         const age = jobAge(j.posted, j.seenAt);
         const cs = f.clientIds.map((id) => byId.get(id)).filter(Boolean) as Client[];
         return (
-          <div key={j.dk} className="hx-rowwrap">
+          <div key={j.dk} className={"hx-rowwrap" + (j.priorApplied !== null ? " hx-prior" : "")}>
             <div className="hx-job">
               <div className="hx-jt"><b>{j.title}</b><span>{f.company}{age ? ` · ${age.label}` : ''}</span>
                 {j.priorApplied !== null && <em className="hx-tag" title="הגשת כבר לחברה הזאת באותה כותרת בדיוק. כנראה אותה מודעה מלוח אחר. הסימון לקריאה בלבד.">כבר הגשת לאותה משרה{j.priorApplied ? ` ב-${new Date(j.priorApplied).toLocaleDateString('he-IL', { day: 'numeric', month: 'numeric' })}` : ''}</em>}
@@ -473,7 +473,7 @@ function Inner({ clients, feed, initial }: { clients: Client[]; feed: FeedItem[]
                     </div>
                   )}
                   {c.jobs.map((j) => (
-                    <div key={j.id} className="hx-job">
+                    <div key={j.id} className={"hx-job" + (j.priorApplied !== null ? " hx-prior" : "")}>
                       <div className="hx-jt"><b>{j.title}</b>{j.priorApplied !== null && <em className="hx-tag" title="הגשת כבר לחברה הזאת באותה כותרת בדיוק. כנראה אותה מודעה מלוח אחר. הסימון לקריאה בלבד.">כבר הגשת לאותה משרה</em>}<span>{j.company}{j.applied && j.appliedDays !== null ? ` · הוגשה לפני ${j.appliedDays} ימים${j.silent ? ' · בלי מענה' : ''}` : (jobAge(j.posted, j.seenAt)?.label ? ` · ${jobAge(j.posted, j.seenAt)!.label}` : '')}</span></div>
                       <div className="hx-stage"><Bar stage={j.stage} /><small>{STAGES[j.stage - 1]}</small></div>
                       <div className="hx-acts">
