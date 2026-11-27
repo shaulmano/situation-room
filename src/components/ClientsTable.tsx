@@ -384,7 +384,7 @@ export default function ClientsTable(props: { clients: Client[]; feed: FeedItem[
 }
 
 function Inner({ clients, feed, initial }: { clients: Client[]; feed: FeedItem[]; initial?: { waiting?: boolean; replied?: boolean; group?: Group } }) {
-  const [group, setGroup] = useState<Group | 'all'>(initial?.group ?? 'recruiter');
+  const [group, setGroup] = useState<Group | 'all'>(initial?.group ?? 'all');
   const [status, setStatus] = useState<'all' | keyof typeof SL>('all');
   const [withJob, setWithJob] = useState(false);
   const [onlyReplied, setOnlyReplied] = useState(!!initial?.replied);
@@ -428,7 +428,7 @@ function Inner({ clients, feed, initial }: { clients: Client[]; feed: FeedItem[]
   // אריח מציג בדיוק את המספר שעליו: לחיצה מנקה כל סינון אחר ומדליקה רק אותו. לחיצה נוספת מבטלת.
   const tile = (k: 'job' | 'wait' | 'applied') => {
     const cur = k === 'job' ? withJob : k === 'wait' ? onlyWaiting : onlyApplied;
-    setStatus('all'); setOnlyReplied(false); setQ('');
+    setStatus('all'); setOnlyReplied(false); setQ(''); setGroup('all');
     setWithJob(!cur && k === 'job'); setOnlyWaiting(!cur && k === 'wait'); setOnlyApplied(!cur && k === 'applied'); go(); setShown(40);
   };
   // 27.11.2026: בטלפון הרשימה יושבת מתחת למסך. לחיצה על אריח או סינון שלא מגלגלת אליה נראית כמו כפתור שלא עושה כלום.
@@ -454,7 +454,7 @@ function Inner({ clients, feed, initial }: { clients: Client[]; feed: FeedItem[]
   const cnt = (k: 'none' | 'requested' | 'friend') => inGroup.filter((c) => passes(c, { status: k })).length;
   const groupCount = (g: Group | 'all') => clients.filter((c) => (g === 'all' || c.group === g) && passes(c)).length;
   const total = cnt('none') + cnt('requested') + cnt('friend') || 1;
-  const waiting = inGroup.filter(isWaiting).length;
+  const waiting = clients.filter(isWaiting).length;
 
   return (
     <>
@@ -462,10 +462,10 @@ function Inner({ clients, feed, initial }: { clients: Client[]; feed: FeedItem[]
       {mode === 'clients' && (<>
       <div className="hx-kpis">
         <button className={'hx-kpi hx-kpib'} style={{ gridColumn: '1 / -1' }} title="משרות שנכנסו לחדר המצב ב-24 השעות האחרונות, מהחדשה לישנה. פותח את תצוגת לפי משרה" onClick={() => { go(); setNewOnly(true); setMode('jobs'); setShown(40); }}><small>משרות חדשות מהסריקה (24 שעות)</small><b>{newCount}</b></button>
-        <button className={'hx-kpi hx-kpib' + (!withJob && !onlyWaiting && !onlyApplied && !onlyReplied && status === 'all' && !q ? ' on' : '')} title="מנקה את כל הסינונים ומציג את כל הלקוחות בקבוצה" onClick={() => { setWithJob(false); setOnlyWaiting(false); setOnlyApplied(false); setOnlyReplied(false); setStatus('all'); setQ(''); go(); setShown(40); }}><small>לקוחות בקבוצה</small><b>{inGroup.length}</b></button>
-        <button className={'hx-kpi hx-kpib' + (withJob ? ' on' : '')} title="הצג רק לקוחות שיש משרה פתוחה בחברה שלהם. לחיצה נוספת מבטלת" onClick={() => tile('job')}><small>עם משרה פתוחה</small><b>{inGroup.filter(hasOpen).length}</b></button>
+        <button className={'hx-kpi hx-kpib' + (!withJob && !onlyWaiting && !onlyApplied && !onlyReplied && status === 'all' && !q && group === 'all' ? ' on' : '')} title="מנקה את כל הסינונים ומציג את כל הלקוחות" onClick={() => { setGroup('all'); setWithJob(false); setOnlyWaiting(false); setOnlyApplied(false); setOnlyReplied(false); setStatus('all'); setQ(''); go(); setShown(40); }}><small>כל הלקוחות</small><b>{clients.length}</b></button>
+        <button className={'hx-kpi hx-kpib' + (withJob ? ' on' : '')} title="הצג רק לקוחות שיש משרה פתוחה בחברה שלהם. לחיצה נוספת מבטלת" onClick={() => tile('job')}><small>עם משרה פתוחה</small><b>{clients.filter(hasOpen).length}</b></button>
         <button className={'hx-kpi warn hx-kpib' + (onlyWaiting ? ' on' : '')} title="הצג רק מי שמחכה לפעולה שלך. לחיצה נוספת מבטלת" onClick={() => tile('wait')}><small>מחכים לפעולה שלך</small><b>{waiting}</b></button>
-        <button className={'hx-kpi hx-kpib' + (onlyApplied ? ' on' : '')} title="הצג רק לקוחות שהוגשה דרכם משרה ועוד לא נסגרה. לחיצה נוספת מבטלת" onClick={() => tile('applied')}><small>הוגשה דרכם משרה</small><b>{inGroup.filter((c) => c.stage >= 4 && c.stage < 7).length}</b></button>
+        <button className={'hx-kpi hx-kpib' + (onlyApplied ? ' on' : '')} title="הצג רק לקוחות שהוגשה דרכם משרה ועוד לא נסגרה. לחיצה נוספת מבטלת" onClick={() => tile('applied')}><small>הוגשה דרכם משרה</small><b>{clients.filter((c) => c.stage >= 4 && c.stage < 7).length}</b></button>
       </div>
 
       <div className="hx-card">
@@ -488,7 +488,7 @@ function Inner({ clients, feed, initial }: { clients: Client[]; feed: FeedItem[]
         <input className="hx-search" placeholder="חיפוש לפי שם, חברה, תפקיד או משרה…" value={q}
           onChange={(e) => { setQ(e.target.value); setShown(40); }} />
         <div className="hx-chips"><span className="lab">תצוגה</span>
-          <button className={mode === 'clients' ? 'on' : ''} title="רשימת הלקוחות, ומשרות כל אחד מהם" onClick={() => { go(); setNewOnly(false); setMode('clients'); setShown(40); }}>לפי לקוח</button>
+          <button className={mode === 'clients' ? 'on' : ''} title="רשימת הלקוחות, ומשרות כל אחד מהם" onClick={() => { go(); setNewOnly(false); setMode('clients'); setShown(40); }}>לפי לקוח {clients.length}</button>
           <button className={mode === 'jobs' && !newOnly ? 'on' : ''} title="כל המשרות הפתוחות מהחדשה לישנה, ובכל אחת הלקוחות בחברה שלה" onClick={() => { go(); setNewOnly(false); setMode('jobs'); setShown(40); }}>לפי משרה {feed.length}</button>
           <button className={mode === 'jobs' && newOnly ? 'on' : ''} title="רק משרות שנכנסו לחדר המצב ב-24 השעות האחרונות, מהחדשה לישנה" onClick={() => { go(); setNewOnly(true); setMode('jobs'); setShown(40); }}>חדשות {newCount}</button>
         </div>
