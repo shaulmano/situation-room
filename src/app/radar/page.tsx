@@ -211,7 +211,7 @@ export default async function Radar({
         .chips { display: flex; flex-wrap: wrap; gap: 6px; margin: 4px 0 12px; }
         .chips a.chip { text-decoration: none; border: 1px solid var(--btn-line);
                         background: transparent; color: var(--ink); padding: .3em .8em; font-size: .8rem; }
-        .chips a.chip.on { background: #946526; border-color: #946526; color: #fff; }
+        .chips a.chip.on { background: #A8690A; border-color: #A8690A; color: #fff; }
         .list { display: flex; flex-direction: column; gap: 8px; margin-top: 10px; }
         .rowtop { display: flex; align-items: flex-start; justify-content: space-between; gap: 8px; }
         .title { font-weight: 700; font-size: .95rem; line-height: 1.35; color: var(--ink); text-decoration: none; }

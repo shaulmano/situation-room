@@ -381,14 +381,14 @@ function Inner({ clients, feed, initial }: { clients: Client[]; feed: FeedItem[]
       <div className="hx-card">
         <div className="hx-stack">
           {(['none', 'requested', 'friend'] as const).map((k) => (
-            <i key={k} role="button" tabIndex={0} title={`הצג רק: ${SL[k]} (${cnt(k)}). לחיצה נוספת מבטלת`} style={{ flex: cnt(k) || 0.001, background: ({ none: '#B9CBDD', requested: '#A8690A', friend: '#0B8F63' })[k], cursor: 'pointer' }}
+            <i key={k} role="button" tabIndex={0} title={`הצג רק: ${SL[k]} (${cnt(k)}). לחיצה נוספת מבטלת`} style={{ flex: cnt(k) || 0.001, background: ({ none: '#B9CBDD', requested: '#A8690A', friend: '#12365E' })[k], cursor: 'pointer' }}
               onClick={() => { setStatus(status === k ? 'all' : k); go(); setShown(40); }} onKeyDown={(e) => { if (e.key === 'Enter') { setStatus(status === k ? 'all' : k); go(); setShown(40); } }} />
           ))}
         </div>
         <div className="hx-leg">
           <button className={'hx-legb' + (status === 'none' ? ' on' : '')} title="הצג רק: לא חבר. לחיצה נוספת מבטלת" onClick={() => { setStatus(status === 'none' ? 'all' : 'none'); go(); setShown(40); }}><u style={{ background: '#B9CBDD' }} />לא חבר {cnt('none')}</button>
           <button className={'hx-legb' + (status === 'requested' ? ' on' : '')} title="הצג רק: נשלחה בקשה. לחיצה נוספת מבטלת" onClick={() => { setStatus(status === 'requested' ? 'all' : 'requested'); go(); setShown(40); }}><u style={{ background: '#A8690A' }} />נשלחה בקשה {cnt('requested')}</button>
-          <button className={'hx-legb' + (status === 'friend' ? ' on' : '')} title="הצג רק: חבר. לחיצה נוספת מבטלת" onClick={() => { setStatus(status === 'friend' ? 'all' : 'friend'); go(); setShown(40); }}><u style={{ background: '#0B8F63' }} />חבר {cnt('friend')}</button>
+          <button className={'hx-legb' + (status === 'friend' ? ' on' : '')} title="הצג רק: חבר. לחיצה נוספת מבטלת" onClick={() => { setStatus(status === 'friend' ? 'all' : 'friend'); go(); setShown(40); }}><u style={{ background: '#12365E' }} />חבר {cnt('friend')}</button>
           <span className="mut">{Math.round((cnt('friend') / total) * 100)}% חברים</span>
         </div>
       </div>

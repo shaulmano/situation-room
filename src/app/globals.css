@@ -1,29 +1,17 @@
 :root{
-  --ground:#EEF1F5; --surface:#FFFFFF; --raised:#F7F9FB;
-  --ink:#151A21; --muted:#5C6875; --faint:#8794A3;
-  --line:#D8DFE7; --hair:#E7ECF1;
-  --accent:#9A6317; --accent-soft:#F2E6D2;
-  --good:#2C7A5A; --good-soft:#DFEFE7;
+  --ground:#EFF3F7; --surface:#FFFFFF; --raised:#F7FAFC;
+  --ink:#0B1D33; --muted:#4A5C72; --faint:#7E8FA3;
+  --line:#DCE4EC; --hair:#EAEFF4;
+  --accent:#A8690A; --accent-soft:#FBF0DC;
+  --good:#0B8F63; --good-soft:#E4F5EE;
   /* 15.11.2026, שאול: "מה שמחכה לי לביצוע שם יהיה אדום ואחרי ביצוע
      ירוק". עד היום לא היה כאן אדום בכלל, רק ירוק וכתום. */
-  --bad:#B3261E; --bad-soft:#F7DEDC;
-  --warn:#9C6B12; --warn-soft:#F4E9D4;
-  --crit:#A63A31; --crit-soft:#F6E1DF;
+  --bad:#C4302A; --bad-soft:#FBE9E7;
+  --warn:#A8690A; --warn-soft:#FBF0DC;
+  --crit:#C4302A; --crit-soft:#FBE9E7;
   /* The bar measures 59px, so 58 clipped the last row by a pixel — and more on a
      phone with a home indicator. 68 clears it with room to spare. */
   --nav-h:68px;
-}
-@media (prefers-color-scheme: dark){
-  :root:not([data-theme="light"]){
-    --ground:#10141A; --surface:#181E26; --raised:#1E252E;
-    --ink:#E2E8EF; --muted:#8B98A7; --faint:#6B7887;
-    --line:#28313C; --hair:#222A34;
-    --accent:#D79B45; --accent-soft:#332818;
-    --good:#4FA882; --good-soft:#172C24;
-    --bad:#E8837C; --bad-soft:#3A1F1D;
-    --warn:#D2A03F; --warn-soft:#2E2718;
-    --crit:#D2665C; --crit-soft:#33201E;
-  }
 }
 *{box-sizing:border-box}
 html,body{margin:0;padding:0}
@@ -120,11 +108,11 @@ h2:first-child{margin-top:0}
   font-variant-numeric:tabular-nums;font-size:.92rem;
   padding:.18em .55em;border-radius:5px;flex:none;
 }
-.score.hi{background:var(--good-soft);color:var(--good)}
+.score.hi{background:#EAEFF4;color:#12365E}
 .score.mid{background:var(--warn-soft);color:var(--warn)}
 .score.lo{background:var(--raised);color:var(--faint);border:1px solid var(--hair)}
 .chip{display:inline-block;font-size:.71rem;font-weight:600;padding:.16em .6em;border-radius:99px;white-space:nowrap}
-.chip.ok{background:var(--good-soft);color:var(--good)}
+.chip.ok{background:#EAEFF4;color:#12365E}
 .chip.warn{background:var(--warn-soft);color:var(--warn)}
 .chip.crit{background:var(--crit-soft);color:var(--crit)}
 .chip.mute{background:var(--raised);color:var(--muted);border:1px solid var(--hair)}
@@ -232,10 +220,10 @@ a:focus-visible,button:focus-visible,input:focus-visible{outline:2px solid var(-
 .mark{
   flex:none;align-self:center;width:auto;white-space:nowrap;
   padding:.42em .8em;font-size:.8rem;font-weight:700;border-radius:6px;
-  background:transparent;color:var(--good);border:1px solid var(--good);
+  background:transparent;color:#006ECA;border:1px solid #006ECA;
   cursor:pointer;
 }
-.mark:hover{background:var(--good-soft)}
+.mark:hover{background:#EAEFF4}
 .mark:disabled{opacity:.6;cursor:default}
 
 /* 15.11.2026: "נסגרה", המודעה כבר לא קיימת. אותו גודל של "הוגשה" כדי
@@ -284,7 +272,7 @@ a:focus-visible,button:focus-visible,input:focus-visible{outline:2px solid var(-
 }
 .split-p{
   flex:none;width:34px;text-align:start;font-family:ui-monospace,Menlo,monospace;
-  font-size:.74rem;font-variant-numeric:tabular-nums;color:var(--good);
+  font-size:.74rem;font-variant-numeric:tabular-nums;color:#12365E;
 }
 
 /* ── phone ─────────────────────────────────────────────────────────────────
@@ -354,7 +342,7 @@ a:focus-visible,button:focus-visible,input:focus-visible{outline:2px solid var(-
   font-family:ui-monospace,Menlo,monospace;font-weight:600;
   font-variant-numeric:tabular-nums;font-size:.9rem;flex:none;
   padding:.18em .55em;border-radius:5px;
-  background:var(--good-soft);color:var(--good);
+  background:#EAEFF4;color:#12365E;
 }
 
 /* Tiles are links now — they need to look pressable and take focus. */
@@ -385,7 +373,7 @@ a.kpi:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
 /* Age is the only signal there is for whether a posting is still open — the
    boards answer 200 for roles filled weeks ago — so it is coloured, not just
    printed. Same bands the score uses, so a row and its score never disagree. */
-.chip.age.fresh{background:var(--good-soft);color:var(--good)}
+.chip.age.fresh{background:#EAEFF4;color:#12365E}
 .chip.age.ok{background:var(--raised);color:var(--muted);border:1px solid var(--hair)}
 .chip.age.warn{background:var(--warn-soft);color:var(--warn)}
 .chip.age.crit{background:var(--crit-soft);color:var(--crit)}
@@ -486,8 +474,8 @@ a.dup-title{text-decoration:underline;text-underline-offset:2px}
 .gold-grid{display:grid;grid-template-columns:1fr;gap:.9rem}
 
 .gold-card{border:1px solid;border-radius:12px;padding:.85rem;display:flex;flex-direction:column;gap:.65rem;min-width:0}
-.gold-card.c0{background:#E8F2FA;border-color:#B4D0E6}
-.gold-card.c1{background:#FBF3D3;border-color:#E3CF86}
+.gold-card.c0{background:#FFFFFF;border-color:#DCE4EC}
+.gold-card.c1{background:#FFFFFF;border-color:#DCE4EC}
 .gold-card.c2{background:#fff;border-color:var(--border,#ddd)}
 .gold-tier{margin:.6rem 0 .1rem;font-size:1rem}
 .gold-tier-blue{color:#1f5f8f}
@@ -527,7 +515,7 @@ a.dup-title{text-decoration:underline;text-underline-offset:2px}
   
 }
 
-.gold-simple{display:flex;flex-direction:column;gap:.6rem;border:1px solid #B4D0E6;background:#E8F2FA;border-radius:12px;padding:.85rem;margin-bottom:.7rem}
+.gold-simple{display:flex;flex-direction:column;gap:.6rem;border:1px solid #DCE4EC;background:#FFFFFF;border-radius:12px;padding:.85rem;margin-bottom:.7rem}
 .gs-job{margin:.2rem 0}.gs-who{margin-top:.4rem}.gs-cv{font-size:.85rem;margin-top:.3rem}
 .gs-acts{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:.45rem}
 @media (min-width:900px){.gold-simple{flex-direction:row;justify-content:space-between;align-items:center;gap:1.5rem}.gs-main{flex:1;min-width:0}.gs-acts{width:320px;flex:none}}
@@ -544,7 +532,7 @@ a.dup-title{text-decoration:underline;text-underline-offset:2px}
 .gold-simple{display:flex;flex-direction:column;gap:.7rem;align-items:stretch;justify-content:flex-start}
 .gs-co{display:flex;justify-content:space-between;align-items:center;gap:.6rem}
 .gs-all{flex:none;padding:.3rem .7rem}
-.gold-simple .gs-job{display:block;background:#fff;border:1px solid #B4D0E6;border-radius:10px;padding:.7rem;margin:0}
+.gold-simple .gs-job{display:block;background:#fff;border:1px solid #DCE4EC;border-radius:10px;padding:.7rem;margin:0}
 .gs-btns{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:.45rem;margin-top:.55rem}
 .gs-btns>*{width:100%;box-sizing:border-box;text-align:center}
 @media (min-width:900px){.gs-btns{grid-template-columns:repeat(4,minmax(0,1fr))}}
@@ -569,7 +557,7 @@ a.dup-title{text-decoration:underline;text-underline-offset:2px}
   padding:.5em .9em;font:inherit;font-size:.86rem;font-weight:600;border-radius:6px;cursor:pointer;
   border:1px solid var(--line);background:transparent;color:var(--ink);text-decoration:none}
 .cn-b.on{border-color:#2f7d5b;color:#2f7d5b}
-.cn-b.main{background:#946526;border-color:#946526;color:#fff}
+.cn-b.main{background:#A8690A;border-color:#A8690A;color:#fff}
 .cn-b.quiet{color:var(--muted)}
 @media (max-width:760px){
   .cn-card{grid-template-columns:1fr;gap:10px}
@@ -614,8 +602,8 @@ a.dup-title{text-decoration:underline;text-underline-offset:2px}
 .radar-tile .rt-n{min-width:2.2ch;text-align:center;line-height:1}
 
 /* משרות זהב: אותו כרטיס ואותם כפתורים כמו בקשות חברות */
-.gold-simple{background:#E8F2FA;border:1px solid #B4D0E6;border-radius:12px;padding:12px 14px}
-.gold-simple .gs-job{background:rgba(255,255,255,.45);border:1px solid #B4D0E6;border-radius:8px;padding:.5rem .7rem}
+.gold-simple{background:#FFFFFF;border:1px solid #DCE4EC;border-radius:12px;padding:12px 14px}
+.gold-simple .gs-job{background:rgba(255,255,255,.45);border:1px solid #DCE4EC;border-radius:8px;padding:.5rem .7rem}
 .gs-drop.cn-b{min-width:0;padding:.35em .8em;font-size:.8rem}
 .gs-acts4{margin-top:.2rem}
 .gs-acts4>span{display:none}
@@ -653,9 +641,9 @@ a.dup-title{text-decoration:underline;text-underline-offset:2px}
   background:transparent!important;border:1px solid var(--line)!important;color:var(--ink)!important;box-shadow:none}
 .cn-b.quiet,.cn-flow>.quiet{color:var(--muted)!important}
 .cn-b.on,.mark.on,.cn-flow>.on{border-color:#2f7d5b!important;color:#2f7d5b!important}
-.cn-b.main,.cn-flow>.main{background:#946526!important;border-color:#946526!important;color:#fff!important}
+.cn-b.main,.cn-flow>.main{background:#A8690A!important;border-color:#A8690A!important;color:#fff!important}
 .apply:hover,.mark:hover,.closed:hover,.cn-b:hover{background:var(--raised)!important;filter:none}
-.cn-b.main:hover,.cn-flow>.main:hover{background:#946526!important;filter:brightness(1.08)}
+.cn-b.main:hover,.cn-flow>.main:hover{background:#A8690A!important;filter:brightness(1.08)}
 /* כרטיס אדם בתוך כרטיס: אותו כרטיס, לא אפור שונה */
 .rp-card{background:var(--surface)!important;border:1px solid var(--line)}
 
@@ -664,31 +652,31 @@ a.dup-title{text-decoration:underline;text-underline-offset:2px}
 :root{--btn-line:#A9B6C4}
 .apply,.mark,.closed,.apply.indirect,.cn-b,
 .cn-flow>button,.cn-flow>a,.gold-acts>*,.reach-acts>*{border-color:var(--btn-line)!important}
-.cn-b.main,.cn-flow>.main{border-color:#946526!important}
+.cn-b.main,.cn-flow>.main{border-color:#A8690A!important}
 .cn-b.on,.mark.on,.cn-flow>.on{border-color:#2f7d5b!important}
 .gold-sec{border:1px solid color-mix(in srgb,var(--btn-line) 55%,transparent)}
 
 /* 23.11.2026, שאול: תכלת וצהבהב בכל המסכים. בזהב הצבע נקבע לפי איש גיוס מאומת.
    בשאר המסכים אין סיווג כזה, ולכן הצבעים מתחלפים בין כרטיס לכרטיס. */
 .cn-list>.cn-card:nth-child(odd),.list>.row:nth-child(odd),.row.job:nth-of-type(odd),
-.row.reach-row:nth-of-type(odd),.iq>.iq-row:nth-child(odd){background:#E8F2FA;border-color:#B4D0E6}
+.row.reach-row:nth-of-type(odd),.iq>.iq-row:nth-child(odd){background:#FFFFFF;border-color:#DCE4EC}
 .cn-list>.cn-card:nth-child(even),.list>.row:nth-child(even),.row.job:nth-of-type(even),
-.row.reach-row:nth-of-type(even),.iq>.iq-row:nth-child(even){background:#FBF3D3;border-color:#E3CF86}
+.row.reach-row:nth-of-type(even),.iq>.iq-row:nth-child(even){background:#FFFFFF;border-color:#DCE4EC}
 .rp-card{background:rgba(255,255,255,.55)!important}
 @media (prefers-color-scheme:dark){
   .cn-list>.cn-card,.list>.row,.row.job,.row.reach-row,.iq>.iq-row{background:var(--surface)!important;border-color:var(--line)!important}
 }
 
 /* בלוק בתוך בלוק בצבע אחר מההורה: אדם בכרטיס משרה מקבל את הצבע ההפוך */
-.list>.row:nth-child(odd) .rp-card,.row.job:nth-of-type(odd) .rp-card{background:#FBF3D3!important;border-color:#E3CF86}
-.list>.row:nth-child(even) .rp-card,.row.job:nth-of-type(even) .rp-card{background:#E8F2FA!important;border-color:#B4D0E6}
+.list>.row:nth-child(odd) .rp-card,.row.job:nth-of-type(odd) .rp-card{background:#FFFFFF!important;border-color:#DCE4EC}
+.list>.row:nth-child(even) .rp-card,.row.job:nth-of-type(even) .rp-card{background:#FFFFFF!important;border-color:#DCE4EC}
 
 /* זהב: בלוק פנימי בצבע ההפוך מההורה (תכלת בתוך צהבהב, צהבהב בתוך תכלת), לא לבן.
    הכפתור "מוותר" של משרה בודדת בגודל כפתור רגיל ולא נמתח על כל הרוחב. */
-.gold-simple .gs-job{background:#FBF3D3!important;border:1px solid #E3CF86!important}
-.gold-card.c0 .gold-sec{background:#FBF3D3;border:1px solid #E3CF86}
-.gold-card.c1 .gold-sec{background:#E8F2FA;border:1px solid #B4D0E6}
-.gold-card.c2 .gold-sec{background:#E8F2FA;border:1px solid #B4D0E6}
+.gold-simple .gs-job{background:#FFFFFF!important;border:1px solid #DCE4EC!important}
+.gold-card.c0 .gold-sec{background:#FFFFFF;border:1px solid #DCE4EC}
+.gold-card.c1 .gold-sec{background:#FFFFFF;border:1px solid #DCE4EC}
+.gold-card.c2 .gold-sec{background:#FFFFFF;border:1px solid #DCE4EC}
 .gs-job{flex-wrap:wrap}
 .gs-job .gs-drop{width:auto!important;flex:none;align-self:flex-start;min-width:92px}
 .gold-simple .gs-job a{color:var(--ink)}
@@ -711,8 +699,8 @@ a.dup-title{text-decoration:underline;text-underline-offset:2px}
 .gold-sec .cn-acts{grid-template-columns:repeat(2,minmax(104px,auto))}
 @media (min-width:1100px){.gold-sec .cn-acts{grid-template-columns:repeat(4,auto)}}
 @media (max-width:760px){.gold-sec.cn-card{grid-template-columns:1fr!important}.gold-sec .cn-acts{grid-template-columns:1fr 1fr}}
-.gold-card.c0 .gold-sec.cn-card{background:#FBF3D3;border:1px solid #E3CF86}
-.gold-card.c1 .gold-sec.cn-card,.gold-card.c2 .gold-sec.cn-card{background:#E8F2FA;border:1px solid #B4D0E6}
+.gold-card.c0 .gold-sec.cn-card{background:#FFFFFF;border:1px solid #DCE4EC}
+.gold-card.c1 .gold-sec.cn-card,.gold-card.c2 .gold-sec.cn-card{background:#FFFFFF;border:1px solid #DCE4EC}
 .gold-foot{margin-top:.4rem}
 
 /* זהב, כרטיס משרות: הכפתורים בראש הכרטיס ולא באמצע, ו"מוותר" של משרה בקצה השורה שלה */
