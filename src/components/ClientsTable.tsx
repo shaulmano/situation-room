@@ -397,6 +397,7 @@ function Inner({ clients, feed, initial }: { clients: Client[]; feed: FeedItem[]
   const toggle = (id: string, tab: 'jobs' | 'edit') => setView(view?.id === id && view.tab === tab ? null : { id, tab });
   const [act, setAct] = useState<string | null>(null);
   const [shown, setShown] = useState(40);
+  const [newOnly, setNewOnly] = useState(false);
   const [mode, setModeRaw] = useState<'clients' | 'jobs'>('clients');
   // הרענון אחרי שמירה טוען את המסך מחדש, והתצוגה חזרה ל"לפי לקוח" באמצע עבודה. זוכרים בלשונית.
   useEffect(() => { try { if (sessionStorage.getItem('crm-mode') === 'jobs') setModeRaw('jobs'); } catch {} }, []);
@@ -440,7 +441,9 @@ function Inner({ clients, feed, initial }: { clients: Client[]; feed: FeedItem[]
     if (g === 'none') return cs.length === 0;
     return cs.some((c) => (g === 'all' || c.group === g) && (st === 'all' || c.status === st));
   };
-  const jfeed = useMemo(() => feed.filter((f) => (jobGroup === 'all' && status === 'all') ? true : jfit(f, jobGroup, status)), [feed, jobGroup, status, clientById]);
+  const isNew = (f: FeedItem) => !!f.job.seenAt && Date.now() - Date.parse(f.job.seenAt) < 864e5;
+  const newCount = feed.filter(isNew).length;
+  const jfeed = useMemo(() => feed.filter((f) => (!newOnly || isNew(f)) && ((jobGroup === 'all' && status === 'all') ? true : jfit(f, jobGroup, status))), [feed, jobGroup, status, clientById, newOnly]);
   const jgCount = (g: 'all' | Group | 'none') => feed.filter((f) => g === 'all' && status === 'all' ? true : jfit(f, g, status)).length;
   const jsCount = (st: 'all' | keyof typeof SL) => feed.filter((f) => jobGroup === 'all' && st === 'all' ? true : jfit(f, jobGroup, st)).length;
   const cnt = (k: 'none' | 'requested' | 'friend') => inGroup.filter((c) => c.status === k).length;
@@ -452,6 +455,7 @@ function Inner({ clients, feed, initial }: { clients: Client[]; feed: FeedItem[]
       {/* 27.11.2026, שאול: "המידע ממש לא מאורגן". בתצוגת "לפי משרה" אין אריחי לקוחות, סרגל חברון ובוררי סוג: רק משרות. */}
       {mode === 'clients' && (<>
       <div className="hx-kpis">
+        <button className={'hx-kpi hx-kpib'} style={{ gridColumn: '1 / -1' }} title="משרות שנכנסו לחדר המצב ב-24 השעות האחרונות, מהחדשה לישנה. פותח את תצוגת לפי משרה" onClick={() => { go(); setNewOnly(true); setMode('jobs'); setShown(40); }}><small>משרות חדשות מהסריקה (24 שעות)</small><b>{newCount}</b></button>
         <button className={'hx-kpi hx-kpib' + (!withJob && !onlyWaiting && !onlyApplied && !onlyReplied && status === 'all' && !q ? ' on' : '')} title="מנקה את כל הסינונים ומציג את כל הלקוחות בקבוצה" onClick={() => { setWithJob(false); setOnlyWaiting(false); setOnlyApplied(false); setOnlyReplied(false); setStatus('all'); setQ(''); go(); setShown(40); }}><small>לקוחות בקבוצה</small><b>{inGroup.length}</b></button>
         <button className={'hx-kpi hx-kpib' + (withJob ? ' on' : '')} title="הצג רק לקוחות שיש משרה פתוחה בחברה שלהם. לחיצה נוספת מבטלת" onClick={() => tile('job')}><small>עם משרה פתוחה</small><b>{inGroup.filter(hasOpen).length}</b></button>
         <button className={'hx-kpi warn hx-kpib' + (onlyWaiting ? ' on' : '')} title="הצג רק מי שמחכה לפעולה שלך. לחיצה נוספת מבטלת" onClick={() => tile('wait')}><small>מחכים לפעולה שלך</small><b>{waiting}</b></button>
@@ -500,6 +504,10 @@ function Inner({ clients, feed, initial }: { clients: Client[]; feed: FeedItem[]
         </div>
         </>)}
         {mode === 'jobs' && (<>
+        <div className="hx-chips"><span className="lab">נכנסו</span>
+          <button className={!newOnly ? 'on' : ''} title="כל המשרות הפתוחות" onClick={() => { setNewOnly(false); setShown(40); }}>הכול {feed.length}</button>
+          <button className={newOnly ? 'on' : ''} title="רק משרות שנכנסו לחדר המצב ב-24 השעות האחרונות" onClick={() => { setNewOnly(true); setShown(40); }}>חדשות (24 שעות) {newCount}</button>
+        </div>
           <div className="hx-chips"><span className="lab">סוג</span>
             {(['all', 'recruiter', 'dev', 'other', 'none'] as const).map((g) => (
               <button key={g} className={jobGroup === g ? 'on' : ''} title={g === 'all' ? 'כל המשרות הפתוחות' : g === 'none' ? 'משרות בחברות שאין בהן אף לקוח' : `משרות בחברות שיש בהן לקוח מסוג: ${GL[g]}`}
@@ -516,7 +524,7 @@ function Inner({ clients, feed, initial }: { clients: Client[]; feed: FeedItem[]
       </div>
 
       <div ref={listRef} style={{ scrollMarginTop: 8 }} />
-      {mode === 'jobs' ? <JobsFeed feed={jfeed} clients={clients} q={q} filterNote={(jobGroup === 'all' ? '' : jobGroup === 'none' ? ' סוג: חברות בלי לקוח.' : ` סוג: ${GL[jobGroup]}.`) + (status === 'all' ? '' : ` חברות: ${SL[status]}.`)} shown={shown} setShown={setShown} friendsOf={friendsOf} /> : (
+      {mode === 'jobs' ? <JobsFeed feed={jfeed} clients={clients} q={q} filterNote={(newOnly ? ' נכנסו ב-24 השעות האחרונות.' : '') + (jobGroup === 'all' ? '' : jobGroup === 'none' ? ' סוג: חברות בלי לקוח.' : ` סוג: ${GL[jobGroup]}.`) + (status === 'all' ? '' : ` חברות: ${SL[status]}.`)} shown={shown} setShown={setShown} friendsOf={friendsOf} /> : (
       <div className="hx-card hx-table">
         <div className="hx-cnt">מציג <b>{Math.min(shown, rows.length)}</b> מתוך <b>{rows.length}</b>
           {rows.length < inGroup.length && <span className="mut"> · {inGroup.length - rows.length} מוסתרים בגלל הסינון, מתוך {inGroup.length} בסוג הזה</span>}</div>
