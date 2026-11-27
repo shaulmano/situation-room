@@ -8,16 +8,24 @@ const CLS: Record<string, [string, string]> = {
   info_request: ['בקשת מידע', 'warn'],
   interview: ['זימון', 'ok'],
   viewed: ['לינקדאין דיווח', 'warn'],
+  conversation: ['שיחה', 'ok'],
 };
 
 export default async function Replies() {
   const sb = serverClient();
 
-  const [{ data: events }, { data: seen }] = await Promise.all([
-    sb.from('events')
-      .select('id, from_addr, subject, snippet, received_at, classification')
-      .order('received_at', { ascending: false })
-      .limit(60),
+  // 27.11.2026: השורות הציגו רק "זימון / interview" בלי חברה ובלי תאריך, כי רוב האירועים הם
+  // סימון סטטוס ידני שאין לו שולח ולא תוכן. עכשיו מצורפת ההגשה (חברה ותפקיד) ומוצג התאריך.
+  // ה-join הוא PostgREST ו-tsc לא בודק אותו: אם נכשל, חוזרים לשליפה הפשוטה ולא לרשימה ריקה.
+  const evFull = await sb.from('events')
+    .select('id, from_addr, subject, snippet, received_at, classification, applications(company, role)')
+    .order('received_at', { ascending: false })
+    .limit(60);
+  const evData = !evFull.error && evFull.data ? evFull.data : (await sb.from('events')
+    .select('id, from_addr, subject, snippet, received_at, classification')
+    .order('received_at', { ascending: false })
+    .limit(60)).data;
+  const [{ data: seen }] = await Promise.all([
     sb.from('applications')
       .select('id, company, role, sent_at, status')
       .in('status', ['acknowledged', 'replied', 'conversation', 'interview'])
@@ -25,7 +33,7 @@ export default async function Replies() {
       .limit(60),
   ]);
 
-  const rows = events ?? [];
+  const rows = evData ?? [];
   const viewed = seen ?? [];
 
   return (
@@ -41,8 +49,11 @@ export default async function Replies() {
               <div className="row" key={e.id}>
                 <span className={'chip ' + cls}>{txt}</span>
                 <span className="grow">
-                  {e.from_addr}
-                  <span className="sub">{e.snippet ?? e.subject}</span>
+                  {e.applications?.company ?? e.from_addr}
+                  <span className="sub">
+                    {[e.applications?.role, e.snippet ?? (e.from_addr || e.applications ? null : e.subject), e.received_at ? new Date(e.received_at).toLocaleDateString('he-IL') : null]
+                      .filter(Boolean).join(' · ')}
+                  </span>
                 </span>
               </div>
             );
