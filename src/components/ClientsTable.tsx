@@ -284,7 +284,7 @@ function Inner({ clients, initial }: { clients: Client[]; initial?: { waiting?: 
         && (!onlyApplied || (c.stage >= 4 && c.stage < 7))
         && (!s || `${c.name} ${c.company ?? ''} ${c.title ?? ''} ${c.jobs.map((j) => j.title).join(' ')}`.toLowerCase().includes(s)))
       // מי שענה נשאר גבוה גם אחרי שטופל: ראשון מי שמחכה לך, אחריו הענייה האחרונה.
-      .sort((a, b) => Number(b.urgent) - Number(a.urgent) || (b.repliedAt ?? '').localeCompare(a.repliedAt ?? '') || b.stage - a.stage || b.jobs.length - a.jobs.length);
+      .sort((a, b) => Number(b.urgent) - Number(a.urgent) || b.activityAt.localeCompare(a.activityAt) || a.name.localeCompare(b.name));
   }, [inGroup, status, withJob, onlyReplied, onlyWaiting, onlyApplied, q]);
 
   // אריח מציג בדיוק את המספר שעליו: לחיצה מנקה כל סינון אחר ומדליקה רק אותו. לחיצה נוספת מבטלת.

@@ -447,6 +447,7 @@ async function WarmBody({
     })
     .filter((r) => r.people.length > 0 && !todaySeen.has(r.jobId))
     // מי שעוד מחכה למעלה, מה שטיפלת בו נשאר למטה כעדות ליום העבודה.
+    // מהחדש לישן (27.11.2026). שורה שכבר טופלה יורדת למטה, כמו קודם, ובתוך כל חלק לפי תאריך ההגשה.
     .sort((a, b) => (b.openCount > 0 ? 1 : 0) - (a.openCount > 0 ? 1 : 0)
       || b.sentAt - a.sentAt);
 
@@ -630,10 +631,8 @@ async function WarmBody({
     ? withContacts
     : withContacts.filter((r) => !r.people.every((p) => p.contacted_at))
   ).sort((a, b) => {
-    // מי שיש בו יותר אנשים שעוד לא פנית אליהם קודם, ואז המשרה החדשה יותר.
-    const open = (r: typeof a) => r.people.filter((p) => !p.contacted_at).length;
-    return open(b) - open(a)
-      || new Date(b.m.jobs.first_seen).getTime() - new Date(a.m.jobs.first_seen).getTime();
+    // מהחדש לישן (27.11.2026, שאול). עד היום: קודם מי שיש בו יותר אנשים שעוד לא פנית אליהם.
+    return new Date(b.m.jobs.first_seen).getTime() - new Date(a.m.jobs.first_seen).getTime();
   });
 
   /**

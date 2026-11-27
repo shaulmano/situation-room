@@ -38,7 +38,7 @@ export default async function Connect() {
       note: goldConnectNote({ name: f.full_name, company: c?.name ?? '', jobTitle: null }),
     };
   });
-  rows.sort((a, b) => ((a.sizeClass === 'E' ? 0 : 1) - (b.sizeClass === 'E' ? 0 : 1)) || a.company.localeCompare(b.company));
+  // מהחדש לישן (27.11.2026): השאילתה כבר מסודרת לפי found_at יורד, ולא ממיינים מחדש לפי גודל או שם.
 
   return (
     <main>

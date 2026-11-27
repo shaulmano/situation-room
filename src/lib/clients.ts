@@ -19,6 +19,8 @@ export type ClientJob = {
   stage: number; ageDays: number | null; applied: boolean;
   /** מפתח איחוד: מזהה לינקדאין כשיש, אחרת מזהה המשרה. */
   dk: string;
+  /** מתי המשרה נראתה לראשונה, לסדר מהחדש לישן. */
+  seenAt: string | null;
   /** ימים מאז ההגשה, רק למשרה שהוגשה. */
   appliedDays: number | null; silent: boolean;
   /** מזהה שורת ההגשה, כדי לרשום ראיון או סגירה. */
@@ -40,6 +42,8 @@ export type Client = {
   skipped?: boolean;
   note: string | null; connectedOn: string | null; acceptedAt: string | null;
   contactedAt: string | null; repliedAt: string | null;
+  /** הפעילות האחרונה סביב הלקוח: משרה פתוחה חדשה, תגובה, אישור חברות או פנייה. */
+  activityAt: string;
 };
 
 const REC = /recruit|talent|\bhr\b|human resources|acquisition|sourcer|גיוס|משאבי אנוש|מגייס/i;
@@ -100,7 +104,7 @@ export async function loadClients(sb: any): Promise<{ clients: Client[]; orphans
       const closeReason = !closed ? null : status === 'offer' ? 'הצעה' : note === CLOSED_NOTE ? 'המשרה נסגרה' : 'נדחה';
       if (!prev || st > prev.stage) {
         m.set(dk, {
-          id: j.id, dk, title: j.title, company: j.company, url: j.url ?? null, applied, stage: st,
+          id: j.id, dk, seenAt: j.first_seen ?? null, title: j.title, company: j.company, url: j.url ?? null, applied, stage: st,
           appliedDays: applied && sentAt ? Math.max(0, Math.round((Date.now() - new Date(sentAt).getTime()) / 864e5)) : null,
           silent: applied && status === 'silent', appId: appId ?? null, closed, closeReason,
           ageDays: j.first_seen ? Math.max(0, Math.round((Date.now() - new Date(j.first_seen).getTime()) / 864e5)) : null,
@@ -122,13 +126,14 @@ export async function loadClients(sb: any): Promise<{ clients: Client[]; orphans
       const k = dkById.get(c.last_job_id) ?? c.last_job_id;
       if (!via.has(k)) via.set(k, { id: 'c:' + c.id, name: c.full_name ?? '' });
     }
-    const mk = (base: Omit<Client, 'jobs' | 'stage' | 'next' | 'urgent' | 'companyKey' | 'silentCount' | Extra> & Partial<Pick<Client, Extra>> & { companyKey: string },
+    const mk = (base: Omit<Client, 'jobs' | 'stage' | 'next' | 'urgent' | 'companyKey' | 'silentCount' | 'activityAt' | Extra> & Partial<Pick<Client, Extra>> & { companyKey: string },
                 contactedJobId: string | null, contacted: boolean, replied: boolean, urgent: boolean): Client => {
       const jobs = [...(jobsByCo.get(base.companyKey)?.values() ?? [])];
       for (const j of jobs) {
         if (j.stage === 1 && contacted && (!contactedJobId || contactedJobId === j.id)) j.stage = replied ? 3 : 2;
       }
-      jobs.sort((a, b) => b.stage - a.stage || (a.ageDays ?? 999) - (b.ageDays ?? 999));
+      // מהחדש לישן (27.11.2026, שאול). הסדר לא משפיע על השלב, שמחושב בנפרד.
+      jobs.sort((a, b) => (b.seenAt ?? '').localeCompare(a.seenAt ?? ''));
       // משרה שנסגרה לא מקדמת את הלקוח: הוא מתקדם לפי המשרה החיה הרחוקה ביותר.
       const live = jobs.filter((j) => !j.closed);
       const stage = live.length ? live.reduce((s, j) => Math.max(s, j.stage), 0) : jobs.length ? 7 : 0;
@@ -148,7 +153,10 @@ export async function loadClients(sb: any): Promise<{ clients: Client[]; orphans
       // מנהל פיתוח או מגייס/ת חבר בלי משרה פתוחה: הודעת היכרות כללית, שמבקשת שיזכור אותו. לא כשכבר פנה אליו.
       else if (!open.length && base.kind === 'contact' && (base.group === 'dev' || base.group === 'recruiter') && base.status === 'friend' && !contacted && !replied && !pitched.has(base.id)) next = 'לשלוח הודעה';
       else if (open.length && contacted && !replied) next = 'מחכה לתשובה';
-      return { note: null, connectedOn: null, acceptedAt: null, contactedAt: null, repliedAt: null, ...base, silentCount, jobs, stage, next, urgent };
+      const full = { note: null, connectedOn: null, acceptedAt: null, contactedAt: null, repliedAt: null, ...base };
+      const newestOpen = jobs.filter((j) => !j.applied && !j.closed).map((j) => j.seenAt ?? '').sort().pop() ?? '';
+      const activityAt = [newestOpen, full.repliedAt ?? '', full.acceptedAt ?? '', full.contactedAt ?? '', full.connectedOn ?? ''].sort().pop() ?? '';
+      return { ...full, silentCount, jobs, stage, next, urgent, activityAt };
     };
 
     // 26.11.2026, שאול: ויתור על כל אנשי הקשר של חברה הוא ויתור על המשרה, לא על האנשים. חברה עם שניים ומעלה, כולם מסומנים.

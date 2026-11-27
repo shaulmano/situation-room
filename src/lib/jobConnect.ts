@@ -83,7 +83,9 @@ export async function loadJobConnect(sb: any): Promise<{ rows: JobConnectRow[]; 
   const cands = [...bestByCo.entries()]
     .filter(([k]) => !hasContact.has(k))
     .sort((a, b) => b[1].score - a[1].score)
-    .slice(0, 80);
+    .slice(0, 80)
+    // מהחדש לישן (27.11.2026). הבחירה של 80 נשארת לפי הציון, והתצוגה לפי תאריך המשרה.
+    .sort((a, b) => String(b[1].jobs.first_seen ?? '').localeCompare(String(a[1].jobs.first_seen ?? '')));
   const descById = new Map<string, string>();
   const ids = cands.map(([, m]) => m.jobs.id);
   for (let i = 0; i < ids.length; i += 40) {
