@@ -54,11 +54,12 @@ export default function MarkApplied({ id, cvId, internal }: { id: string; cvId?:
           placeholder="שם (לא חובה)"
           style={{ width: '100%', marginBottom: 6 }}
         />
-        <button type="button" className="mark" disabled={pending || !url.trim()} onClick={(e) => mark(e, true)}>
+        <button type="button" className="mark" disabled={pending || !url.trim()} onClick={(e) => mark(e, true)}
+          title={url.trim() ? 'נרשם כבקשת חברות שנשלחה וממתינה לאישור' : 'הדבק קודם קישור לפרופיל של מי שפנית אליו'}>
           סמן שנשלחה בקשה
         </button>{' '}
         <button type="button" className="mark" disabled={pending || !url.trim()} onClick={(e) => mark(e, true, true)}
-          title="כבר מחוברים, ושלחת הודעה פרטית. נרשם כנשלח, בלי להמתין לאישור">
+          title={url.trim() ? 'כבר מחוברים, ושלחת הודעה פרטית. נרשם כנשלח, בלי להמתין לאישור' : 'הדבק קודם קישור לפרופיל של מי שפנית אליו'}>
           כבר מחוברים, שלחתי הודעה
         </button>{' '}
         <button type="button" className="mark" disabled={pending} onClick={(e) => mark(e, false)}>
