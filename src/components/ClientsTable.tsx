@@ -8,6 +8,18 @@ import { isAgency } from '@/lib/pickContact';
 
 /** רענון אחרי שמירה: אחד לכל המסך, עם חיווי גלובלי כל עוד השרת טוען מחדש. */
 /** כתיבות שעדיין בדרך לשרת. ביטול מחכה להן, אחרת הוא יכול להגיע לפני הסימון ולהיות מבוטל על ידו. */
+function enteredLabel(seen: string | null): { text: string; fresh: boolean } | null {
+  if (!seen) return null;
+  const t = new Date(seen);
+  if (Number.isNaN(t.getTime())) return null;
+  const tz = 'Asia/Jerusalem';
+  const day = (d: Date) => d.toLocaleDateString('en-CA', { timeZone: tz });
+  const hm = t.toLocaleTimeString('he-IL', { timeZone: tz, hour: '2-digit', minute: '2-digit', hour12: false });
+  if (day(t) === day(new Date())) return { text: `נכנסה היום ${hm}`, fresh: true };
+  const [, m, d] = day(t).split('-');
+  return { text: `נכנסה ${Number(d)}.${Number(m)} ${hm}`, fresh: false };
+}
+
 const inflight = new Set<Promise<unknown>>();
 const track = <T,>(p: Promise<T>): Promise<T> => { inflight.add(p); p.finally(() => inflight.delete(p)).catch(() => {}); return p; };
 const Refresh = createContext<(appliedJobId?: string) => void>(() => {});
@@ -280,11 +292,13 @@ function JobsFeed({ feed, clients, q, filterNote, shown, setShown, friendsOf }: 
       {rows.slice(0, shown).map((f) => {
         const j = f.job;
         const age = jobAge(j.posted, j.seenAt);
+        const entered = enteredLabel(j.seenAt);
         const cs = f.clientIds.map((id) => byId.get(id)).filter(Boolean) as Client[];
         return (
           <div key={j.dk} className={"hx-rowwrap" + (j.priorApplied !== null ? " hx-prior" : "")}>
             <div className="hx-job">
               <div className="hx-jt"><b>{j.title}</b><span>{f.company}{age ? ` · ${age.label}` : ''}{j.location ? ` · ${j.location}` : ''}</span>
+                {entered && <em className={'hx-tag' + (entered.fresh ? '' : ' gray')} title="מתי הסריקה הכניסה את המשרה לחדר המצב. זה לא תאריך הפרסום.">{entered.text}</em>}
                 {j.priorApplied !== null && <em className="hx-tag" title="הגשת כבר לחברה הזאת באותה כותרת בדיוק. כנראה אותה מודעה מלוח אחר. הסימון לקריאה בלבד.">כבר הגשת לאותה משרה{j.priorApplied ? ` ב-${new Date(j.priorApplied).toLocaleDateString('he-IL', { day: 'numeric', month: 'numeric' })}` : ''}</em>}
               </div>
               <div className="hx-acts">
