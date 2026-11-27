@@ -7,7 +7,7 @@ import { referralMessage, connectNote, cvFileFor, inviteMessage } from '@/lib/ou
 import { isAgency } from '@/lib/pickContact';
 
 /** רענון אחרי שמירה: אחד לכל המסך, עם חיווי גלובלי כל עוד השרת טוען מחדש. */
-const Refresh = createContext<() => void>(() => {});
+const Refresh = createContext<(appliedJobId?: string) => void>(() => {});
 
 type Group = 'recruiter' | 'dev' | 'other';
 const GL: Record<Group, string> = { recruiter: 'מגייסות ו-HR', dev: 'מנהלי פיתוח', other: 'אחרים' };
@@ -37,11 +37,11 @@ function StepButtons({ j, friends }: { j: import('@/lib/clients').ClientJob; fri
       setBusy(false);
       if (!r || !r.ok) { alert('ההגשה נרשמה, אבל הסימון על איש הקשר לא נשמר.'); }
     }
-    setPick(false); refresh();
+    setPick(false); refresh(j.id);
   }
   const step = async (body: object) => { if (await post('/api/applications/step', body)) { setClosing(false); refresh(); } };
   if (!j.applied) return (<>
-    <button className="hx-b" disabled={busy} title="סמן שהגשת מועמדות למשרה הזאת ישירות באתר" onClick={async () => { if (await post('/api/jobs/applied', { id: j.id })) refresh(); }}>הוגשה ישירות</button>
+    <button className="hx-b" disabled={busy} title="סמן שהגשת מועמדות למשרה הזאת ישירות באתר" onClick={async () => { if (await post('/api/jobs/applied', { id: j.id })) refresh(j.id); }}>הוגשה ישירות</button>
     <button className={'hx-b' + (pick ? ' on' : '')} disabled={busy} title="סמן שהגשת דרך מכר או איש HR בחברה, ובחר מי" onClick={() => setPick(!pick)}>הוגשה דרך מכר או HR</button>
     {pick && (
       <div className="hx-pick row1">
@@ -308,10 +308,25 @@ function JobsFeed({ feed, clients, q, shown, setShown, friendsOf }: {
 export default function ClientsTable(props: { clients: Client[]; feed: FeedItem[]; initial?: { waiting?: boolean; replied?: boolean; group?: Group } }) {
   const router = useRouter();
   const [pending, start] = useTransition();
+  // 27.11.2026, שאול: "מעבר בין טאב לטאב בסימון משאיר את אותם פרטים". הרענון מהשרת לוקח כחמש שניות,
+  // ובינתיים הטאב השני הראה את המצב הישן. הסימון נכתב מיד על אותם אובייקטים ששני התצוגות חולקות.
+  const [ver, setVer] = useState(0);
+  const refresh = (appliedJobId?: string) => {
+    if (appliedJobId) {
+      for (const c of props.clients) for (const j of c.jobs) if (j.id === appliedJobId) {
+        j.applied = true; if (j.stage < 4) j.stage = 4; if (c.stage < 4) c.stage = 4;
+      }
+      for (const f of props.feed) if (f.job.id === appliedJobId) f.job.applied = true;
+      setVer((v) => v + 1);
+    }
+    start(() => router.refresh());
+  };
+  const clients = useMemo(() => props.clients.slice(), [props.clients, ver]);
+  const feed = useMemo(() => props.feed.filter((f) => !f.job.applied), [props.feed, ver]);
   return (
-    <Refresh.Provider value={() => start(() => router.refresh())}>
+    <Refresh.Provider value={refresh}>
       {pending && <div className="hx-toast">נשמר. מרענן את הרשימה…</div>}
-      <Inner {...props} />
+      <Inner {...props} clients={clients} feed={feed} />
     </Refresh.Provider>
   );
 }
