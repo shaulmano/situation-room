@@ -171,6 +171,8 @@ export async function loadClients(sb: any): Promise<{ clients: Client[]; orphans
       else if (open.length && !contacted) next = 'לשלוח הודעה';
       // מנהל פיתוח או מגייס/ת חבר בלי משרה פתוחה: הודעת היכרות כללית, שמבקשת שיזכור אותו. לא כשכבר פנה אליו.
       else if (!open.length && base.kind === 'contact' && (base.group === 'dev' || base.group === 'recruiter') && base.status === 'friend' && !contacted && !replied && !pitched.has(base.id)) next = 'לשלוח הודעה';
+      // 28.11.2026, שאול: מי שאישר חברות מקבל מכתב עם קורות חיים. הצעד הבא הוא כאן ולא במסך מכרים הישן. גל מאי לא חוסם: מכתב תודה על אישור הוא לא הפנייה הראשונה.
+      else if (base.kind === 'contact' && base.status === 'friend' && base.acceptedAt && Date.now() - Date.parse(base.acceptedAt) < 30 * 864e5 && !contacted && !replied) next = 'לשלוח הודעה';
       else if (open.length && contacted && !replied) next = 'מחכה לתשובה';
       const full = { note: null, connectedOn: null, acceptedAt: null, contactedAt: null, repliedAt: null, ...base };
       const newestOpen = jobs.filter((j) => !j.applied && !j.closed).map((j) => j.seenAt ?? '').sort().pop() ?? '';

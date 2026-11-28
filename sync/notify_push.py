@@ -160,7 +160,7 @@ def reply_body():
         "title": "יש לך תגובה" if len(rows) == 1 else "יש לך %d תגובות" % len(rows),
         "body": names + (" ועוד %d" % extra if extra > 0 else ""),
         # ישר למסך שבו ההתראה יושבת, ולא לדף הבית.
-        "url": "/warm",
+        "url": "/clients?waiting=1",
         "tag": "replies",
         "count": len(rows),
     }

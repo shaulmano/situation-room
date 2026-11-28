@@ -1,7 +1,7 @@
 'use client';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import RefreshOnFocus from './RefreshOnFocus';
 import ClearBadge from './ClearBadge';
 import '../app/clients/clients.css';
@@ -75,6 +75,21 @@ export default function CrmShell({ children }: { children: React.ReactNode }) {
     document.addEventListener('toggle', run, true);
     return () => { mo.disconnect(); window.removeEventListener('resize', run); document.removeEventListener('toggle', run, true); if (timer) clearTimeout(timer); };
   }, [path]);
+  const [counts, setCounts] = useState<Record<string, number>>({});
+  useEffect(() => {
+    let dead = false;
+    const load = () => {
+      if (path.startsWith('/login') || path.startsWith('/auth')) return;
+      fetch('/api/nav-counts', { cache: 'no-store' }).then((r) => (r.ok ? r.json() : null)).then((d) => {
+        if (dead || !d) return;
+        setCounts({ '/clients': d.clients ?? 0, '/replies': d.replies ?? 0 });
+      }).catch(() => {});
+    };
+    load();
+    const onVis = () => { if (document.visibilityState === 'visible') load(); };
+    document.addEventListener('visibilitychange', onVis);
+    return () => { dead = true; document.removeEventListener('visibilitychange', onVis); };
+  }, [path]);
   // מסך ההתחברות וחזרת ההתחברות בלי תפריט.
   if (path.startsWith('/login') || path.startsWith('/auth')) return <>{children}</>;
   const on = (h: string) => (h === '/' ? path === '/' : path.startsWith(h));
@@ -89,7 +104,7 @@ export default function CrmShell({ children }: { children: React.ReactNode }) {
             <div key={g.title} className="hx-grp">
               <div className="hx-gt">{g.title}</div>
               {g.items.map((i) => (
-                <Link key={i.href} href={i.href} title={i.tip} className={on(i.href) ? 'on' : ''}>{i.label}</Link>
+                <Link key={i.href} href={i.href} title={i.tip} className={on(i.href) ? 'on' : ''}>{i.label}{counts[i.href] > 0 && <b className={'hx-cnt' + (i.href === '/replies' ? ' red' : '')} title={i.href === '/replies' ? 'תגובות שמחכות למענה' : 'לקוחות שמחכים לפעולה שלך'}>{counts[i.href]}</b>}</Link>
               ))}
             </div>
           ))}

@@ -215,3 +215,7 @@
 .hx-back{display:flex!important;width:100%!important;justify-content:center;margin:0 0 8px!important;min-height:40px;white-space:nowrap}
 
 .hx-close{display:flex!important;width:100%!important;justify-content:center;margin:0 0 8px!important;min-height:36px;white-space:nowrap}
+
+/* מספר על טאב בתפריט (28.11.2026). חום להמתנה, אדום לתגובה שמחכה. */
+.hx-grp a .hx-cnt{float:left;min-width:20px;padding:1px 7px;border-radius:10px;background:var(--warn);color:#fff;font-size:.72rem;line-height:1.5;text-align:center}
+.hx-grp a .hx-cnt.red{background:var(--crit)}
