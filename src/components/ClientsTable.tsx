@@ -464,10 +464,87 @@ function Inner({ clients, feed, initial }: { clients: Client[]; feed: FeedItem[]
   const total = cnt('none') + cnt('requested') + cnt('friend') || 1;
   const waiting = clients.filter(isWaiting).length;
 
+  // 28.11.2026, שאול: "בלוק עם כל הדברים שמייצגים את המספר, והם לא נעלמים עד שאני מסיים". אותו תנאי בדיוק כמו המספר על הטאב (api/nav-counts).
+  const isNow = (c: Client) => c.urgent || (!!c.acceptedAt && !!c.next?.startsWith('לשלוח'));
+  const nowList = useMemo(() => clients.filter(isNow).sort((a, b) => Number(b.urgent) - Number(a.urgent) || b.activityAt.localeCompare(a.activityAt)), [clients]);
+  const renderRow = (c: Client, inBlock: boolean) => (
+          <div key={(inBlock ? 'n:' : '') + c.id} data-act={c.activityAt} data-urgent={c.urgent ? 1 : 0} className={'hx-rowwrap' + (c.urgent ? ' urgent' : '')}>
+            <div className="hx-row">
+              <div className="hx-who">
+                <b>{c.name || '(ללא שם)'}</b>
+                {inBlock && <em className="hx-tag red" title={c.urgent ? 'ענה לך ומחכה למענה' : 'אישר את בקשת החברות שלך וממתין למכתב עם קורות חיים'}>{c.urgent ? 'ענה לך' : 'אישר חברות'}</em>}
+                <span>{[c.company, c.title].filter(Boolean).join(' · ')}</span>
+                {c.kind === 'prior' && <em className="hx-tag gray" title="קיבל בקשה או הודעה בגל מאי ולא אישר. לא מציעים פנייה נוספת">נשלחה במאי, לא אושרה</em>}
+                {c.silentCount >= SILENT_LIMIT && <em className="hx-tag" title="הגשות לחברה הזאת שלא נענו. מעל 3 מומלץ לפנות ישירות">{c.silentCount} הגשות בלי מענה</em>}
+              </div>
+              <div><span className={'hx-pill ' + c.status} title={c.status === 'friend' ? 'חבר בלינקדאין' : c.status === 'requested' ? 'נשלחה בקשת חברות וממתינים לאישור' : 'עוד לא חבר ולא נשלחה בקשה'}>{SL[c.status]}</span></div>
+              <div className="hx-jobs">
+                {c.jobs.length
+                  ? <button className="hx-jlink" title="פתח את המשרות של הלקוח" onClick={() => toggle(c.id, 'jobs')}><b>{c.jobs.length}</b> <span>{c.jobs[0].title}</span></button>
+                  : <span className="mut">אין משרה</span>}
+              </div>
+              <div className="hx-stage">
+                <Bar stage={c.stage} />
+                <small>{c.stage ? STAGES[c.stage - 1] : 'ממתין למשרה'}</small>
+              </div>
+              <div className={'hx-next' + (c.urgent || c.next?.startsWith('פנה ישירות') ? ' red' : '')}>
+                {c.next && /^(לשלוח|פנה ישירות)/.test(c.next) && (c.jobs.length > 0 || c.kind === 'contact')
+                  ? <button className="hx-nbtn" title={c.next?.startsWith('פנה ישירות') ? `הוגשו ${SILENT_LIMIT} הגשות ויותר בלי מענה. פנה ישירות למגייס במקום להגיש עוד` : 'פותח נוסח מוכן ושם הקובץ לצירוף, ושלחתי או לא לפנות'} onClick={() => setAct(act === c.id ? null : c.id)}>{c.next}</button>
+                  : c.urgent ? <button className="hx-nbtn" title="פותח את מה שהוא כתב לך ותשובה מוצעת" onClick={() => toggle(c.id, 'jobs')}>{c.next}</button>
+                  : c.skipped && c.kind === 'contact' ? <Unskip c={c} />
+                  : (c.next ?? '—')}
+              </div>
+              <div className="hx-gos">
+                <button className={'hx-go' + (view?.id === c.id && view.tab === 'jobs' ? ' on' : '')} title="פותח את המשרות, התגובה והפעולות של הלקוח" onClick={() => toggle(c.id, 'jobs')}>פעולות</button>
+                <button className={'hx-go' + (view?.id === c.id && view.tab === 'edit' ? ' on' : '')} title="עריכת שם, תפקיד, חברה, טלפון, מייל והערה" onClick={() => toggle(c.id, 'edit')}>עדכן פרטים</button>
+              </div>
+            </div>
+            {act === c.id && inBlock === isNow(c) && <ActionPanel c={c} onDone={() => setAct(null)} />}
+            {view?.id === c.id && inBlock === isNow(c) && view.tab === 'edit' && (
+              <div className="hx-detail"><Editor key={c.id} c={c} /></div>
+            )}
+            {view?.id === c.id && inBlock === isNow(c) && view.tab === 'jobs' && (
+              <div className="hx-detail">
+                <button className="hx-b hx-close" title="סוגר את הבלוק" onClick={() => { setView(null); setAct(null); }}>סגור ✕</button>
+                {c.replyText && <ReplyBox c={c} />}
+                <div className="hx-jl">
+                  {c.jobs.length === 0 && (
+                    <div className="hx-job">
+                      <div className="mut">אין כרגע משרה מתאימה בחברה הזאת. כשתיכנס, הלקוח יעלה כאן לבד.</div>
+                      {c.next?.startsWith('לשלוח') && (
+                        <div className="hx-acts"><button className="hx-b main" title="מכין הודעת היכרות כללית, בלי משרה" onClick={() => setAct(c.id)}>הכן הודעת היכרות</button></div>
+                      )}
+                    </div>
+                  )}
+                  {c.jobs.map((j) => (
+                    <div key={j.id} className={"hx-job" + (j.priorApplied !== null ? " hx-prior" : "")}>
+                      <div className="hx-jt"><b>{j.title}</b>{j.priorApplied !== null && <em className="hx-tag" title="הגשת כבר לחברה הזאת באותה כותרת בדיוק. כנראה אותה מודעה מלוח אחר. הסימון לקריאה בלבד.">כבר הגשת לאותה משרה</em>}<span>{j.company}{j.applied && j.appliedDays !== null ? ` · הוגשה לפני ${j.appliedDays} ימים${j.silent ? ' · בלי מענה' : ''}` : (jobAge(j.posted, j.seenAt)?.label ? ` · ${jobAge(j.posted, j.seenAt)!.label}` : '')}</span></div>
+                      <div className="hx-stage"><Bar stage={j.stage} /><small>{STAGES[j.stage - 1]}</small></div>
+                      <div className="hx-acts">
+                        {j.url && <a className="hx-b" title="פותח את המודעה בלשונית חדשה" href={j.url} target="_blank" rel="noreferrer">פתח משרה</a>}
+                        <StepButtons j={j} friends={friendsOf(c)} />
+                        {!j.applied && c.kind !== 'prior' && <button className="hx-b main" title={c.status === 'friend' ? 'פותח נוסח הודעה מוכן ושם קובץ קורות החיים למשרה הזאת' : 'פותח נוסח בקשת חברות מוכן למשרה הזאת'} onClick={() => setAct(c.id)}>
+                          {c.status === 'friend' ? 'הכן הודעה' : 'הכן בקשת חברות'}</button>}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+  );
+
   return (
     <>
       {/* 27.11.2026, שאול: "המידע ממש לא מאורגן". בתצוגת "לפי משרה" אין אריחי לקוחות, סרגל חברון ובוררי סוג: רק משרות. */}
       {mode === 'clients' && (<>
+      <div className="hx-card hx-table hx-now">
+        <div className="hx-cnt"><b>מחכה לך עכשיו</b> · {nowList.length}</div>
+        <div className="hx-note">{nowList.length
+          ? 'מי שענה לך ומי שאישר חברות וממתין למכתב. כל אחד נשאר כאן עד שתטפל בו, והרשימה גדלה וקטנה לפי מה שנכנס. אותו מספר שמופיע על הטאב.'
+          : 'אין כרגע מי שענה או אישר חברות וממתין לך. כשיהיה, הוא יופיע כאן.'}</div>
+        {nowList.map((c) => renderRow(c, true))}
+      </div>
       <div className="hx-kpis">
         <button className={'hx-kpi hx-kpib'} style={{ gridColumn: '1 / -1' }} title="משרות שנכנסו לחדר המצב ב-3 הימים האחרונים (72 שעות), מהחדשה לישנה. פותח את תצוגת לפי משרה" onClick={() => { go(); setNewOnly(true); setMode('jobs'); setShown(40); }}><small>משרות חדשות מהסריקה (3 ימים)</small><b>{newCount}</b></button>
         <button className={'hx-kpi hx-kpib' + (!withJob && !onlyWaiting && !onlyApplied && !onlyReplied && status === 'all' && !q && group === 'all' ? ' on' : '')} title="מנקה את כל הסינונים ומציג את כל הלקוחות" onClick={() => { setGroup('all'); setWithJob(false); setOnlyWaiting(false); setOnlyApplied(false); setOnlyReplied(false); setStatus('all'); setQ(''); go(); setShown(40); }}><small>כל הלקוחות</small><b>{clients.length}</b></button>
@@ -555,71 +632,7 @@ function Inner({ clients, feed, initial }: { clients: Client[]; feed: FeedItem[]
         <div className="hx-head">
           <span>לקוח וחברה</span><span>חברות</span><span>משרות</span><span>שלב</span><span>הצעד הבא</span><span />
         </div>
-        {rows.slice(0, shown).map((c) => (
-          <div key={c.id} data-act={c.activityAt} data-urgent={c.urgent ? 1 : 0} className={'hx-rowwrap' + (c.urgent ? ' urgent' : '')}>
-            <div className="hx-row">
-              <div className="hx-who">
-                <b>{c.name || '(ללא שם)'}</b>
-                <span>{[c.company, c.title].filter(Boolean).join(' · ')}</span>
-                {c.kind === 'prior' && <em className="hx-tag gray" title="קיבל בקשה או הודעה בגל מאי ולא אישר. לא מציעים פנייה נוספת">נשלחה במאי, לא אושרה</em>}
-                {c.silentCount >= SILENT_LIMIT && <em className="hx-tag" title="הגשות לחברה הזאת שלא נענו. מעל 3 מומלץ לפנות ישירות">{c.silentCount} הגשות בלי מענה</em>}
-              </div>
-              <div><span className={'hx-pill ' + c.status} title={c.status === 'friend' ? 'חבר בלינקדאין' : c.status === 'requested' ? 'נשלחה בקשת חברות וממתינים לאישור' : 'עוד לא חבר ולא נשלחה בקשה'}>{SL[c.status]}</span></div>
-              <div className="hx-jobs">
-                {c.jobs.length
-                  ? <button className="hx-jlink" title="פתח את המשרות של הלקוח" onClick={() => toggle(c.id, 'jobs')}><b>{c.jobs.length}</b> <span>{c.jobs[0].title}</span></button>
-                  : <span className="mut">אין משרה</span>}
-              </div>
-              <div className="hx-stage">
-                <Bar stage={c.stage} />
-                <small>{c.stage ? STAGES[c.stage - 1] : 'ממתין למשרה'}</small>
-              </div>
-              <div className={'hx-next' + (c.urgent || c.next?.startsWith('פנה ישירות') ? ' red' : '')}>
-                {c.next && /^(לשלוח|פנה ישירות)/.test(c.next) && (c.jobs.length > 0 || c.kind === 'contact')
-                  ? <button className="hx-nbtn" title={c.next?.startsWith('פנה ישירות') ? `הוגשו ${SILENT_LIMIT} הגשות ויותר בלי מענה. פנה ישירות למגייס במקום להגיש עוד` : 'פותח נוסח מוכן ושם הקובץ לצירוף, ושלחתי או לא לפנות'} onClick={() => setAct(act === c.id ? null : c.id)}>{c.next}</button>
-                  : c.urgent ? <button className="hx-nbtn" title="פותח את מה שהוא כתב לך ותשובה מוצעת" onClick={() => toggle(c.id, 'jobs')}>{c.next}</button>
-                  : c.skipped && c.kind === 'contact' ? <Unskip c={c} />
-                  : (c.next ?? '—')}
-              </div>
-              <div className="hx-gos">
-                <button className={'hx-go' + (view?.id === c.id && view.tab === 'jobs' ? ' on' : '')} title="פותח את המשרות, התגובה והפעולות של הלקוח" onClick={() => toggle(c.id, 'jobs')}>פעולות</button>
-                <button className={'hx-go' + (view?.id === c.id && view.tab === 'edit' ? ' on' : '')} title="עריכת שם, תפקיד, חברה, טלפון, מייל והערה" onClick={() => toggle(c.id, 'edit')}>עדכן פרטים</button>
-              </div>
-            </div>
-            {act === c.id && <ActionPanel c={c} onDone={() => setAct(null)} />}
-            {view?.id === c.id && view.tab === 'edit' && (
-              <div className="hx-detail"><Editor key={c.id} c={c} /></div>
-            )}
-            {view?.id === c.id && view.tab === 'jobs' && (
-              <div className="hx-detail">
-                <button className="hx-b hx-close" title="סוגר את הבלוק" onClick={() => { setView(null); setAct(null); }}>סגור ✕</button>
-                {c.replyText && <ReplyBox c={c} />}
-                <div className="hx-jl">
-                  {c.jobs.length === 0 && (
-                    <div className="hx-job">
-                      <div className="mut">אין כרגע משרה מתאימה בחברה הזאת. כשתיכנס, הלקוח יעלה כאן לבד.</div>
-                      {c.next?.startsWith('לשלוח') && (
-                        <div className="hx-acts"><button className="hx-b main" title="מכין הודעת היכרות כללית, בלי משרה" onClick={() => setAct(c.id)}>הכן הודעת היכרות</button></div>
-                      )}
-                    </div>
-                  )}
-                  {c.jobs.map((j) => (
-                    <div key={j.id} className={"hx-job" + (j.priorApplied !== null ? " hx-prior" : "")}>
-                      <div className="hx-jt"><b>{j.title}</b>{j.priorApplied !== null && <em className="hx-tag" title="הגשת כבר לחברה הזאת באותה כותרת בדיוק. כנראה אותה מודעה מלוח אחר. הסימון לקריאה בלבד.">כבר הגשת לאותה משרה</em>}<span>{j.company}{j.applied && j.appliedDays !== null ? ` · הוגשה לפני ${j.appliedDays} ימים${j.silent ? ' · בלי מענה' : ''}` : (jobAge(j.posted, j.seenAt)?.label ? ` · ${jobAge(j.posted, j.seenAt)!.label}` : '')}</span></div>
-                      <div className="hx-stage"><Bar stage={j.stage} /><small>{STAGES[j.stage - 1]}</small></div>
-                      <div className="hx-acts">
-                        {j.url && <a className="hx-b" title="פותח את המודעה בלשונית חדשה" href={j.url} target="_blank" rel="noreferrer">פתח משרה</a>}
-                        <StepButtons j={j} friends={friendsOf(c)} />
-                        {!j.applied && c.kind !== 'prior' && <button className="hx-b main" title={c.status === 'friend' ? 'פותח נוסח הודעה מוכן ושם קובץ קורות החיים למשרה הזאת' : 'פותח נוסח בקשת חברות מוכן למשרה הזאת'} onClick={() => setAct(c.id)}>
-                          {c.status === 'friend' ? 'הכן הודעה' : 'הכן בקשת חברות'}</button>}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-          </div>
-        ))}
+        {rows.slice(0, shown).map((c) => renderRow(c, false))}
         {rows.length === 0 && <div className="hx-empty">אין לקוחות שמתאימים לסינון.</div>}
         {rows.length > shown && <button className="hx-more" title="טוען עוד 60 לקוחות" onClick={() => setShown(shown + 60)}>הצג עוד</button>}
       </div>

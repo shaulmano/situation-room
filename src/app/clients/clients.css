@@ -223,3 +223,6 @@
 .hx-grp a.wait{background:rgba(168,105,10,.28);color:#fff;font-weight:600}
 .hx-grp a.wait.red{background:rgba(196,48,42,.36)}
 .hx-grp a.wait.on{box-shadow:inset -3px 0 0 var(--cyan)}
+/* בלוק "מחכה לך עכשיו" בראש הלקוחות (28.11.2026) */
+.hx-now{border-color:var(--crit);margin-bottom:14px}
+.hx-tag.red{background:var(--crit-wash);color:var(--crit)}
