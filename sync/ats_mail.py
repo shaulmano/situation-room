@@ -67,6 +67,8 @@ _GENERIC_SENDER = re.compile(
 # הריצה הראשונה: "Thank you for applying to Nebius" נקרא שם כתפקיד בשם
 # Nebius, ו"applying to the X role" כן מביא תפקיד. שלושה דפוסים ולא אחד.
 _PAT = [
+    # "Thank You from Gong 💜 Senior Director of Quality"
+    re.compile(r'thank you from\s+(?P<co>[\w.&-]+(?: [\w.&-]+)?)\s*[^\w\s]+\s*(?P<role>.+)$', re.I),
     # for the <ROLE> position at <CO>
     re.compile(r'appl\w*\s+for\s+the\s+(?P<role>.+?)\s+(?:position|role|job)\b'
                r'(?:\s+at\s+(?P<co>.+))?$', re.I),

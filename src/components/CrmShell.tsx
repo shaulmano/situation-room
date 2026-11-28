@@ -10,6 +10,7 @@ import '../app/clients/clients.css';
 // בצד ימין, בהמשך נוסיף עוד דברים כמו דוחות, אבל העבודה תהיה מדף הלקוחות".
 const GROUPS: { title: string; items: { href: string; label: string; tip: string }[] }[] = [
   { title: 'עבודה', items: [
+    { href: '/', label: 'דף הבית', tip: 'סיכום היום ומשרות חדשות' },
     { href: '/clients', label: 'לקוחות', tip: 'כל המגייסות, ה-HR ומנהלי הפיתוח, והמשרות בחברות שלהם. משם עובדים' },
     { href: '/today', label: 'מטלות להיום', tip: 'מה מחכה לך היום, לפי הסדר' },
     { href: '/replies', label: 'תשובות', tip: 'מי ענה לך ומה כתב, עם תשובה מוצעת' },
@@ -26,7 +27,6 @@ const GROUPS: { title: string; items: { href: string; label: string; tip: string
   { title: 'מערכת', items: [
     { href: '/sources', label: 'מקורות', tip: 'מצב הסריקה של כל לוח משרות' },
     { href: '/settings', label: 'הגדרות', tip: 'התראות, סיסמה והתנתקות' },
-    { href: '/', label: 'דף הבית', tip: 'סיכום היום ומשרות חדשות' },
   ] },
 ];
 
