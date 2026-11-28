@@ -250,6 +250,7 @@ def main():
         return
     for r, a, why in hit:
         sql("update applications set status = 'rejected', "
+            "rejected_marked_at = now(), "
             "note = coalesce(nullif(note, ''), %s) where id = %s"
             % (q('נדחה במייל ' + r['at'][:10]), q(a['id'])))
     print('recorded %d' % len(hit))

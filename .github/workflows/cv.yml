@@ -156,7 +156,7 @@ jobs:
           # אחרת הרישום מצליח והפוש נופל בשקט.
           pip install cryptography
           python sync/invites_mark.py "$PAYLOAD"
-          python sync/notify_push.py invites
+          # 28.11.2026: אין פוש נפרד על אישור חברות. הוא בסיכום של digest.yml.
 
       - name: Record under-the-radar jobs
         if: inputs.mode == 'seo'

@@ -83,6 +83,13 @@ jobs:
       # באותה חברה. דחייה שלא הוכרעה אינה נכתבת, וזה תקין ולא תקלה.
       # 610 ההגשות הן המכנה של "0.4 אחוז להגשה קרה", וסימון שגוי כאן
       # מסמן משרה חיה כמתה ומזייף את המספר.
+      # 28.11.2026: rejections.py כותב עכשיו rejected_marked_at. idempotent.
+      - name: Apply the rejection marker migration
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+          SUPABASE_PROJECT_REF: ${{ secrets.SUPABASE_PROJECT_REF }}
+        run: python sync/migrate.py supabase/migrations/0089_rejection_push_marker.sql
+
       - name: Mark the applications that were rejected
         id: sweep
         env:
@@ -97,16 +104,7 @@ jobs:
           N=$(sed -n 's/^recorded \([0-9]\{1,\}\)$/\1/p' out.txt | tail -1)
           echo "recorded=${N:-0}" >> "$GITHUB_OUTPUT"
 
-      # **רק כשנרשם משהו.** אפס פירושו שתיקה מוחלטת, בלי פוש ובלי
-      # סיכום, בדיוק כמו שהסוכן התנהג.
-      - name: Announce, only if something was recorded
-        if: steps.sweep.outputs.recorded != '0'
-        env:
-          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
-          SUPABASE_PROJECT_REF: ${{ secrets.SUPABASE_PROJECT_REF }}
-          VAPID_PUBLIC_KEY: ${{ secrets.VAPID_PUBLIC_KEY }}
-          VAPID_PRIVATE_KEY: ${{ secrets.VAPID_PRIVATE_KEY }}
-        run: python sync/notify_push.py rejections "${{ steps.sweep.outputs.recorded }}"
+      # 28.11.2026: אין כאן פוש נפרד. הדחיות נספרות בסיכום של digest.yml.
 
   invites:
     # מי אישר בקשת חברות בלינקדאין. היה סוכן "אישר חברות", שחיפש ב-Gmail דרך

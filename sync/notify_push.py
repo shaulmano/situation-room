@@ -254,6 +254,52 @@ def main():
         print("announced %d acceptances" % len(rows))
         return
 
+    # 28.11.2026, שאול: "כל ההתראות לא צריכות לבוא אלי... אני מקבל מלא פושים
+    # וזה לא מה שקבענו." משרות חדשות, אישורי חברות ודחיות כבר לא יוצאות
+    # בפוש נפרד אלא בסיכום אחד, פעמיים ביום (digest.yml, 08:00 ו-18:00).
+    # תגובה ממגייס נשארת מיידית, ותקלה יוצאת מ-health.py.
+    # **כל סוג מסומן כמוכרז רק אחרי שהסיכום יצא**, ולכן ריצה שנפלה משאירה
+    # את הכול לסיכום הבא. אפס בכל הסוגים פירושו שתיקה מוחלטת.
+    if mode == "digest":
+        jobs = sql(
+            "select j.id from jobs j "
+            "where j.on_target and j.dismissed_at is null and j.notified_at is null "
+            "and j.first_seen >= now() - interval '2 days' "
+            "and exists (select 1 from matches m where m.job_id = j.id) limit 200"
+        )
+        inv_body, inv_rows = invites_body()
+        rej = sql("select id from applications where rejected_marked_at is not null "
+                  "and rejected_pushed_at is null limit 200")
+        parts, url = [], "/"
+        if jobs:
+            parts.append("%d משרות חדשות" % len(jobs) if len(jobs) > 1 else "משרה חדשה")
+        if inv_rows:
+            parts.append("%d אישרו חברות" % len(inv_rows) if len(inv_rows) > 1 else "אישור חברות")
+            url = "/warm"
+        if rej:
+            parts.append("%d הגשות נדחו" % len(rej) if len(rej) > 1 else "הגשה נדחתה")
+        if not parts:
+            print("digest: nothing to announce")
+            return
+        send_to_all(subs, {
+            "title": "סיכום",
+            "body": " · ".join(parts),
+            "url": url if len(parts) == 1 else "/",
+            "tag": "digest",
+            "count": len(jobs),
+        })
+        if jobs:
+            sql("update jobs set notified_at = now() where id in (%s)"
+                % ",".join(q(r["id"]) for r in jobs))
+        if inv_rows:
+            sql("update contacts set invite_pushed_at = now() where id in (%s)"
+                % ",".join(q(r["id"]) for r in inv_rows))
+        if rej:
+            sql("update applications set rejected_pushed_at = now() where id in (%s)"
+                % ",".join(q(r["id"]) for r in rej))
+        print("digest: " + " | ".join(parts))
+        return
+
     rows = sql(
         "select j.id, j.title, j.company from jobs j "
         "where j.on_target and j.dismissed_at is null and j.notified_at is null "

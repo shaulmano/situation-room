@@ -1,0 +1,44 @@
+name: Daily digest push
+
+# 28.11.2026, שאול: "כל ההתראות לא צריכות לבוא אלי... אני מקבל מלא פושים
+# וזה לא מה שקבענו." פוש אחד בבוקר ואחד בערב עם מה שנאסף: משרות חדשות,
+# אישורי חברות ודחיות. תגובה ממגייס נשארת מיידית (cron.yml, cv.yml).
+# בלי מודל: הסיכום נבנה מהמסד.
+#
+# 06:00 ו-16:00 UTC הם 08:00 ו-18:00 בישראל בחורף. הקרון של GitHub הוא UTC
+# בלבד, ובקיץ זה יזוז בשעה. וריצה שדולגת או מתעכבת לא מפסידה כלום: כל סוג
+# מסומן כמוכרז רק אחרי שהסיכום יצא, והריצה הבאה לוקחת מה שנשאר.
+on:
+  schedule:
+    - cron: '0 6 * * *'
+    - cron: '0 16 * * *'
+  workflow_dispatch:
+
+concurrency:
+  group: situation-room-digest
+  cancel-in-progress: false
+
+jobs:
+  digest:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install dependencies
+        run: pip install --quiet cryptography
+      # idempotent (add column if not exists), so it is safe on every run.
+      - name: Apply the rejection marker migration
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+          SUPABASE_PROJECT_REF: ${{ secrets.SUPABASE_PROJECT_REF }}
+        run: python sync/migrate.py supabase/migrations/0089_rejection_push_marker.sql
+      - name: Send the digest
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+          SUPABASE_PROJECT_REF: ${{ secrets.SUPABASE_PROJECT_REF }}
+          VAPID_PUBLIC_KEY: ${{ secrets.VAPID_PUBLIC_KEY }}
+          VAPID_PRIVATE_KEY: ${{ secrets.VAPID_PRIVATE_KEY }}
+        run: python sync/notify_push.py digest
