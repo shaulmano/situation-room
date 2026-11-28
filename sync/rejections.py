@@ -68,7 +68,7 @@ _SKIP_SENDER = re.compile(
 # בתיבה, וזאת עבודה מיותרת על אלפי הודעות.
 _MAYBE = re.compile(
     r'(appl\w*|position|\brole\b|candidat\w*|interest in|resume|cv\b|hiring|'
-    r'recruit\w*|opportunit\w*|update from|regarding your|thank you for|'
+    r'recruit\w*|opportunit\w*|update from|regarding your|thank you|'
     r'מועמדות|מועמדותך|משרה|משרת|תפקיד|גיוס|קורות חיים)', re.I)
 
 
