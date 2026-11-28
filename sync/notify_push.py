@@ -191,7 +191,7 @@ def invites_body():
     extra = len(rows) - MAX_TITLES
     body = {
         "title": "אישור חברות" if len(rows) == 1 else "%d אישרו חברות" % len(rows),
-        "body": names + (" ועוד %d" % extra if extra > 0 else "") + ". אפשר לשלוח הודעה",
+        "body": names + (" ועוד %d" % extra if extra > 0 else "") + (" אישר/ה אותך" if len(rows) == 1 else " אישרו אותך") + ". מחכה מכתב עם קורות חיים",
         "url": "/warm",
         "tag": "invites",
         "count": len(rows),
