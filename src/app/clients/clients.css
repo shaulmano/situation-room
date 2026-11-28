@@ -219,3 +219,7 @@
 /* מספר על טאב בתפריט (28.11.2026). חום להמתנה, אדום לתגובה שמחכה. */
 .hx-grp a .hx-cnt{float:left;min-width:20px;padding:1px 7px;border-radius:10px;background:var(--warn);color:#fff;font-size:.72rem;line-height:1.5;text-align:center}
 .hx-grp a .hx-cnt.red{background:var(--crit)}
+/* טאב שיש בו משהו שמחכה: צבע משלו, כדי שיראו אותו גם בלי לקרוא את המספר. */
+.hx-grp a.wait{background:rgba(168,105,10,.28);color:#fff;font-weight:600}
+.hx-grp a.wait.red{background:rgba(196,48,42,.36)}
+.hx-grp a.wait.on{box-shadow:inset -3px 0 0 var(--cyan)}
