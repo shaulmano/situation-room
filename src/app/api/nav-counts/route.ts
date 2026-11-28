@@ -5,14 +5,11 @@ import { loadClients } from '@/lib/clients';
 export const dynamic = 'force-dynamic';
 
 // המספרים על טאבי התפריט (28.11.2026, שאול: "מספר על הטאב אם יש שם דברים חדשים").
-// אותו חישוב בדיוק כמו מסך המטלות: לקוחות שמחכים לפעולה, ותגובות שלא טופלו.
+// אותו חישוב בדיוק כמו מסך המטלות: לקוחות שמחכים לפעולה, וכמה מהם ענו.
 export async function GET() {
   const sb = serverClient();
-  const [cl, rep] = await Promise.all([
-    loadClients(sb),
-    sb.from('contacts').select('id', { count: 'exact', head: true })
-      .not('replied_at', 'is', null).is('reply_done_at', null),
-  ]);
-  const waiting = cl.error ? null : cl.clients.filter((c) => !!c.next && !c.next.startsWith('מחכה')).length;
-  return NextResponse.json({ clients: waiting, replies: rep.error ? null : (rep.count ?? 0) });
+  const cl = await loadClients(sb);
+  const list = cl.error ? [] : cl.clients.filter((c) => !!c.next && !c.next.startsWith('מחכה'));
+  // המסך "תשובות" מציג סטטוסים מהמייל ולא תגובות מלינקדאין, ולכן אין עליו מספר. תגובה שמחכה היא בלקוחות.
+  return NextResponse.json({ clients: cl.error ? null : list.length, urgent: list.filter((c) => c.urgent).length });
 }
